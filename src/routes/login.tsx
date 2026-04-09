@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AuthShell } from '@/components/AuthShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 /**
  * Employee sign-in page. Single "Sign in with Microsoft" button — the
@@ -24,10 +24,7 @@ function LoginPage() {
   return (
     <AuthShell>
       <Card>
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="flex flex-col gap-3 pt-6">
           <Button
             type="button"
             size="lg"
