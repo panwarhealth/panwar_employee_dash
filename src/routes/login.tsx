@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AuthShell } from '@/components/AuthShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
  * Employee sign-in page. Single "Sign in with Microsoft" button — the
@@ -26,9 +26,6 @@ function LoginPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>
-            Use your @panwarhealth.com.au Microsoft account.
-          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Button
@@ -47,8 +44,7 @@ function LoginPage() {
             Sign in with Microsoft
           </Button>
           <p className="text-center text-xs text-ph-charcoal/60">
-            Access is restricted to Panwar Health staff. Internal tools are not for clients —
-            client portal lives at portal.panwarhealth.com.au.
+            Access is restricted to Panwar Health staff.
           </p>
         </CardContent>
       </Card>

@@ -2,7 +2,7 @@
 
 React 19 + Vite SPA — the **internal staff portal** for the Panwar Portals project. Panwar Health employees sign in via Microsoft Entra ID (M365 SSO) and use the modular tools hub to manage clients, brands, placements, and the data feeding the client dashboards.
 
-**Production:** `https://a1.panwarhealth.com.au`
+**Production:** `https://staff.panwarhealth.com.au`
 **Local dev:** `http://localhost:5174`
 
 ## Quick start
@@ -30,7 +30,7 @@ See `CLAUDE.md` for the full architecture, conventions, and route reference.
 
 ## Hosting
 
-Production deploys to **Cloudflare Pages** from the `main` branch to `a1.panwarhealth.com.au`. The `staging` branch (when it exists) deploys to `staging.a1.panwarhealth.com.au`. Other branches get throwaway `*.pages.dev` preview URLs (UI-only — auth cookies don't reach `*.pages.dev`).
+Production deploys to **Cloudflare Pages** from the `main` branch to `staff.panwarhealth.com.au`. The `staging` branch (when it exists) deploys to `staging.staff.panwarhealth.com.au`. Other branches get throwaway `*.pages.dev` preview URLs (UI-only — auth cookies don't reach `*.pages.dev`).
 
 ## Build conventions
 

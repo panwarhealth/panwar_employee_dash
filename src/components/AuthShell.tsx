@@ -10,9 +10,6 @@ export function AuthShell({ children }: { children: ReactNode }) {
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-semibold text-ph-purple">Panwar Health</h1>
-          <p className="mt-1 text-xs uppercase tracking-wide text-ph-charcoal/60">
-            Employee Portal
-          </p>
         </div>
         {children}
       </div>
