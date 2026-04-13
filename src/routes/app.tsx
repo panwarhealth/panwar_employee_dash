@@ -23,7 +23,6 @@ export const Route = createFileRoute('/app')({
         staleTime: 5 * 60 * 1000,
       });
       if (me.type !== 'employee') {
-        // A client user landed here somehow — bounce them.
         throw redirect({ to: '/login' });
       }
       return { me };

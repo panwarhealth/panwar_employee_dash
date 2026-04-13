@@ -25,6 +25,13 @@ export async function getMe(): Promise<MeResponse> {
   return apiFetch('/auth/me');
 }
 
+export async function exchangeEntraToken(idToken: string): Promise<MeResponse> {
+  return apiFetch('/auth/entra/exchange', {
+    method: 'POST',
+    body: { idToken },
+  });
+}
+
 export async function logout(): Promise<void> {
   await apiFetch('/auth/logout', { method: 'POST' });
 }

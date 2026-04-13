@@ -41,6 +41,7 @@ export function useLogout() {
     mutationFn: logout,
     onSuccess: () => {
       queryClient.setQueryData(ME_QUERY_KEY, null);
+      window.location.href = '/login';
     },
   });
 }
