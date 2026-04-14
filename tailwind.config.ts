@@ -22,6 +22,13 @@ export default {
       fontFamily: {
         sans: ['"museo-sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
+      borderRadius: {
+        sm: '0.125rem', // 2px
+        DEFAULT: '0.1875rem', // 3px
+        md: '0.1875rem', // 3px
+        lg: '0.25rem', // 4px
+        xl: '0.375rem', // 6px
+      },
     },
   },
   plugins: [],

@@ -22,4 +22,5 @@ export const msalInstance = new PublicClientApplication({
 
 export const loginRequest = {
   scopes: ['openid', 'profile', 'email'],
+  prompt: 'select_account',
 };
