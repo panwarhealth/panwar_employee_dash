@@ -1,16 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
 import {
   createBaseline,
+  updateBaseline,
   deleteBaseline,
   listBaselines,
   listPublishers,
@@ -26,7 +27,8 @@ export const Route = createFileRoute('/app/clients/$clientSlug/baselines')({
 
 function BaselinesTab() {
   const { clientSlug } = Route.useParams();
-  const [showForm, setShowForm] = useState(false);
+  // null = no form; 'new' = create; a Baseline = edit that baseline.
+  const [formState, setFormState] = useState<Baseline | 'new' | null>(null);
 
   const { data: baselines = [], isLoading } = useQuery({
     queryKey: ['manage', 'clients', clientSlug, 'baselines'],
@@ -48,20 +50,21 @@ function BaselinesTab() {
           Expected performance per (publisher, metric). Editors use these as defaults when
           setting placement KPI targets.
         </p>
-        {!showForm && (
-          <Button type="button" size="sm" onClick={() => setShowForm(true)}>
+        {formState === null && (
+          <Button type="button" size="sm" onClick={() => setFormState('new')}>
             <Plus className="h-4 w-4" />
             New baseline
           </Button>
         )}
       </div>
 
-      {showForm && (
-        <NewBaselineForm
+      {formState !== null && (
+        <BaselineForm
           clientSlug={clientSlug}
           publishers={publishers}
           templates={templates}
-          onDone={() => setShowForm(false)}
+          editing={formState === 'new' ? null : formState}
+          onDone={() => setFormState(null)}
         />
       )}
 
@@ -73,14 +76,24 @@ function BaselinesTab() {
               No baselines yet — create the first one.
             </p>
           )}
-          {baselines.length > 0 && <BaselineTable clientSlug={clientSlug} baselines={baselines} />}
+          {baselines.length > 0 && (
+            <BaselineTable clientSlug={clientSlug} baselines={baselines} onEdit={(b) => setFormState(b)} />
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function BaselineTable({ clientSlug, baselines }: { clientSlug: string; baselines: Baseline[] }) {
+function BaselineTable({
+  clientSlug,
+  baselines,
+  onEdit,
+}: {
+  clientSlug: string;
+  baselines: Baseline[];
+  onEdit: (b: Baseline) => void;
+}) {
   const queryClient = useQueryClient();
   const del = useMutation({
     mutationFn: (id: string) => deleteBaseline(clientSlug, id),
@@ -114,6 +127,9 @@ function BaselineTable({ clientSlug, baselines }: { clientSlug: string; baseline
               <td className="py-2 pr-4 text-ph-charcoal/60">{b.effectiveFrom}</td>
               <td className="py-2 pr-4 text-ph-charcoal/60">{b.note ?? '—'}</td>
               <td className="py-2 text-right">
+                <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(b)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -144,29 +160,36 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-function NewBaselineForm({
+function BaselineForm({
   clientSlug,
   publishers,
   templates,
+  editing,
   onDone,
 }: {
   clientSlug: string;
   publishers: Publisher[];
   templates: MetricTemplate[];
+  editing: Baseline | null;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
+  const defaults = (b: Baseline | null): Values => ({
+    publisherId: b?.publisherId ?? '',
+    templateId: b?.templateId ?? '',
+    metricKey: b?.metricKey ?? '',
+    value: b?.value ?? 0,
+    effectiveFrom: b?.effectiveFrom ?? new Date().toISOString().slice(0, 10),
+    note: b?.note ?? '',
+  });
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      publisherId: '',
-      templateId: '',
-      metricKey: '',
-      value: 0,
-      effectiveFrom: new Date().toISOString().slice(0, 10),
-      note: '',
-    },
+    defaultValues: defaults(editing),
   });
+
+  useEffect(() => {
+    form.reset(defaults(editing));
+  }, [editing, form]);
 
   const selectedPublisherId = form.watch('publisherId');
   const selectedTemplateId = form.watch('templateId');
@@ -186,15 +209,17 @@ function NewBaselineForm({
   }, [templates, selectedTemplateId]);
 
   const mutation = useMutation({
-    mutationFn: (v: Values) =>
-      createBaseline(clientSlug, {
+    mutationFn: (v: Values) => {
+      const body = {
         publisherId: v.publisherId,
         templateId: v.templateId,
         metricKey: v.metricKey,
         value: v.value,
         effectiveFrom: v.effectiveFrom,
         note: v.note?.trim() || undefined,
-      }),
+      };
+      return editing ? updateBaseline(clientSlug, editing.id, body) : createBaseline(clientSlug, body);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
       onDone();
@@ -206,7 +231,9 @@ function NewBaselineForm({
   return (
     <Card>
       <CardContent className="pt-6">
-        <h2 className="text-base font-semibold text-ph-charcoal">New baseline</h2>
+        <h2 className="text-base font-semibold text-ph-charcoal">
+          {editing ? 'Edit baseline' : 'New baseline'}
+        </h2>
         <form
           onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
           className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
@@ -260,7 +287,7 @@ function NewBaselineForm({
 
           <div className="col-span-full flex items-center gap-2">
             <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving…' : 'Save baseline'}
+              {mutation.isPending ? 'Saving…' : editing ? 'Update baseline' : 'Save baseline'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={onDone}>
               Cancel

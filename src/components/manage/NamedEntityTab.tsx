@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ interface NamedEntityTabProps {
   queryKey: readonly unknown[];
   list: () => Promise<NamedRow[]>;
   create: (body: { name: string; slug: string }) => Promise<NamedRow>;
+  update: (id: string, body: { name: string; slug: string }) => Promise<NamedRow>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -33,15 +34,19 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
+// null = no form open; 'new' = create; a row = edit that row.
+type FormState = NamedRow | 'new' | null;
+
 export function NamedEntityTab({
   entityLabel,
   entityPluralLabel,
   queryKey,
   list,
   create,
+  update,
   remove,
 }: NamedEntityTabProps) {
-  const [showForm, setShowForm] = useState(false);
+  const [formState, setFormState] = useState<FormState>(null);
   const { data = [], isLoading } = useQuery({ queryKey, queryFn: list });
 
   return (
@@ -50,20 +55,22 @@ export function NamedEntityTab({
         <p className="text-sm text-ph-charcoal/70">
           {data.length} {entityPluralLabel}.
         </p>
-        {!showForm && (
-          <Button type="button" size="sm" onClick={() => setShowForm(true)}>
+        {formState === null && (
+          <Button type="button" size="sm" onClick={() => setFormState('new')}>
             <Plus className="h-4 w-4" />
             New {entityLabel}
           </Button>
         )}
       </div>
 
-      {showForm && (
-        <AddForm
+      {formState !== null && (
+        <EntityForm
           entityLabel={entityLabel}
           queryKey={queryKey}
+          editing={formState === 'new' ? null : formState}
           create={create}
-          onDone={() => setShowForm(false)}
+          update={update}
+          onDone={() => setFormState(null)}
         />
       )}
 
@@ -81,6 +88,7 @@ export function NamedEntityTab({
               queryKey={queryKey}
               remove={remove}
               entityLabel={entityLabel}
+              onEdit={(row) => setFormState(row)}
             />
           )}
         </CardContent>
@@ -89,21 +97,37 @@ export function NamedEntityTab({
   );
 }
 
-function AddForm({
+function EntityForm({
   entityLabel,
   queryKey,
+  editing,
   create,
+  update,
   onDone,
 }: {
   entityLabel: string;
   queryKey: readonly unknown[];
+  editing: NamedRow | null;
   create: (body: { name: string; slug: string }) => Promise<NamedRow>;
+  update: (id: string, body: { name: string; slug: string }) => Promise<NamedRow>;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { name: '', slug: '' } });
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: editing?.name ?? '', slug: editing?.slug ?? '' },
+  });
+
+  // Reset the fields when switching between rows / create.
+  useEffect(() => {
+    form.reset({ name: editing?.name ?? '', slug: editing?.slug ?? '' });
+  }, [editing, form]);
+
   const mutation = useMutation({
-    mutationFn: (values: Values) => create({ name: values.name.trim(), slug: values.slug.trim() }),
+    mutationFn: (values: Values) => {
+      const body = { name: values.name.trim(), slug: values.slug.trim() };
+      return editing ? update(editing.id, body) : create(body);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       onDone();
@@ -114,7 +138,9 @@ function AddForm({
   return (
     <Card>
       <CardContent className="pt-6">
-        <h2 className="text-base font-semibold text-ph-charcoal">New {entityLabel}</h2>
+        <h2 className="text-base font-semibold text-ph-charcoal">
+          {editing ? `Edit ${entityLabel}` : `New ${entityLabel}`}
+        </h2>
         <form
           onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
           className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto_auto]"
@@ -132,7 +158,7 @@ function AddForm({
             )}
           </div>
           <Button type="submit" size="sm" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Creating…' : 'Create'}
+            {mutation.isPending ? 'Saving…' : editing ? 'Save' : 'Create'}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={onDone}>
             Cancel
@@ -149,11 +175,13 @@ function EntityTable({
   queryKey,
   remove,
   entityLabel,
+  onEdit,
 }: {
   rows: NamedRow[];
   queryKey: readonly unknown[];
   remove: (id: string) => Promise<void>;
   entityLabel: string;
+  onEdit: (row: NamedRow) => void;
 }) {
   const queryClient = useQueryClient();
   const del = useMutation({
@@ -185,6 +213,9 @@ function EntityTable({
                 {r.placementCount}
               </td>
               <td className="py-2 text-right">
+                <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(r)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"

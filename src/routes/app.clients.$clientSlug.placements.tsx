@@ -4,11 +4,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Pencil, Upload } from 'lucide-react';
+import { Plus, Trash2, Pencil, Upload, CopyPlus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
+import { YearPicker } from '@/components/YearPicker';
 import {
   listBrands,
   listAudiences,
@@ -26,6 +27,7 @@ import {
   createPlacement,
   updatePlacement,
   deletePlacement,
+  clonePlacementYear,
   setPlacementKpis,
   setPlacementActuals,
   requestArtworkUploadUrl,
@@ -47,17 +49,31 @@ const MONTHS = [
 ] as const;
 
 const OBJECTIVES = ['awareness', 'consideration', 'engagement'] as const;
-const DEFAULT_YEAR = 2025; // Reckitt seed data is FY25; editors can change it.
+const CURRENT_YEAR = new Date().getFullYear(); // default entry year for a placement with no actuals yet
 
 function PlacementsTab() {
   const { clientSlug } = Route.useParams();
+  const queryClient = useQueryClient();
   // null = list view; 'new' = create form; otherwise the placement id being edited.
   const [editing, setEditing] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
+  const yearInitialised = useRef(false);
 
-  const { data: placements = [], isLoading } = useQuery({
-    queryKey: ['manage', 'clients', clientSlug, 'placements'],
-    queryFn: () => listPlacements(clientSlug),
+  const { data, isLoading } = useQuery({
+    queryKey: ['manage', 'clients', clientSlug, 'placements', selectedYear],
+    queryFn: () => listPlacements(clientSlug, { year: selectedYear }),
   });
+  const placements = data?.placements ?? [];
+  const years = data?.years ?? [];
+
+  // Land on the latest reporting year that has placements (once).
+  useEffect(() => {
+    if (!yearInitialised.current && years.length) {
+      setSelectedYear(years[years.length - 1]);
+      yearInitialised.current = true;
+    }
+  }, [years]);
+
   const { data: brands = [] } = useQuery({
     queryKey: ['manage', 'clients', clientSlug, 'brands'],
     queryFn: () => listBrands(clientSlug),
@@ -75,11 +91,20 @@ function PlacementsTab() {
     queryFn: listTemplates,
   });
 
+  const cloneYear = useMutation({
+    mutationFn: () => clonePlacementYear(clientSlug, selectedYear, selectedYear + 1),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'placements'] });
+      setSelectedYear(selectedYear + 1);
+    },
+  });
+
   if (editing !== null) {
     return (
       <PlacementEditor
         clientSlug={clientSlug}
         placementId={editing === 'new' ? null : editing}
+        selectedYear={selectedYear}
         brands={brands}
         audiences={audiences}
         publishers={publishers}
@@ -91,22 +116,49 @@ function PlacementsTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-ph-charcoal/70">
-          Per-client media placements. Creating one seeds KPI targets from the matching
-          publisher baselines — edit a placement to adjust targets, enter actuals and upload artwork.
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-md text-sm text-ph-charcoal/70">
+          Media placements for the selected reporting year. Each year holds its own buys and costs;
+          carry a year forward to start the next without rebuilding.
         </p>
-        <Button type="button" size="sm" onClick={() => setEditing('new')}>
-          <Plus className="h-4 w-4" />
-          New placement
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <YearPicker year={selectedYear} onChange={setSelectedYear} yearsWithData={years} />
+          {placements.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={cloneYear.isPending}
+              onClick={() => {
+                if (
+                  confirm(
+                    `Carry ${selectedYear}'s placements into ${selectedYear + 1}? ` +
+                      `Names, publishers, creative and KPI targets copy over; media/CPD cost and monthly data start blank.`,
+                  )
+                ) {
+                  cloneYear.mutate();
+                }
+              }}
+            >
+              <CopyPlus className="h-4 w-4" />
+              {cloneYear.isPending ? 'Copying…' : `Start ${selectedYear + 1}`}
+            </Button>
+          )}
+          <Button type="button" size="sm" onClick={() => setEditing('new')}>
+            <Plus className="h-4 w-4" />
+            New placement
+          </Button>
+        </div>
       </div>
 
       <Card>
         <CardContent className="pt-6">
           {isLoading && <p className="text-sm text-ph-charcoal/60">Loading…</p>}
           {!isLoading && placements.length === 0 && (
-            <p className="text-sm text-ph-charcoal/60">No placements yet — create the first one.</p>
+            <p className="text-sm text-ph-charcoal/60">
+              No placements for {selectedYear} yet — create one
+              {years.length > 0 ? ', or carry a previous year forward.' : '.'}
+            </p>
           )}
           {placements.length > 0 && (
             <PlacementTable
@@ -220,12 +272,15 @@ const BLANK: Values = {
   circulation: undefined, placementsCount: undefined,
 };
 
+// A placement's actuals all belong to its reporting year, so the grid is keyed
+// by month + metric only.
 const actualKey = (month: number, metric: string) => `${month}:${metric}`;
-const noteKey = (year: number, month: number, metric: string) => `${year}:${month}:${metric}`;
+const noteKey = (month: number, metric: string) => `${month}:${metric}`;
 
 function PlacementEditor({
   clientSlug,
   placementId,
+  selectedYear,
   brands,
   audiences,
   publishers,
@@ -234,6 +289,7 @@ function PlacementEditor({
 }: {
   clientSlug: string;
   placementId: string | null;
+  selectedYear: number;
   brands: BrandRow[];
   audiences: AudienceRow[];
   publishers: Publisher[];
@@ -249,16 +305,17 @@ function PlacementEditor({
     enabled: isEdit,
   });
 
+  // The placement's fixed reporting year (its year when editing; the tab's year for a new one).
+  const placementYear = detail?.year ?? selectedYear;
+
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: BLANK });
   const [liveMonths, setLiveMonths] = useState<number[]>([]);
   const [kpiInputs, setKpiInputs] = useState<Record<string, string>>({});
-  const [actualYear, setActualYear] = useState<number>(DEFAULT_YEAR);
   const [actualInputs, setActualInputs] = useState<Record<string, string>>({});
   const [artworkKey, setArtworkKey] = useState<string | null>(null);
   const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const yearInitialisedFor = useRef<string | null>(null);
 
   // Prefill scalar fields, live months, KPI targets and artwork when detail loads.
   useEffect(() => {
@@ -288,24 +345,18 @@ function PlacementEditor({
     setKpiInputs(Object.fromEntries(detail.kpis.map((k) => [k.metricKey, String(k.targetValue)])));
     setArtworkKey(detail.artworkUrl);
     setArtworkPreview(null);
-
-    // Default the actuals year to the most recent year that has data, once per placement.
-    if (yearInitialisedFor.current !== detail.id) {
-      const years = detail.actuals.map((a) => a.year);
-      setActualYear(years.length ? Math.max(...years) : DEFAULT_YEAR);
-      yearInitialisedFor.current = detail.id;
-    }
   }, [detail, form]);
 
-  // Rebuild the actuals grid whenever the detail or the selected year changes.
+  // Seed the actuals grid from every year's data (not just the selected year) so
+  // switching the year picker preserves unsaved edits.
   useEffect(() => {
     if (!detail) return;
     const next: Record<string, string> = {};
     for (const a of detail.actuals) {
-      if (a.year === actualYear) next[actualKey(a.month, a.metricKey)] = String(a.value);
+      next[actualKey(a.month, a.metricKey)] = String(a.value);
     }
     setActualInputs(next);
-  }, [detail, actualYear]);
+  }, [detail]);
 
   const selectedPublisherId = form.watch('publisherId');
   const selectedTemplateId = form.watch('templateId');
@@ -331,7 +382,7 @@ function PlacementEditor({
   // Existing notes, preserved on actuals upsert so the grid doesn't wipe them.
   const existingNotes = useMemo(() => {
     const map: Record<string, string | null> = {};
-    for (const a of detail?.actuals ?? []) map[noteKey(a.year, a.month, a.metricKey)] = a.note;
+    for (const a of detail?.actuals ?? []) map[noteKey(a.month, a.metricKey)] = a.note;
     return map;
   }, [detail]);
 
@@ -340,6 +391,7 @@ function PlacementEditor({
     audienceId: v.audienceId,
     publisherId: v.publisherId,
     templateId: v.templateId,
+    year: placementYear,
     name: v.name.trim(),
     objective: v.objective,
     assetType: v.assetType?.trim() || null,
@@ -364,19 +416,21 @@ function PlacementEditor({
       .map((x) => ({ metricKey: x.metricKey, targetValue: Number(x.raw) }));
 
   const collectActuals = (): PlacementActual[] => {
+    // Every non-empty cell in the grid (keys are `${month}:${metric}`), stamped
+    // with the placement's reporting year. The API upserts by (year, month, metric).
     const rows: PlacementActual[] = [];
-    for (const month of liveMonths) {
-      for (const f of storableFields) {
-        const raw = actualInputs[actualKey(month, f.key)];
-        if (raw === undefined || raw.trim() === '') continue;
-        rows.push({
-          year: actualYear,
-          month,
-          metricKey: f.key,
-          value: Number(raw),
-          note: existingNotes[noteKey(actualYear, month, f.key)] ?? null,
-        });
-      }
+    for (const [key, raw] of Object.entries(actualInputs)) {
+      if (raw === undefined || raw.trim() === '') continue;
+      const [monthStr, ...rest] = key.split(':');
+      const month = Number(monthStr);
+      const metricKey = rest.join(':');
+      rows.push({
+        year: placementYear,
+        month,
+        metricKey,
+        value: Number(raw),
+        note: existingNotes[noteKey(month, metricKey)] ?? null,
+      });
     }
     return rows;
   };
@@ -436,13 +490,16 @@ function PlacementEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-ph-charcoal">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-baseline gap-2 text-base font-semibold text-ph-charcoal">
           {isEdit ? 'Edit placement' : 'New placement'}
+          <span className="text-sm font-normal text-ph-charcoal/50">· {placementYear}</span>
         </h2>
-        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-          ← Back to list
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+            ← Back to list
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -573,8 +630,7 @@ function PlacementEditor({
                 <ActualsSection
                   fields={storableFields}
                   liveMonths={liveMonths}
-                  year={actualYear}
-                  onYearChange={setActualYear}
+                  year={placementYear}
                   values={actualInputs}
                   onChange={(month, metric, value) =>
                     setActualInputs((prev) => ({ ...prev, [actualKey(month, metric)]: value }))
@@ -651,30 +707,21 @@ function ActualsSection({
   fields,
   liveMonths,
   year,
-  onYearChange,
   values,
   onChange,
 }: {
   fields: MetricField[];
   liveMonths: number[];
   year: number;
-  onYearChange: (year: number) => void;
   values: Record<string, string>;
   onChange: (month: number, metric: string, value: string) => void;
 }) {
   return (
     <div className="col-span-full">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ph-charcoal">Monthly actuals</h3>
-        <label className="flex items-center gap-2 text-xs text-ph-charcoal/70">
-          Year
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => onYearChange(Number(e.target.value))}
-            className="h-8 w-20 rounded-md border border-ph-charcoal/20 bg-white px-2 text-sm text-ph-charcoal focus:border-ph-purple focus:outline-none"
-          />
-        </label>
+        <h3 className="text-sm font-semibold text-ph-charcoal">
+          Monthly actuals <span className="font-normal text-ph-charcoal/50">· {year}</span>
+        </h3>
       </div>
 
       {fields.length === 0 ? (

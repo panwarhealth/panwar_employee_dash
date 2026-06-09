@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { NamedEntityTab } from '@/components/manage/NamedEntityTab';
-import { createBrand, deleteBrand, listBrands } from '@/api/taxonomy';
+import { createBrand, updateBrand, deleteBrand, listBrands } from '@/api/taxonomy';
 
 export const Route = createFileRoute('/app/clients/$clientSlug/brands')({
   component: BrandsTab,
@@ -15,6 +15,7 @@ function BrandsTab() {
       queryKey={['manage', 'clients', clientSlug, 'brands']}
       list={() => listBrands(clientSlug)}
       create={(body) => createBrand(clientSlug, body)}
+      update={(id, body) => updateBrand(clientSlug, id, body)}
       remove={(id) => deleteBrand(clientSlug, id)}
     />
   );

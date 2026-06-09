@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
 import {
   createPublisher,
+  updatePublisher,
   deletePublisher,
   listPublishers,
   listTemplates,
@@ -23,7 +24,8 @@ export const Route = createFileRoute('/app/publishers')({
 });
 
 function PublishersPage() {
-  const [showForm, setShowForm] = useState(false);
+  // null = no form; 'new' = create; a Publisher = edit that publisher.
+  const [formState, setFormState] = useState<Publisher | 'new' | null>(null);
 
   const { data: publishers = [], isLoading } = useQuery({
     queryKey: ['manage', 'publishers'],
@@ -44,15 +46,21 @@ function PublishersPage() {
             templates — these define the input fields for placements on that publisher.
           </p>
         </div>
-        {!showForm && (
-          <Button type="button" size="sm" onClick={() => setShowForm(true)}>
+        {formState === null && (
+          <Button type="button" size="sm" onClick={() => setFormState('new')}>
             <Plus className="h-4 w-4" />
             New publisher
           </Button>
         )}
       </div>
 
-      {showForm && <NewPublisherForm templates={templates} onDone={() => setShowForm(false)} />}
+      {formState !== null && (
+        <PublisherForm
+          templates={templates}
+          editing={formState === 'new' ? null : formState}
+          onDone={() => setFormState(null)}
+        />
+      )}
 
       <Card>
         <CardContent className="pt-6">
@@ -62,14 +70,22 @@ function PublishersPage() {
               No publishers yet — create the first one.
             </p>
           )}
-          {publishers.length > 0 && <PublisherTable publishers={publishers} />}
+          {publishers.length > 0 && (
+            <PublisherTable publishers={publishers} onEdit={(p) => setFormState(p)} />
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function PublisherTable({ publishers }: { publishers: Publisher[] }) {
+function PublisherTable({
+  publishers,
+  onEdit,
+}: {
+  publishers: Publisher[];
+  onEdit: (p: Publisher) => void;
+}) {
   const queryClient = useQueryClient();
   const del = useMutation({
     mutationFn: deletePublisher,
@@ -119,6 +135,9 @@ function PublisherTable({ publishers }: { publishers: Publisher[] }) {
                 </div>
               </td>
               <td className="py-2 text-right">
+                <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(p)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -147,29 +166,48 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-function NewPublisherForm({
+function PublisherForm({
   templates,
+  editing,
   onDone,
 }: {
   templates: MetricTemplate[];
+  editing: Publisher | null;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', slug: '', website: '', templateIds: [] },
+    defaultValues: {
+      name: editing?.name ?? '',
+      slug: editing?.slug ?? '',
+      website: editing?.website ?? '',
+      templateIds: editing?.templates.map((t) => t.templateId) ?? [],
+    },
   });
+
+  // Re-seed when switching between create / a different publisher.
+  useEffect(() => {
+    form.reset({
+      name: editing?.name ?? '',
+      slug: editing?.slug ?? '',
+      website: editing?.website ?? '',
+      templateIds: editing?.templates.map((t) => t.templateId) ?? [],
+    });
+  }, [editing, form]);
 
   const selectedIds = form.watch('templateIds');
 
   const mutation = useMutation({
-    mutationFn: (values: Values) =>
-      createPublisher({
+    mutationFn: (values: Values) => {
+      const body = {
         name: values.name.trim(),
         slug: values.slug.trim(),
         website: values.website?.trim() || undefined,
         templateIds: values.templateIds,
-      }),
+      };
+      return editing ? updatePublisher(editing.id, body) : createPublisher(body);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manage', 'publishers'] });
       onDone();
@@ -187,7 +225,9 @@ function NewPublisherForm({
   return (
     <Card>
       <CardContent className="pt-6">
-        <h2 className="text-base font-semibold text-ph-charcoal">New publisher</h2>
+        <h2 className="text-base font-semibold text-ph-charcoal">
+          {editing ? 'Edit publisher' : 'New publisher'}
+        </h2>
         <form
           onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
           className="mt-4 flex flex-col gap-4"
@@ -238,7 +278,7 @@ function NewPublisherForm({
 
           <div className="flex items-center gap-2">
             <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Creating…' : 'Create publisher'}
+              {mutation.isPending ? 'Saving…' : editing ? 'Save publisher' : 'Create publisher'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={onDone}>
               Cancel

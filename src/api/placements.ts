@@ -24,6 +24,7 @@ export interface PlacementListItem {
   publisherName: string;
   templateId: string;
   templateCode: string;
+  year: number;
   name: string;
   objective: string;
   assetType: string | null;
@@ -57,6 +58,7 @@ export interface PlacementWriteBody {
   audienceId: string;
   publisherId: string;
   templateId: string;
+  year: number;
   name: string;
   objective: string;
   assetType?: string | null;
@@ -86,18 +88,36 @@ interface ListFilters {
   brandId?: string;
   audienceId?: string;
   publisherId?: string;
+  year?: number;
 }
 
-export const listPlacements = (clientSlug: string, filters: ListFilters = {}): Promise<PlacementListItem[]> => {
+/** Placements for the selected year, plus every reporting year that has data. */
+export interface PlacementListResponse {
+  placements: PlacementListItem[];
+  years: number[];
+}
+
+export const listPlacements = (clientSlug: string, filters: ListFilters = {}): Promise<PlacementListResponse> => {
   const params = new URLSearchParams();
   if (filters.brandId) params.set('brandId', filters.brandId);
   if (filters.audienceId) params.set('audienceId', filters.audienceId);
   if (filters.publisherId) params.set('publisherId', filters.publisherId);
+  if (filters.year != null) params.set('year', String(filters.year));
   const qs = params.toString();
-  return apiFetch<{ placements: PlacementListItem[] }>(
+  return apiFetch<PlacementListResponse>(
     `/manage/clients/${clientSlug}/placements${qs ? `?${qs}` : ''}`,
-  ).then((r) => r.placements);
+  );
 };
+
+export const clonePlacementYear = (
+  clientSlug: string,
+  fromYear: number,
+  toYear: number,
+): Promise<{ created: number; skipped: number }> =>
+  apiFetch<{ created: number; skipped: number }>(`/manage/clients/${clientSlug}/placements/clone-year`, {
+    method: 'POST',
+    body: { fromYear, toYear },
+  });
 
 export const getPlacement = (clientSlug: string, id: string): Promise<PlacementDetail> =>
   apiFetch<PlacementDetail>(`/manage/clients/${clientSlug}/placements/${id}`);
