@@ -18,6 +18,7 @@ export interface MetricField {
   key: string;
   label: string;
   unit: string | null;
+  isCalculated: boolean;
 }
 
 export interface MetricTemplate {
