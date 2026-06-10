@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
+import { YearPicker } from '@/components/YearPicker';
 import {
   createBaseline,
   updateBaseline,
@@ -22,18 +23,24 @@ import {
 } from '@/api/taxonomy';
 
 export const Route = createFileRoute('/app/clients/$clientSlug/baselines')({
-  component: BaselinesTab,
+  component: KpiTargetsTab,
 });
 
-function BaselinesTab() {
-  const { clientSlug } = Route.useParams();
-  // null = no form; 'new' = create; a Baseline = edit that baseline.
-  const [formState, setFormState] = useState<Baseline | 'new' | null>(null);
+const CURRENT_YEAR = new Date().getFullYear();
 
-  const { data: baselines = [], isLoading } = useQuery({
-    queryKey: ['manage', 'clients', clientSlug, 'baselines'],
-    queryFn: () => listBaselines(clientSlug),
+function KpiTargetsTab() {
+  const { clientSlug } = Route.useParams();
+  // null = no form; 'new' = create; a Baseline = edit that target.
+  const [formState, setFormState] = useState<Baseline | 'new' | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['manage', 'clients', clientSlug, 'baselines', selectedYear],
+    queryFn: () => listBaselines(clientSlug, selectedYear),
   });
+  const targets = data?.baselines ?? [];
+  const years = data?.years ?? [];
+
   const { data: publishers = [] } = useQuery({
     queryKey: ['manage', 'publishers'],
     queryFn: listPublishers,
@@ -45,24 +52,29 @@ function BaselinesTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-ph-charcoal/70">
-          Expected performance per (publisher, metric). Editors use these as defaults when
-          setting placement KPI targets.
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-md text-sm text-ph-charcoal/70">
+          KPI targets per (publisher, metric) for a reporting year. New placements for that
+          year pick these up automatically as their KPI targets.
         </p>
-        {formState === null && (
-          <Button type="button" size="sm" onClick={() => setFormState('new')}>
-            <Plus className="h-4 w-4" />
-            New baseline
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <YearPicker year={selectedYear} onChange={setSelectedYear} yearsWithData={years} />
+          {formState === null && (
+            <Button type="button" size="sm" onClick={() => setFormState('new')}>
+              <Plus className="h-4 w-4" />
+              New target
+            </Button>
+          )}
+        </div>
       </div>
 
       {formState !== null && (
-        <BaselineForm
+        <TargetForm
           clientSlug={clientSlug}
           publishers={publishers}
           templates={templates}
+          targets={targets}
+          year={selectedYear}
           editing={formState === 'new' ? null : formState}
           onDone={() => setFormState(null)}
         />
@@ -71,13 +83,13 @@ function BaselinesTab() {
       <Card>
         <CardContent className="pt-6">
           {isLoading && <p className="text-sm text-ph-charcoal/60">Loading…</p>}
-          {!isLoading && baselines.length === 0 && (
+          {!isLoading && targets.length === 0 && (
             <p className="text-sm text-ph-charcoal/60">
-              No baselines yet — create the first one.
+              No KPI targets for {selectedYear} yet - create the first one.
             </p>
           )}
-          {baselines.length > 0 && (
-            <BaselineTable clientSlug={clientSlug} baselines={baselines} onEdit={(b) => setFormState(b)} />
+          {targets.length > 0 && (
+            <TargetTable clientSlug={clientSlug} targets={targets} onEdit={(b) => setFormState(b)} />
           )}
         </CardContent>
       </Card>
@@ -85,13 +97,13 @@ function BaselinesTab() {
   );
 }
 
-function BaselineTable({
+function TargetTable({
   clientSlug,
-  baselines,
+  targets,
   onEdit,
 }: {
   clientSlug: string;
-  baselines: Baseline[];
+  targets: Baseline[];
   onEdit: (b: Baseline) => void;
 }) {
   const queryClient = useQueryClient();
@@ -109,14 +121,13 @@ function BaselineTable({
             <th className="py-2 pr-4 font-medium">Publisher</th>
             <th className="py-2 pr-4 font-medium">Template</th>
             <th className="py-2 pr-4 font-medium">Metric</th>
-            <th className="py-2 pr-4 text-right font-medium">Value</th>
-            <th className="py-2 pr-4 font-medium">Effective from</th>
+            <th className="py-2 pr-4 text-right font-medium">Target</th>
             <th className="py-2 pr-4 font-medium">Note</th>
             <th className="py-2 text-right font-medium" />
           </tr>
         </thead>
         <tbody>
-          {baselines.map((b) => (
+          {targets.map((b) => (
             <tr key={b.id} className="border-b border-ph-charcoal/5 last:border-0">
               <td className="py-2 pr-4 font-medium text-ph-charcoal">{b.publisherName}</td>
               <td className="py-2 pr-4 text-ph-charcoal/60">{b.templateCode}</td>
@@ -124,7 +135,6 @@ function BaselineTable({
               <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">
                 {b.value.toLocaleString('en-AU')}
               </td>
-              <td className="py-2 pr-4 text-ph-charcoal/60">{b.effectiveFrom}</td>
               <td className="py-2 pr-4 text-ph-charcoal/60">{b.note ?? '—'}</td>
               <td className="py-2 text-right">
                 <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(b)}>
@@ -136,7 +146,7 @@ function BaselineTable({
                   size="sm"
                   disabled={del.isPending}
                   onClick={() => {
-                    if (confirm('Remove this baseline?')) del.mutate(b.id);
+                    if (confirm('Remove this KPI target?')) del.mutate(b.id);
                   }}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -155,31 +165,34 @@ const schema = z.object({
   templateId: z.string().min(1, 'Pick a template'),
   metricKey: z.string().min(1, 'Metric key required'),
   value: z.coerce.number().nonnegative('Must be ≥ 0'),
-  effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
   note: z.string().optional(),
 });
 type Values = z.infer<typeof schema>;
 
-function BaselineForm({
+function TargetForm({
   clientSlug,
   publishers,
   templates,
+  targets,
+  year,
   editing,
   onDone,
 }: {
   clientSlug: string;
   publishers: Publisher[];
   templates: MetricTemplate[];
+  targets: Baseline[];
+  year: number;
   editing: Baseline | null;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
+  const formYear = editing?.year ?? year;
   const defaults = (b: Baseline | null): Values => ({
     publisherId: b?.publisherId ?? '',
     templateId: b?.templateId ?? '',
     metricKey: b?.metricKey ?? '',
     value: b?.value ?? 0,
-    effectiveFrom: b?.effectiveFrom ?? new Date().toISOString().slice(0, 10),
     note: b?.note ?? '',
   });
   const form = useForm<Values>({
@@ -202,10 +215,10 @@ function BaselineForm({
     return templates.filter((t) => ids.has(t.id));
   }, [publishers, templates, selectedPublisherId]);
 
-  // Metric keys come from the selected template's fields
+  // Targets only exist for stored metrics — calculated ones (CTR, CPM…) derive.
   const availableMetrics = useMemo(() => {
     const template = templates.find((t) => t.id === selectedTemplateId);
-    return template?.fields ?? [];
+    return (template?.fields ?? []).filter((f) => !f.isCalculated);
   }, [templates, selectedTemplateId]);
 
   const mutation = useMutation({
@@ -213,9 +226,9 @@ function BaselineForm({
       const body = {
         publisherId: v.publisherId,
         templateId: v.templateId,
+        year: formYear,
         metricKey: v.metricKey,
         value: v.value,
-        effectiveFrom: v.effectiveFrom,
         note: v.note?.trim() || undefined,
       };
       return editing ? updateBaseline(clientSlug, editing.id, body) : createBaseline(clientSlug, body);
@@ -228,11 +241,25 @@ function BaselineForm({
 
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
 
+  // Rate calculator seed: a volume target already saved for the same
+  // publisher + template + year (impressions or sends - the usual base the
+  // publisher quotes a rate against).
+  const calcBase = useMemo(() => {
+    const row = targets.find(
+      (t) =>
+        t.publisherId === selectedPublisherId &&
+        t.templateId === selectedTemplateId &&
+        (t.metricKey === 'impressions' || t.metricKey === 'sends'),
+    );
+    return row?.value ?? null;
+  }, [targets, selectedPublisherId, selectedTemplateId]);
+
   return (
     <Card>
       <CardContent className="pt-6">
-        <h2 className="text-base font-semibold text-ph-charcoal">
-          {editing ? 'Edit baseline' : 'New baseline'}
+        <h2 className="flex items-baseline gap-2 text-base font-semibold text-ph-charcoal">
+          {editing ? 'Edit KPI target' : 'New KPI target'}
+          <span className="text-sm font-normal text-ph-charcoal/50">· {formYear}</span>
         </h2>
         <form
           onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
@@ -273,21 +300,22 @@ function BaselineForm({
             ))}
           </Select>
 
-          <LabeledField label="Value" error={form.formState.errors.value?.message}>
+          <LabeledField label="Target value" error={form.formState.errors.value?.message}>
             <Input type="number" step="any" {...form.register('value')} />
           </LabeledField>
 
-          <LabeledField label="Effective from" error={form.formState.errors.effectiveFrom?.message}>
-            <Input type="date" {...form.register('effectiveFrom')} />
+          <LabeledField label="Note (optional)">
+            <Input {...form.register('note')} placeholder="e.g. from client media plan" />
           </LabeledField>
 
-          <LabeledField label="Note (optional)">
-            <Input {...form.register('note')} placeholder="e.g. negotiated Q1 2026" />
-          </LabeledField>
+          <RateCalculator
+            seedBase={calcBase}
+            onUse={(v) => form.setValue('value', v, { shouldValidate: true })}
+          />
 
           <div className="col-span-full flex items-center gap-2">
             <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving…' : editing ? 'Update baseline' : 'Save baseline'}
+              {mutation.isPending ? 'Saving…' : editing ? 'Update target' : 'Save target'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={onDone}>
               Cancel
@@ -297,6 +325,69 @@ function BaselineForm({
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Publishers quote derived targets as "volume x rate" (e.g. 10,000 impressions
+ * at 0.5% CTR = 50 clicks). This does that arithmetic so no one reaches for a
+ * calculator: enter the base volume and the rate, then apply the result.
+ */
+function RateCalculator({
+  seedBase,
+  onUse,
+}: {
+  seedBase: number | null;
+  onUse: (value: number) => void;
+}) {
+  const [base, setBase] = useState('');
+  const [rate, setRate] = useState('');
+
+  // Pre-fill the base from the already-saved volume target when one exists.
+  useEffect(() => {
+    if (seedBase != null) setBase(String(seedBase));
+  }, [seedBase]);
+
+  const result = useMemo(() => {
+    const b = Number(base);
+    const r = Number(rate);
+    if (!base.trim() || !rate.trim() || !Number.isFinite(b) || !Number.isFinite(r)) return null;
+    return Math.round(b * (r / 100));
+  }, [base, rate]);
+
+  return (
+    <div className="col-span-full rounded-md border border-dashed border-ph-charcoal/15 p-3">
+      <p className="text-xs font-medium text-ph-charcoal">Rate calculator</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ph-charcoal/70">
+        <Input
+          type="number"
+          step="any"
+          value={base}
+          onChange={(e) => setBase(e.target.value)}
+          placeholder="Base, e.g. 10000"
+          className="w-36"
+        />
+        <span>×</span>
+        <Input
+          type="number"
+          step="any"
+          value={rate}
+          onChange={(e) => setRate(e.target.value)}
+          placeholder="Rate %"
+          className="w-24"
+        />
+        <span>% =</span>
+        <span className="min-w-16 font-semibold tabular-nums text-ph-charcoal">
+          {result != null ? result.toLocaleString('en-AU') : '—'}
+        </span>
+        <Button type="button" size="sm" variant="ghost" disabled={result == null} onClick={() => result != null && onUse(result)}>
+          Use as target
+        </Button>
+      </div>
+      <p className="mt-1.5 text-xs text-ph-charcoal/50">
+        For targets quoted as a rate, e.g. 10,000 impressions at 0.5% CTR = 50 clicks.
+      </p>
+    </div>
   );
 }
 

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Pencil, Upload, CopyPlus } from 'lucide-react';
+import { Plus, Trash2, Pencil, Upload, CopyPlus, Copy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import {
   createPlacement,
   updatePlacement,
   deletePlacement,
+  duplicatePlacement,
   clonePlacementYear,
   setPlacementKpis,
   setPlacementActuals,
@@ -50,6 +51,71 @@ const MONTHS = [
 
 const OBJECTIVES = ['awareness', 'consideration', 'engagement'] as const;
 const CURRENT_YEAR = new Date().getFullYear(); // default entry year for a placement with no actuals yet
+
+// templateCode (lowercased enum name) → display label for the Type column.
+const TEMPLATE_LABELS: Record<string, string> = {
+  digitaldisplay: 'Digital display',
+  edm: 'eDM',
+  print: 'Print',
+  sponsoredcontent: 'Sponsored content',
+  education: 'Education',
+};
+const templateLabel = (code: string) => TEMPLATE_LABELS[code] ?? code;
+
+const EDM_SUBCATEGORIES = [
+  { value: 'solus', label: 'Solus' },
+  { value: 'sponsored_content', label: 'Sponsored content' },
+  { value: 'banner', label: 'Banner' },
+] as const;
+
+const EDUCATION_SUBCATEGORIES = [
+  { value: 'module', label: 'Module (course)' },
+  { value: 'article', label: 'Article' },
+  { value: 'podcast_webinar', label: 'Podcast / Webinar' },
+  { value: 'clinical_audit', label: 'Clinical audit' },
+  { value: 'research_paper', label: 'Research paper' },
+  { value: 'quiz', label: 'Quiz' },
+] as const;
+
+const SUBCATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+  [...EDM_SUBCATEGORIES, ...EDUCATION_SUBCATEGORIES].map((s) => [s.value, s.label]),
+);
+
+/** "2025-03-01" → "Mar 2025"; null/empty → "". */
+function formatIsoMonth(iso: string | null): string {
+  if (!iso) return '';
+  const [y, m] = iso.split('-').map(Number);
+  return `${MONTHS[m - 1]?.label ?? '?'} ${y}`;
+}
+
+/** The cell shown in the table's date column, per placement date shape. */
+function datesSummary(p: PlacementListItem): string {
+  if (p.startDate && p.endDate) return `${formatIsoMonth(p.startDate)} - ${formatIsoMonth(p.endDate)}`;
+  if (p.startDate) return formatIsoMonth(p.startDate);
+  return p.liveMonths.map((m) => MONTHS[m - 1]?.label).join(', ') || '—';
+}
+
+/** Inclusive list of {year, month} from one "YYYY-MM-DD" to another. */
+function enumerateMonths(startIso: string, endIso: string): { year: number; month: number }[] {
+  const [sy, sm] = startIso.split('-').map(Number);
+  const [ey, em] = endIso.split('-').map(Number);
+  if (!sy || !sm || !ey || !em) return [];
+  const out: { year: number; month: number }[] = [];
+  let y = sy;
+  let m = sm;
+  // Guard against an inverted range producing a runaway loop.
+  let guard = 0;
+  while ((y < ey || (y === ey && m <= em)) && guard < 600) {
+    out.push({ year: y, month: m });
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    guard += 1;
+  }
+  return out;
+}
 
 function PlacementsTab() {
   const { clientSlug } = Route.useParams();
@@ -188,6 +254,13 @@ function PlacementTable({
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'placements'] }),
   });
+  const dup = useMutation({
+    mutationFn: (id: string) => duplicatePlacement(clientSlug, id),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'placements'] });
+      onEdit(created.id); // drop straight into the copy to set its send date
+    },
+  });
 
   return (
     <div className="overflow-x-auto">
@@ -195,10 +268,11 @@ function PlacementTable({
         <thead className="border-b border-ph-charcoal/10 text-xs uppercase tracking-wide text-ph-charcoal/60">
           <tr>
             <th className="py-2 pr-4 font-medium">Placement</th>
+            <th className="py-2 pr-4 font-medium">Type</th>
             <th className="py-2 pr-4 font-medium">Brand</th>
             <th className="py-2 pr-4 font-medium">Audience</th>
             <th className="py-2 pr-4 font-medium">Publisher</th>
-            <th className="py-2 pr-4 font-medium">Months</th>
+            <th className="py-2 pr-4 font-medium">When</th>
             <th className="py-2 pr-4 text-right font-medium">Media cost</th>
             <th className="py-2 text-right font-medium" />
           </tr>
@@ -211,18 +285,35 @@ function PlacementTable({
                 {p.isBonus && <Tag>bonus</Tag>}
                 {p.isCpdPackage && <Tag>CPD</Tag>}
               </td>
+              <td className="py-2 pr-4 text-ph-charcoal/70">
+                {templateLabel(p.templateCode)}
+                {p.edmSubcategory && (
+                  <span className="text-ph-charcoal/45"> · {SUBCATEGORY_LABELS[p.edmSubcategory] ?? p.edmSubcategory}</span>
+                )}
+                {p.educationSubcategory && (
+                  <span className="text-ph-charcoal/45"> · {SUBCATEGORY_LABELS[p.educationSubcategory] ?? p.educationSubcategory}</span>
+                )}
+              </td>
               <td className="py-2 pr-4 text-ph-charcoal/70">{p.brandName}</td>
               <td className="py-2 pr-4 text-ph-charcoal/70">{p.audienceName}</td>
               <td className="py-2 pr-4 text-ph-charcoal/70">{p.publisherName}</td>
-              <td className="py-2 pr-4 text-ph-charcoal/60">
-                {p.liveMonths.map((m) => MONTHS[m - 1]?.label).join(', ') || '—'}
-              </td>
+              <td className="py-2 pr-4 text-ph-charcoal/60">{datesSummary(p)}</td>
               <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">
                 {p.mediaCost.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })}
               </td>
-              <td className="py-2 text-right">
+              <td className="py-2 text-right whitespace-nowrap">
                 <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(p.id)}>
                   <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  title="Duplicate"
+                  disabled={dup.isPending}
+                  onClick={() => dup.mutate(p.id)}
+                >
+                  <Copy className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"
@@ -255,6 +346,10 @@ const schema = z.object({
   creativeCode: z.string().optional(),
   osCode: z.string().optional(),
   utmUrl: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  edmSubcategory: z.string().optional(),
+  educationSubcategory: z.string().optional(),
   mediaCost: z.coerce.number().nonnegative('Must be ≥ 0'),
   plannedMediaCost: z.coerce.number().nonnegative('Must be ≥ 0').optional(),
   cpdInvestmentCost: z.coerce.number().nonnegative('Must be ≥ 0').optional(),
@@ -268,14 +363,14 @@ type Values = z.infer<typeof schema>;
 const BLANK: Values = {
   brandId: '', audienceId: '', publisherId: '', templateId: '', name: '',
   objective: 'awareness', assetType: '', creativeCode: '', osCode: '', utmUrl: '',
+  startDate: '', endDate: '', edmSubcategory: '', educationSubcategory: '',
   mediaCost: 0, plannedMediaCost: undefined, cpdInvestmentCost: undefined, isBonus: false, isCpdPackage: false,
   circulation: undefined, placementsCount: undefined,
 };
 
-// A placement's actuals all belong to its reporting year, so the grid is keyed
-// by month + metric only.
-const actualKey = (month: number, metric: string) => `${month}:${metric}`;
-const noteKey = (month: number, metric: string) => `${month}:${metric}`;
+// Actuals can span years (education ranges), so the grid is keyed by
+// year + month + metric.
+const actualKey = (year: number, month: number, metric: string) => `${year}:${month}:${metric}`;
 
 function PlacementEditor({
   clientSlug,
@@ -333,6 +428,10 @@ function PlacementEditor({
       creativeCode: detail.creativeCode ?? '',
       osCode: detail.osCode ?? '',
       utmUrl: detail.utmUrl ?? '',
+      startDate: detail.startDate ?? '',
+      endDate: detail.endDate ?? '',
+      edmSubcategory: detail.edmSubcategory ?? '',
+      educationSubcategory: detail.educationSubcategory ?? '',
       mediaCost: detail.mediaCost,
       plannedMediaCost: detail.plannedMediaCost ?? undefined,
       cpdInvestmentCost: detail.cpdInvestmentCost ?? undefined,
@@ -347,13 +446,13 @@ function PlacementEditor({
     setArtworkPreview(null);
   }, [detail, form]);
 
-  // Seed the actuals grid from every year's data (not just the selected year) so
-  // switching the year picker preserves unsaved edits.
+  // Seed the actuals grid from the placement's saved actuals (across all years,
+  // so an education range's full history shows).
   useEffect(() => {
     if (!detail) return;
     const next: Record<string, string> = {};
     for (const a of detail.actuals) {
-      next[actualKey(a.month, a.metricKey)] = String(a.value);
+      next[actualKey(a.year, a.month, a.metricKey)] = String(a.value);
     }
     setActualInputs(next);
   }, [detail]);
@@ -373,16 +472,47 @@ function PlacementEditor({
     [templates, selectedTemplateId],
   );
   const isPrint = selectedTemplate?.code === 'print';
+  const isEdm = selectedTemplate?.code === 'edm';
+  const isEducation = selectedTemplate?.code === 'education';
   // Only non-calculated fields are stored — calculated ones (CTR, CPM…) are derived in views.
   const storableFields: MetricField[] = useMemo(
     () => (selectedTemplate?.fields ?? []).filter((f) => !f.isCalculated),
     [selectedTemplate],
   );
 
+  const watchStart = form.watch('startDate');
+  const watchEnd = form.watch('endDate');
+
+  // The (year, month) columns of the actuals grid, per date shape: education
+  // spans its range; eDM is the send month; others are the live months in the
+  // placement's year. Months that already have saved actuals are always included
+  // so legacy data stays editable.
+  const periods = useMemo(() => {
+    const map = new Map<string, { year: number; month: number }>();
+    const add = (y: number, m: number) => map.set(`${y}:${m}`, { year: y, month: m });
+    if (isEducation && watchStart && watchEnd) {
+      for (const p of enumerateMonths(watchStart, watchEnd)) add(p.year, p.month);
+    } else if (isEdm) {
+      if (watchStart) {
+        const [y, m] = watchStart.split('-').map(Number);
+        if (y && m) add(y, m);
+      }
+    } else {
+      for (const m of liveMonths) add(placementYear, m);
+    }
+    for (const a of detail?.actuals ?? []) add(a.year, a.month);
+    return [...map.values()].sort((a, b) => a.year - b.year || a.month - b.month);
+  }, [isEducation, isEdm, watchStart, watchEnd, liveMonths, placementYear, detail]);
+
+  const periodsSpanYears = useMemo(
+    () => new Set(periods.map((p) => p.year)).size > 1,
+    [periods],
+  );
+
   // Existing notes, preserved on actuals upsert so the grid doesn't wipe them.
   const existingNotes = useMemo(() => {
     const map: Record<string, string | null> = {};
-    for (const a of detail?.actuals ?? []) map[noteKey(a.month, a.metricKey)] = a.note;
+    for (const a of detail?.actuals ?? []) map[actualKey(a.year, a.month, a.metricKey)] = a.note;
     return map;
   }, [detail]);
 
@@ -399,7 +529,13 @@ function PlacementEditor({
     osCode: v.osCode?.trim() || null,
     utmUrl: v.utmUrl?.trim() || null,
     artworkUrl: artworkKey,
-    liveMonths,
+    // Date shape + sub-category follow the template; the API also normalises,
+    // but sending the right shape keeps the payload honest.
+    liveMonths: isEdm || isEducation ? [] : liveMonths,
+    startDate: isEdm || isEducation ? v.startDate || null : null,
+    endDate: isEducation ? v.endDate || null : null,
+    edmSubcategory: isEdm ? v.edmSubcategory || null : null,
+    educationSubcategory: isEducation ? v.educationSubcategory || null : null,
     mediaCost: v.mediaCost,
     plannedMediaCost: v.plannedMediaCost ?? null,
     cpdInvestmentCost: v.cpdInvestmentCost ?? null,
@@ -416,20 +552,21 @@ function PlacementEditor({
       .map((x) => ({ metricKey: x.metricKey, targetValue: Number(x.raw) }));
 
   const collectActuals = (): PlacementActual[] => {
-    // Every non-empty cell in the grid (keys are `${month}:${metric}`), stamped
-    // with the placement's reporting year. The API upserts by (year, month, metric).
+    // Every non-empty cell in the grid (keys are `${year}:${month}:${metric}`).
+    // The API upserts by (year, month, metric).
     const rows: PlacementActual[] = [];
     for (const [key, raw] of Object.entries(actualInputs)) {
       if (raw === undefined || raw.trim() === '') continue;
-      const [monthStr, ...rest] = key.split(':');
+      const [yearStr, monthStr, ...rest] = key.split(':');
+      const year = Number(yearStr);
       const month = Number(monthStr);
       const metricKey = rest.join(':');
       rows.push({
-        year: placementYear,
+        year,
         month,
         metricKey,
         value: Number(raw),
-        note: existingNotes[noteKey(month, metricKey)] ?? null,
+        note: existingNotes[actualKey(year, month, metricKey)] ?? null,
       });
     }
     return rows;
@@ -579,38 +716,71 @@ function PlacementEditor({
               </>
             )}
 
+            {isEdm && (
+              <>
+                <LabeledField label="Send date">
+                  <Input type="date" {...form.register('startDate')} />
+                </LabeledField>
+                <Select label="eDM type" {...form.register('edmSubcategory')}>
+                  <option value="">—</option>
+                  {EDM_SUBCATEGORIES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </Select>
+              </>
+            )}
+
+            {isEducation && (
+              <>
+                <LabeledField label="Start date">
+                  <Input type="date" {...form.register('startDate')} />
+                </LabeledField>
+                <LabeledField label="End date">
+                  <Input type="date" {...form.register('endDate')} />
+                </LabeledField>
+                <Select label="Education type" {...form.register('educationSubcategory')}>
+                  <option value="">—</option>
+                  {EDUCATION_SUBCATEGORIES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </Select>
+              </>
+            )}
+
             <div className="col-span-full flex flex-wrap items-center gap-4">
               <Checkbox label="Bonus placement" {...form.register('isBonus')} />
               <Checkbox label="Part of CPD package" {...form.register('isCpdPackage')} />
             </div>
 
-            <div className="col-span-full">
-              <label className="text-xs font-medium text-ph-charcoal">Live months</label>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {MONTHS.map((m) => {
-                  const on = liveMonths.includes(m.n);
-                  return (
-                    <button
-                      key={m.n}
-                      type="button"
-                      onClick={() =>
-                        setLiveMonths((prev) =>
-                          prev.includes(m.n) ? prev.filter((x) => x !== m.n) : [...prev, m.n].sort((a, b) => a - b),
-                        )
-                      }
-                      className={
-                        'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ' +
-                        (on
-                          ? 'border-ph-purple bg-ph-purple text-white'
-                          : 'border-ph-charcoal/20 text-ph-charcoal/70 hover:border-ph-purple')
-                      }
-                    >
-                      {m.label}
-                    </button>
-                  );
-                })}
+            {!isEdm && !isEducation && (
+              <div className="col-span-full">
+                <label className="text-xs font-medium text-ph-charcoal">Live months</label>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {MONTHS.map((m) => {
+                    const on = liveMonths.includes(m.n);
+                    return (
+                      <button
+                        key={m.n}
+                        type="button"
+                        onClick={() =>
+                          setLiveMonths((prev) =>
+                            prev.includes(m.n) ? prev.filter((x) => x !== m.n) : [...prev, m.n].sort((a, b) => a - b),
+                          )
+                        }
+                        className={
+                          'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ' +
+                          (on
+                            ? 'border-ph-purple bg-ph-purple text-white'
+                            : 'border-ph-charcoal/20 text-ph-charcoal/70 hover:border-ph-purple')
+                        }
+                      >
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {!isEdit && (
               <p className="col-span-full text-xs text-ph-charcoal/60">
@@ -629,11 +799,11 @@ function PlacementEditor({
 
                 <ActualsSection
                   fields={storableFields}
-                  liveMonths={liveMonths}
-                  year={placementYear}
+                  periods={periods}
+                  spanYears={periodsSpanYears}
                   values={actualInputs}
-                  onChange={(month, metric, value) =>
-                    setActualInputs((prev) => ({ ...prev, [actualKey(month, metric)]: value }))
+                  onChange={(year, month, metric, value) =>
+                    setActualInputs((prev) => ({ ...prev, [actualKey(year, month, metric)]: value }))
                   }
                 />
 
@@ -705,37 +875,42 @@ function KpiSection({
 
 function ActualsSection({
   fields,
-  liveMonths,
-  year,
+  periods,
+  spanYears,
   values,
   onChange,
 }: {
   fields: MetricField[];
-  liveMonths: number[];
-  year: number;
+  periods: { year: number; month: number }[];
+  spanYears: boolean;
   values: Record<string, string>;
-  onChange: (month: number, metric: string, value: string) => void;
+  onChange: (year: number, month: number, metric: string, value: string) => void;
 }) {
+  const colLabel = (p: { year: number; month: number }) =>
+    spanYears ? `${MONTHS[p.month - 1]?.label} '${String(p.year).slice(2)}` : MONTHS[p.month - 1]?.label;
+
   return (
     <div className="col-span-full">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ph-charcoal">
-          Monthly actuals <span className="font-normal text-ph-charcoal/50">· {year}</span>
-        </h3>
+        <h3 className="text-sm font-semibold text-ph-charcoal">Monthly actuals</h3>
       </div>
 
       {fields.length === 0 ? (
         <p className="mt-1 text-xs text-ph-charcoal/60">This template has no stored metrics.</p>
-      ) : liveMonths.length === 0 ? (
-        <p className="mt-1 text-xs text-ph-charcoal/60">Select live months above to enter actuals.</p>
+      ) : periods.length === 0 ? (
+        <p className="mt-1 text-xs text-ph-charcoal/60">
+          Set the placement&apos;s dates above to enter actuals.
+        </p>
       ) : (
         <div className="mt-2 overflow-x-auto">
           <table className="text-sm">
             <thead className="text-xs uppercase tracking-wide text-ph-charcoal/60">
               <tr>
                 <th className="py-1 pr-3 text-left font-medium">Metric</th>
-                {liveMonths.map((m) => (
-                  <th key={m} className="px-1 py-1 text-center font-medium">{MONTHS[m - 1]?.label}</th>
+                {periods.map((p) => (
+                  <th key={`${p.year}:${p.month}`} className="px-1 py-1 text-center font-medium">
+                    {colLabel(p)}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -745,14 +920,14 @@ function ActualsSection({
                   <td className="py-1 pr-3 font-medium text-ph-charcoal/80">
                     {f.unit ? `${f.label} (${f.unit})` : f.label}
                   </td>
-                  {liveMonths.map((m) => (
-                    <td key={m} className="px-1 py-1">
+                  {periods.map((p) => (
+                    <td key={`${p.year}:${p.month}`} className="px-1 py-1">
                       <input
                         type="number"
                         step="any"
-                        value={values[`${m}:${f.key}`] ?? ''}
+                        value={values[`${p.year}:${p.month}:${f.key}`] ?? ''}
                         placeholder="—"
-                        onChange={(e) => onChange(m, f.key, e.target.value)}
+                        onChange={(e) => onChange(p.year, p.month, f.key, e.target.value)}
                         className="h-8 w-24 rounded-md border border-ph-charcoal/20 bg-white px-2 text-sm text-ph-charcoal focus:border-ph-purple focus:outline-none"
                       />
                     </td>

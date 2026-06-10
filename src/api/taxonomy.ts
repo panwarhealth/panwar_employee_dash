@@ -48,10 +48,25 @@ export interface Baseline {
   publisherName: string;
   templateId: string;
   templateCode: string;
+  year: number;
   metricKey: string;
   value: number;
-  effectiveFrom: string;
   note: string | null;
+}
+
+export interface BaselineWriteBody {
+  publisherId: string;
+  templateId: string;
+  year: number;
+  metricKey: string;
+  value: number;
+  note?: string;
+}
+
+/** KPI targets for the selected year, plus every year that has targets. */
+export interface BaselineListResponse {
+  baselines: Baseline[];
+  years: number[];
 }
 
 // Brands
@@ -88,16 +103,14 @@ export const updatePublisher = (id: string, body: {
 export const deletePublisher = (id: string) =>
   apiFetch<void>(`/manage/publishers/${id}`, { method: 'DELETE' });
 
-// Baselines
-export const listBaselines = (clientSlug: string): Promise<Baseline[]> =>
-  apiFetch<{ baselines: Baseline[] }>(`/manage/clients/${clientSlug}/baselines`).then((r) => r.baselines);
-export const createBaseline = (clientSlug: string, body: {
-  publisherId: string; templateId: string; metricKey: string;
-  value: number; effectiveFrom: string; note?: string;
-}) => apiFetch<Baseline>(`/manage/clients/${clientSlug}/baselines`, { method: 'POST', body });
-export const updateBaseline = (clientSlug: string, id: string, body: {
-  publisherId: string; templateId: string; metricKey: string;
-  value: number; effectiveFrom: string; note?: string;
-}) => apiFetch<Baseline>(`/manage/clients/${clientSlug}/baselines/${id}`, { method: 'PATCH', body });
+// KPI targets (year-scoped; table name "baselines" kept on the API)
+export const listBaselines = (clientSlug: string, year?: number): Promise<BaselineListResponse> =>
+  apiFetch<BaselineListResponse>(
+    `/manage/clients/${clientSlug}/baselines${year != null ? `?year=${year}` : ''}`,
+  );
+export const createBaseline = (clientSlug: string, body: BaselineWriteBody) =>
+  apiFetch<Baseline>(`/manage/clients/${clientSlug}/baselines`, { method: 'POST', body });
+export const updateBaseline = (clientSlug: string, id: string, body: BaselineWriteBody) =>
+  apiFetch<Baseline>(`/manage/clients/${clientSlug}/baselines/${id}`, { method: 'PATCH', body });
 export const deleteBaseline = (clientSlug: string, id: string) =>
   apiFetch<void>(`/manage/clients/${clientSlug}/baselines/${id}`, { method: 'DELETE' });

@@ -17,7 +17,8 @@ const TABS = [
   { to: '/app/clients/$clientSlug/audiences', label: 'Audiences' },
   { to: '/app/clients/$clientSlug/placements', label: 'Placements' },
   { to: '/app/clients/$clientSlug/education', label: 'Education' },
-  { to: '/app/clients/$clientSlug/baselines', label: 'Baselines' },
+  { to: '/app/clients/$clientSlug/baselines', label: 'KPI Targets' },
+  { to: '/app/clients/$clientSlug/summary', label: 'Summary' },
   { to: '/app/clients/$clientSlug/import', label: 'Import' },
 ] as const;
 

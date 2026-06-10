@@ -32,6 +32,11 @@ export interface PlacementListItem {
   osCode: string | null;
   artworkUrl: string | null;
   liveMonths: number[];
+  startDate: string | null;
+  endDate: string | null;
+  edmSubcategory: string | null;
+  educationSubcategory: string | null;
+  groupId: string | null;
   mediaCost: number;
   plannedMediaCost: number | null;
   cpdInvestmentCost: number | null;
@@ -69,6 +74,10 @@ export interface PlacementWriteBody {
   comments?: string | null;
   notes?: string | null;
   liveMonths: number[];
+  startDate?: string | null;
+  endDate?: string | null;
+  edmSubcategory?: string | null;
+  educationSubcategory?: string | null;
   mediaCost: number;
   plannedMediaCost?: number | null;
   cpdInvestmentCost?: number | null;
@@ -121,6 +130,9 @@ export const clonePlacementYear = (
 
 export const getPlacement = (clientSlug: string, id: string): Promise<PlacementDetail> =>
   apiFetch<PlacementDetail>(`/manage/clients/${clientSlug}/placements/${id}`);
+
+export const duplicatePlacement = (clientSlug: string, id: string): Promise<PlacementDetail> =>
+  apiFetch<PlacementDetail>(`/manage/clients/${clientSlug}/placements/${id}/duplicate`, { method: 'POST' });
 
 export const createPlacement = (clientSlug: string, body: PlacementWriteBody): Promise<PlacementDetail> =>
   apiFetch<PlacementDetail>(`/manage/clients/${clientSlug}/placements`, { method: 'POST', body });
