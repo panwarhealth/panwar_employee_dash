@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
-import { YearPicker } from '@/components/YearPicker';
+import { usePublishYears, useWorkspaceYear } from '@/lib/workspaceYear';
 import {
   listBrands,
   listAudiences,
@@ -50,7 +50,6 @@ const MONTHS = [
 ] as const;
 
 const OBJECTIVES = ['awareness', 'consideration', 'engagement'] as const;
-const CURRENT_YEAR = new Date().getFullYear(); // default entry year for a placement with no actuals yet
 
 // templateCode (lowercased enum name) → display label for the Type column.
 const TEMPLATE_LABELS: Record<string, string> = {
@@ -122,8 +121,7 @@ function PlacementsTab() {
   const queryClient = useQueryClient();
   // null = list view; 'new' = create form; otherwise the placement id being edited.
   const [editing, setEditing] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
-  const yearInitialised = useRef(false);
+  const { year: selectedYear, setYear: setSelectedYear, initYear } = useWorkspaceYear();
 
   const { data, isLoading } = useQuery({
     queryKey: ['manage', 'clients', clientSlug, 'placements', selectedYear],
@@ -131,14 +129,13 @@ function PlacementsTab() {
   });
   const placements = data?.placements ?? [];
   const years = data?.years ?? [];
+  usePublishYears(data?.years);
 
-  // Land on the latest reporting year that has placements (once).
+  // Default the workspace year to the latest with placements - unless the
+  // user (or another tab) already set one.
   useEffect(() => {
-    if (!yearInitialised.current && years.length) {
-      setSelectedYear(years[years.length - 1]);
-      yearInitialised.current = true;
-    }
-  }, [years]);
+    if (years.length) initYear(years[years.length - 1]);
+  }, [years, initYear]);
 
   const { data: brands = [] } = useQuery({
     queryKey: ['manage', 'clients', clientSlug, 'brands'],
@@ -188,7 +185,6 @@ function PlacementsTab() {
           carry a year forward to start the next without rebuilding.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <YearPicker year={selectedYear} onChange={setSelectedYear} yearsWithData={years} />
           {placements.length > 0 && (
             <Button
               type="button"

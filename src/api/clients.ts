@@ -7,6 +7,8 @@ export interface ManagedClient {
   logoUrl: string | null;
   primaryColor: string | null;
   accentColor: string | null;
+  showBrandMonthlyChart: boolean;
+  showPublisherChart: boolean;
   userCount: number;
 }
 
@@ -33,6 +35,16 @@ export async function listClients(): Promise<ManagedClient[]> {
 
 export async function createClient(payload: CreateClientPayload): Promise<ManagedClient> {
   return apiFetch('/manage/clients', { method: 'POST', body: payload });
+}
+
+export async function updateOverviewCharts(
+  clientSlug: string,
+  payload: { showBrandMonthlyChart: boolean; showPublisherChart: boolean },
+): Promise<ManagedClient> {
+  return apiFetch(`/manage/clients/${encodeURIComponent(clientSlug)}/overview-charts`, {
+    method: 'PATCH',
+    body: payload,
+  });
 }
 
 export async function listClientUsers(clientSlug: string): Promise<ClientUser[]> {

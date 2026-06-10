@@ -47,11 +47,31 @@ export interface EducationPeriod {
   availableTo: string | null;
 }
 
+export interface EducationAssetStatus {
+  status: string;
+  points: EducationPoint[];
+  total: number;
+}
+
+/** One row of the page's detail table (the workbook's per-asset education table). */
+export interface EducationAsset {
+  id: string;
+  groupLabel: string;
+  brand: string | null;
+  type: string | null;
+  title: string;
+  author: string | null;
+  expiry: string | null;
+  sortOrder: number;
+  statuses: EducationAssetStatus[];
+}
+
 /** Full page tree (unwindowed on admin reads). */
 export interface EducationPageTree {
   page: EducationPageSummary;
   period: EducationPeriod;
   charts: EducationChart[];
+  assets: EducationAsset[];
 }
 
 const base = (clientSlug: string) => `/manage/clients/${encodeURIComponent(clientSlug)}/education`;
@@ -118,6 +138,42 @@ export const setEducationSeriesData = (
   points: EducationPoint[],
 ): Promise<EducationPageTree> =>
   apiFetch<EducationPageTree>(`${base(clientSlug)}/series/${seriesId}/data`, { method: 'PUT', body: { points } });
+
+// ── Assets (the page's detail table) ─────────────────────────────────────
+export interface EducationAssetWriteBody {
+  groupLabel?: string;
+  brand?: string | null;
+  type?: string | null;
+  title?: string;
+  author?: string | null;
+  expiry?: string | null;
+  clearExpiry?: boolean;
+  sortOrder?: number;
+}
+
+export const createEducationAsset = (
+  clientSlug: string,
+  pageId: string,
+  body: EducationAssetWriteBody,
+): Promise<EducationPageTree> =>
+  apiFetch<EducationPageTree>(`${base(clientSlug)}/${pageId}/assets`, { method: 'POST', body });
+
+export const updateEducationAsset = (
+  clientSlug: string,
+  assetId: string,
+  body: EducationAssetWriteBody,
+): Promise<EducationPageTree> =>
+  apiFetch<EducationPageTree>(`${base(clientSlug)}/assets/${assetId}`, { method: 'PATCH', body });
+
+export const deleteEducationAsset = (clientSlug: string, assetId: string): Promise<void> =>
+  apiFetch<void>(`${base(clientSlug)}/assets/${assetId}`, { method: 'DELETE' });
+
+export const setEducationAssetValues = (
+  clientSlug: string,
+  assetId: string,
+  values: { status: string; year: number; month: number; value: number }[],
+): Promise<EducationPageTree> =>
+  apiFetch<EducationPageTree>(`${base(clientSlug)}/assets/${assetId}/values`, { method: 'PUT', body: { values } });
 
 // ── Annotations ──────────────────────────────────────────────────────────
 export const createEducationAnnotation = (

@@ -1,29 +1,36 @@
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router';
+import { createFileRoute, Link, Outlet, useMatchRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { listClients } from '@/api/clients';
+import { YearPicker } from '@/components/YearPicker';
+import { WorkspaceYearProvider, useWorkspaceYear } from '@/lib/workspaceYear';
 
 /**
  * Client workspace layout. Everything under /app/clients/{slug}/... renders
- * inside this shell: breadcrumb + title + horizontal tab nav.
+ * inside this shell: breadcrumb + title + horizontal tab nav. Tabs share the
+ * reporting year via WorkspaceYearProvider.
  */
 export const Route = createFileRoute('/app/clients/$clientSlug')({
   component: ClientWorkspaceLayout,
 });
 
+// hasYear marks tabs whose content is scoped to the workspace reporting year;
+// the shared YearPicker in the tab bar only shows on those.
 const TABS = [
-  { to: '/app/clients/$clientSlug/details', label: 'Details' },
-  { to: '/app/clients/$clientSlug/brands', label: 'Brands' },
-  { to: '/app/clients/$clientSlug/audiences', label: 'Audiences' },
-  { to: '/app/clients/$clientSlug/placements', label: 'Placements' },
-  { to: '/app/clients/$clientSlug/education', label: 'Education' },
-  { to: '/app/clients/$clientSlug/baselines', label: 'KPI Targets' },
-  { to: '/app/clients/$clientSlug/summary', label: 'Summary' },
-  { to: '/app/clients/$clientSlug/import', label: 'Import' },
+  { to: '/app/clients/$clientSlug/details', label: 'Details', hasYear: false },
+  { to: '/app/clients/$clientSlug/brands', label: 'Brands', hasYear: false },
+  { to: '/app/clients/$clientSlug/audiences', label: 'Audiences', hasYear: false },
+  { to: '/app/clients/$clientSlug/placements', label: 'Placements', hasYear: true },
+  { to: '/app/clients/$clientSlug/education', label: 'Education', hasYear: true },
+  { to: '/app/clients/$clientSlug/baselines', label: 'KPI Targets', hasYear: true },
+  { to: '/app/clients/$clientSlug/summary', label: 'Summary', hasYear: true },
+  { to: '/app/clients/$clientSlug/import', label: 'Import', hasYear: false },
 ] as const;
 
 function ClientWorkspaceLayout() {
   const { clientSlug } = Route.useParams();
+  const matchRoute = useMatchRoute();
+  const onYearTab = TABS.some((t) => t.hasYear && matchRoute({ to: t.to }));
   const { data: clients = [] } = useQuery({
     queryKey: ['manage', 'clients'],
     queryFn: listClients,
@@ -31,7 +38,8 @@ function ClientWorkspaceLayout() {
   const client = clients.find((c) => c.slug === clientSlug);
 
   return (
-    <div className="flex flex-col gap-6">
+    <WorkspaceYearProvider>
+      <div className="flex flex-col gap-6">
       <div>
         <Link
           to="/app/clients"
@@ -54,7 +62,7 @@ function ClientWorkspaceLayout() {
         </div>
       </div>
 
-      <nav className="flex flex-wrap gap-1 border-b border-ph-charcoal/10">
+      <nav className="flex flex-wrap items-center gap-1 border-b border-ph-charcoal/10">
         {TABS.map((t) => (
           <Link
             key={t.to}
@@ -69,9 +77,21 @@ function ClientWorkspaceLayout() {
             {t.label}
           </Link>
         ))}
+        {onYearTab && (
+          <div className="ml-auto pb-1.5 pl-4">
+            <WorkspaceYearControl />
+          </div>
+        )}
       </nav>
 
       <Outlet />
-    </div>
+      </div>
+    </WorkspaceYearProvider>
   );
+}
+
+/** The one shared YearPicker, fed by whichever year-scoped tab is active. */
+function WorkspaceYearControl() {
+  const { year, setYear, yearsWithData } = useWorkspaceYear();
+  return <YearPicker year={year} onChange={setYear} yearsWithData={yearsWithData} />;
 }

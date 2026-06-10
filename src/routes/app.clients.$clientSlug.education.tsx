@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Pencil } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
-import { YearPicker } from '@/components/YearPicker';
+import { usePublishYears, useWorkspaceYear } from '@/lib/workspaceYear';
 import { EducationBarChart, EducationLegend, PALETTE } from '@/components/education/EducationBarChart';
 import {
   listEducationPages,
@@ -24,9 +24,14 @@ import {
   createEducationAnnotation,
   updateEducationAnnotation,
   deleteEducationAnnotation,
+  createEducationAsset,
+  updateEducationAsset,
+  deleteEducationAsset,
+  setEducationAssetValues,
   type EducationPageTree,
   type EducationChart as EduChart,
   type EducationSeries as EduSeries,
+  type EducationAsset as EduAsset,
 } from '@/api/education';
 
 export const Route = createFileRoute('/app/clients/$clientSlug/education')({
@@ -34,7 +39,6 @@ export const Route = createFileRoute('/app/clients/$clientSlug/education')({
 });
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const CURRENT_YEAR = new Date().getFullYear();
 
 function EducationTab() {
   const { clientSlug } = Route.useParams();
@@ -136,6 +140,12 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
     queryClient.invalidateQueries({ queryKey: ['manage', 'education', clientSlug, 'page', pageId] });
     queryClient.invalidateQueries({ queryKey: ['manage', 'education', clientSlug, 'pages'] });
   };
+  // Asset mutations return the fresh page tree - write it into the cache
+  // directly so the grid updates instantly instead of waiting on a refetch.
+  const applyTree = (tree?: EducationPageTree) => {
+    if (tree) queryClient.setQueryData(['manage', 'education', clientSlug, 'page', pageId], tree);
+    else invalidate();
+  };
 
   const { data: tree, isLoading } = useQuery({
     queryKey: ['manage', 'education', clientSlug, 'page', pageId],
@@ -171,14 +181,13 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
     return [...set].sort((a, b) => a - b);
   }, [tree]);
 
-  const [dataYear, setDataYear] = useState<number>(CURRENT_YEAR);
-  const yearInitialised = useRef(false);
+  const { year: dataYear, initYear } = useWorkspaceYear();
+  usePublishYears(yearsWithData);
+  // Default the workspace year to the latest with chart data - unless the
+  // user (or another tab) already set one.
   useEffect(() => {
-    if (!yearInitialised.current && yearsWithData.length) {
-      setDataYear(yearsWithData[yearsWithData.length - 1]);
-      yearInitialised.current = true;
-    }
-  }, [yearsWithData]);
+    if (yearsWithData.length) initYear(yearsWithData[yearsWithData.length - 1]);
+  }, [yearsWithData, initYear]);
 
   if (isLoading || !tree) return <p className="text-sm text-ph-charcoal/60">Loading…</p>;
 
@@ -207,7 +216,6 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
           </h2>
         )}
         <div className="flex items-center gap-2">
-          <YearPicker year={dataYear} onChange={setDataYear} yearsWithData={yearsWithData} />
           <AddChartButton onCreate={(t) => addChart.mutate(t)} pending={addChart.isPending} />
           <Button
             type="button"
@@ -240,6 +248,8 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
           onChanged={invalidate}
         />
       ))}
+
+      <AssetsEditor clientSlug={clientSlug} tree={tree} dataYear={dataYear} onChanged={applyTree} />
     </div>
   );
 }
@@ -662,6 +672,431 @@ function SeriesRow({
         </button>
       </td>
     </tr>
+  );
+}
+
+const STATUS_SUGGESTIONS = ['Completed', 'Enrolled', 'Views'];
+
+/**
+ * Editor for the page's detail table (the workbook's per-asset education
+ * table). Assets are grouped by publisher block; each asset has one monthly
+ * input row per status, entered for the selected workspace year. Values are
+ * keyed across all years so switching years never wipes unsaved edits.
+ */
+function AssetsEditor({
+  clientSlug,
+  tree,
+  dataYear,
+  onChanged,
+}: {
+  clientSlug: string;
+  tree: EducationPageTree;
+  dataYear: number;
+  onChanged: (tree?: EducationPageTree) => void;
+}) {
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  // Statuses added locally that have no saved values yet (assetId -> names).
+  const [extraStatuses, setExtraStatuses] = useState<Record<string, string[]>>({});
+  const [formState, setFormState] = useState<EduAsset | 'new' | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    for (const a of tree.assets) {
+      for (const s of a.statuses) {
+        for (const p of s.points) next[`${a.id}|${s.status}|${p.year}|${p.month}`] = String(p.value);
+      }
+    }
+    setInputs(next);
+    setExtraStatuses({});
+  }, [tree]);
+
+  const statusesOf = (a: EduAsset) => {
+    const fromData = a.statuses.map((s) => s.status);
+    const extras = (extraStatuses[a.id] ?? []).filter((s) => !fromData.includes(s));
+    return [...fromData, ...extras];
+  };
+
+  const groups = useMemo(() => {
+    const out: { label: string; rows: EduAsset[] }[] = [];
+    for (const a of tree.assets) {
+      const g = out.find((x) => x.label === a.groupLabel);
+      if (g) g.rows.push(a);
+      else out.push({ label: a.groupLabel, rows: [a] });
+    }
+    return out;
+  }, [tree.assets]);
+
+  async function saveValues() {
+    setSaving(true);
+    setError(null);
+    try {
+      // Full replace per asset from every non-empty cell across all years.
+      let latest: EducationPageTree | undefined;
+      for (const a of tree.assets) {
+        const values: { status: string; year: number; month: number; value: number }[] = [];
+        for (const [key, raw] of Object.entries(inputs)) {
+          if (!key.startsWith(`${a.id}|`) || raw.trim() === '') continue;
+          const [, status, yearStr, monthStr] = key.split('|');
+          values.push({ status, year: Number(yearStr), month: Number(monthStr), value: Number(raw) });
+        }
+        latest = await setEducationAssetValues(clientSlug, a.id, values);
+      }
+      onChanged(latest);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4 pt-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-ph-charcoal">Detail table</h3>
+            <p className="mt-0.5 text-xs text-ph-charcoal/60">
+              The per-asset table shown under the charts on the client page. Monthly numbers per
+              status, entered for {dataYear}; switch the year to enter other years.
+            </p>
+          </div>
+          {formState === null && (
+            <Button type="button" size="sm" onClick={() => setFormState('new')}>
+              <Plus className="h-4 w-4" />
+              Add asset
+            </Button>
+          )}
+        </div>
+
+        {formState !== null && (
+          <AssetForm
+            clientSlug={clientSlug}
+            pageId={tree.page.id}
+            editing={formState === 'new' ? null : formState}
+            groupOptions={groups.map((g) => g.label)}
+            onDone={(t) => {
+              setFormState(null);
+              onChanged(t);
+            }}
+            onCancel={() => setFormState(null)}
+          />
+        )}
+
+        {tree.assets.length === 0 && formState === null && (
+          <p className="text-sm text-ph-charcoal/60">No assets yet - add the first one above.</p>
+        )}
+
+        {groups.map((g) => (
+          <div key={g.label}>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-ph-charcoal/60">{g.label}</h4>
+            <div className="mt-1 overflow-x-auto">
+              <table className="text-sm">
+                <thead className="text-xs uppercase tracking-wide text-ph-charcoal/60">
+                  <tr>
+                    <th className="py-1 pr-3 text-left font-medium">Asset</th>
+                    <th className="py-1 pr-2 text-left font-medium">Status</th>
+                    {MONTHS_FULL.map((m) => (
+                      <th key={m} className="px-1 py-1 text-center font-medium">{m}</th>
+                    ))}
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.rows.map((a) => (
+                    <AssetRows
+                      key={a.id}
+                      clientSlug={clientSlug}
+                      asset={a}
+                      statuses={statusesOf(a)}
+                      dataYear={dataYear}
+                      inputs={inputs}
+                      onCell={(status, month, value) =>
+                        setInputs((prev) => ({ ...prev, [`${a.id}|${status}|${dataYear}|${month}`]: value }))
+                      }
+                      onAddStatus={(name) =>
+                        setExtraStatuses((prev) => ({ ...prev, [a.id]: [...(prev[a.id] ?? []), name] }))
+                      }
+                      onEdit={() => setFormState(a)}
+                      onChanged={onChanged}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+
+        {tree.assets.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" onClick={saveValues} disabled={saving}>
+              {saving ? 'Saving…' : 'Save values'}
+            </Button>
+            {error && <span className="text-xs text-red-600">{error}</span>}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AssetRows({
+  clientSlug,
+  asset,
+  statuses,
+  dataYear,
+  inputs,
+  onCell,
+  onAddStatus,
+  onEdit,
+  onChanged,
+}: {
+  clientSlug: string;
+  asset: EduAsset;
+  statuses: string[];
+  dataYear: number;
+  inputs: Record<string, string>;
+  onCell: (status: string, month: number, value: string) => void;
+  onAddStatus: (name: string) => void;
+  onEdit: () => void;
+  onChanged: (tree?: EducationPageTree) => void;
+}) {
+  const removeAsset = useMutation({
+    mutationFn: () => deleteEducationAsset(clientSlug, asset.id),
+    onSuccess: () => onChanged(),
+    onError: (e) => alert(e instanceof ApiError ? e.message : 'Failed to delete asset'),
+  });
+  const removeStatus = useMutation({
+    mutationFn: (status: string) => {
+      // Replace with everything except the removed status' cells.
+      const values: { status: string; year: number; month: number; value: number }[] = [];
+      for (const [key, raw] of Object.entries(inputs)) {
+        if (!key.startsWith(`${asset.id}|`) || raw.trim() === '') continue;
+        const [, s, yearStr, monthStr] = key.split('|');
+        if (s === status) continue;
+        values.push({ status: s, year: Number(yearStr), month: Number(monthStr), value: Number(raw) });
+      }
+      return setEducationAssetValues(clientSlug, asset.id, values);
+    },
+    onSuccess: (t) => onChanged(t),
+    onError: (e) => alert(e instanceof ApiError ? e.message : 'Failed to remove status row'),
+  });
+
+  const meta = [asset.brand, asset.type, asset.author].filter(Boolean).join(' · ');
+  const rows: (string | null)[] = statuses.length > 0 ? statuses : [null];
+
+  return (
+    <>
+      {rows.map((status, si) => (
+        <tr key={status ?? 'none'} className={si === rows.length - 1 ? 'border-b border-ph-charcoal/5' : ''}>
+          {si === 0 && (
+            <td rowSpan={rows.length} className="max-w-72 py-1.5 pr-3 align-top">
+              <div className="text-xs font-medium text-ph-charcoal">{asset.title}</div>
+              {(meta || asset.expiry) && (
+                <div className="text-[11px] text-ph-charcoal/50">
+                  {meta}
+                  {asset.expiry ? `${meta ? ' · ' : ''}exp ${asset.expiry}` : ''}
+                </div>
+              )}
+              <div className="mt-1 flex items-center gap-2">
+                <button type="button" onClick={onEdit} className="text-ph-charcoal/40 hover:text-ph-purple" title="Edit asset">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  className="text-ph-charcoal/40 hover:text-red-600"
+                  title="Delete asset"
+                  onClick={() => {
+                    if (confirm(`Delete asset "${asset.title}" and all its values?`)) removeAsset.mutate();
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                <AddStatusInline existing={statuses} onAdd={onAddStatus} />
+              </div>
+            </td>
+          )}
+          <td className="py-1 pr-2 text-xs text-ph-charcoal/80 whitespace-nowrap">
+            {status ?? <span className="italic text-ph-charcoal/40">add a status to enter values</span>}
+          </td>
+          {status ? (
+            MONTHS_FULL.map((_, i) => {
+              const m = i + 1;
+              return (
+                <td key={m} className="px-0.5 py-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={inputs[`${asset.id}|${status}|${dataYear}|${m}`] ?? ''}
+                    placeholder="-"
+                    onChange={(e) => onCell(status, m, e.target.value)}
+                    className="h-7 w-14 rounded-md border border-ph-charcoal/20 bg-white px-1 text-center text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none"
+                  />
+                </td>
+              );
+            })
+          ) : (
+            <td colSpan={12} />
+          )}
+          <td className="pl-1">
+            {status && (
+              <button
+                type="button"
+                className="text-ph-charcoal/40 hover:text-red-600 disabled:animate-pulse disabled:text-ph-charcoal/20"
+                title={`Remove ${status} row`}
+                disabled={removeStatus.isPending}
+                onClick={() => {
+                  if (confirm(`Remove status "${status}" and its saved values?`)) removeStatus.mutate(status);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function AddStatusInline({ existing, onAdd }: { existing: string[]; onAdd: (name: string) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  if (!adding) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        className="text-[11px] font-medium text-ph-charcoal/50 hover:text-ph-purple"
+      >
+        + status
+      </button>
+    );
+  }
+  return (
+    <form
+      className="flex items-center gap-1"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const trimmed = name.trim();
+        if (trimmed && !existing.includes(trimmed)) onAdd(trimmed);
+        setName('');
+        setAdding(false);
+      }}
+    >
+      <input
+        autoFocus
+        list="asset-status-suggestions"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Status"
+        className="h-6 w-24 rounded-md border border-ph-charcoal/20 bg-white px-1.5 text-[11px] text-ph-charcoal focus:border-ph-purple focus:outline-none"
+      />
+      <datalist id="asset-status-suggestions">
+        {STATUS_SUGGESTIONS.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+      <Button type="submit" size="sm" className="h-6 px-2 text-[11px]">Add</Button>
+    </form>
+  );
+}
+
+function AssetForm({
+  clientSlug,
+  pageId,
+  editing,
+  groupOptions,
+  onDone,
+  onCancel,
+}: {
+  clientSlug: string;
+  pageId: string;
+  editing: EduAsset | null;
+  groupOptions: string[];
+  onDone: (tree?: EducationPageTree) => void;
+  onCancel: () => void;
+}) {
+  const [group, setGroup] = useState(editing?.groupLabel ?? '');
+  const [brand, setBrand] = useState(editing?.brand ?? '');
+  const [type, setType] = useState(editing?.type ?? '');
+  const [title, setTitle] = useState(editing?.title ?? '');
+  const [author, setAuthor] = useState(editing?.author ?? '');
+  const [expiry, setExpiry] = useState(editing?.expiry ?? '');
+  const [error, setError] = useState<string | null>(null);
+
+  const save = useMutation({
+    mutationFn: () => {
+      const body = {
+        groupLabel: group.trim(),
+        brand: brand.trim(),
+        type: type.trim(),
+        title: title.trim(),
+        author: author.trim(),
+        expiry: expiry || undefined,
+        clearExpiry: editing && !expiry ? true : undefined,
+      };
+      return editing
+        ? updateEducationAsset(clientSlug, editing.id, body)
+        : createEducationAsset(clientSlug, pageId, body);
+    },
+    onSuccess: (t) => onDone(t),
+    onError: (e) => setError(e instanceof ApiError ? e.message : 'Save failed'),
+  });
+
+  const field = 'h-8 rounded-md border border-ph-charcoal/20 bg-white px-2 text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none';
+
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2 rounded-md border border-dashed border-ph-charcoal/15 p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (group.trim() && title.trim()) save.mutate();
+      }}
+    >
+      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
+        Group (publisher block)
+        <input list="asset-group-suggestions" value={group} onChange={(e) => setGroup(e.target.value)} placeholder="e.g. AJP" className={`${field} w-36`} required />
+        <datalist id="asset-group-suggestions">
+          {groupOptions.map((g) => (
+            <option key={g} value={g} />
+          ))}
+        </datalist>
+      </label>
+      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
+        Brand
+        <input value={brand} onChange={(e) => setBrand(e.target.value)} className={`${field} w-28`} />
+      </label>
+      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
+        Type
+        <input list="asset-type-suggestions" value={type} onChange={(e) => setType(e.target.value)} className={`${field} w-28`} />
+        <datalist id="asset-type-suggestions">
+          {['Article', 'Podcast', 'Webinar', 'Module', 'Video', 'Webcast'].map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
+      </label>
+      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
+        Title
+        <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${field} w-72`} required />
+      </label>
+      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
+        By
+        <input value={author} onChange={(e) => setAuthor(e.target.value)} className={`${field} w-40`} />
+      </label>
+      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
+        Expiry
+        <input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className={`${field} w-36`} />
+      </label>
+      <div className="flex items-center gap-1 pb-0.5">
+        <Button type="submit" size="sm" disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : editing ? 'Save asset' : 'Add asset'}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+      {error && <p className="w-full text-xs text-red-600">{error}</p>}
+    </form>
   );
 }
 

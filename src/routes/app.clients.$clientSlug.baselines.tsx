@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X, MoreHorizontal } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
-import { YearPicker } from '@/components/YearPicker';
+import { usePublishYears, useWorkspaceYear } from '@/lib/workspaceYear';
 import {
   createBaseline,
   updateBaseline,
@@ -26,20 +26,29 @@ export const Route = createFileRoute('/app/clients/$clientSlug/baselines')({
   component: KpiTargetsTab,
 });
 
-const CURRENT_YEAR = new Date().getFullYear();
+/** Pre-selection for the create form when adding from an empty matrix cell. */
+interface CellPreset {
+  publisherId: string;
+  templateId: string;
+  metricKey: string;
+}
+
+type FormState =
+  | { mode: 'new'; preset?: CellPreset }
+  | { mode: 'edit'; baseline: Baseline }
+  | null;
 
 function KpiTargetsTab() {
   const { clientSlug } = Route.useParams();
-  // null = no form; 'new' = create; a Baseline = edit that target.
-  const [formState, setFormState] = useState<Baseline | 'new' | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
+  const [formState, setFormState] = useState<FormState>(null);
+  const { year: selectedYear } = useWorkspaceYear();
 
   const { data, isLoading } = useQuery({
     queryKey: ['manage', 'clients', clientSlug, 'baselines', selectedYear],
     queryFn: () => listBaselines(clientSlug, selectedYear),
   });
   const targets = data?.baselines ?? [];
-  const years = data?.years ?? [];
+  usePublishYears(data?.years);
 
   const { data: publishers = [] } = useQuery({
     queryKey: ['manage', 'publishers'],
@@ -58,9 +67,8 @@ function KpiTargetsTab() {
           year pick these up automatically as their KPI targets.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <YearPicker year={selectedYear} onChange={setSelectedYear} yearsWithData={years} />
           {formState === null && (
-            <Button type="button" size="sm" onClick={() => setFormState('new')}>
+            <Button type="button" size="sm" onClick={() => setFormState({ mode: 'new' })}>
               <Plus className="h-4 w-4" />
               New target
             </Button>
@@ -75,7 +83,8 @@ function KpiTargetsTab() {
           templates={templates}
           targets={targets}
           year={selectedYear}
-          editing={formState === 'new' ? null : formState}
+          editing={formState.mode === 'edit' ? formState.baseline : null}
+          preset={formState.mode === 'new' ? formState.preset : undefined}
           onDone={() => setFormState(null)}
         />
       )}
@@ -89,7 +98,13 @@ function KpiTargetsTab() {
             </p>
           )}
           {targets.length > 0 && (
-            <TargetTable clientSlug={clientSlug} targets={targets} onEdit={(b) => setFormState(b)} />
+            <TargetMatrix
+              clientSlug={clientSlug}
+              targets={targets}
+              templates={templates}
+              onEditDetails={(b) => setFormState({ mode: 'edit', baseline: b })}
+              onAddCell={(preset) => setFormState({ mode: 'new', preset })}
+            />
           )}
         </CardContent>
       </Card>
@@ -97,66 +112,342 @@ function KpiTargetsTab() {
   );
 }
 
-function TargetTable({
+// templateCode (lowercased enum name) → display label, as on the Placements tab.
+const TEMPLATE_LABELS: Record<string, string> = {
+  digitaldisplay: 'Digital display',
+  edm: 'eDM',
+  print: 'Print',
+  sponsoredcontent: 'Sponsored content',
+  education: 'Education',
+};
+const templateLabel = (code: string) => TEMPLATE_LABELS[code] ?? code;
+
+const isRateKey = (key: string) => key === 'ctr' || key.endsWith('_rate');
+
+const titleCaseKey = (key: string) =>
+  key === 'ctr'
+    ? 'CTR'
+    : key
+        .split('_')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+
+/** Rates read as percentages ("1.9%"); counts as whole numbers ("349,580"). */
+const formatTarget = (b: Baseline) =>
+  isRateKey(b.metricKey)
+    ? `${(b.value * 100).toLocaleString('en-AU', { maximumFractionDigits: 2 })}%`
+    : Math.round(b.value).toLocaleString('en-AU');
+
+/**
+ * Clicks targets are quoted as impressions x CTR, so editing either side
+ * keeps the clicks target in sync (when the row has all three). Editing
+ * clicks directly is an explicit override - nothing recomputes from it.
+ */
+function clicksRecalc(
+  edited: Baseline,
+  newValue: number,
+  siblings: Baseline[],
+): { target: Baseline; value: number } | null {
+  if (edited.metricKey !== 'ctr' && edited.metricKey !== 'impressions') return null;
+  const clicksTarget = siblings.find((s) => s.metricKey === 'clicks');
+  if (!clicksTarget) return null;
+  const ctr =
+    edited.metricKey === 'ctr' ? newValue : siblings.find((s) => s.metricKey === 'ctr')?.value;
+  const impressions =
+    edited.metricKey === 'impressions'
+      ? newValue
+      : siblings.find((s) => s.metricKey === 'impressions')?.value;
+  if (ctr === undefined || impressions === undefined) return null;
+  return { target: clicksTarget, value: Math.round(impressions * ctr) };
+}
+
+// Canonical chip order: volume → engagements → rates, so every row reads the
+// way targets are quoted ("120,960 impressions at 0.62% CTR = 750 clicks").
+const KEY_ORDER: Record<string, number> = {
+  impressions: 0,
+  sends: 1,
+  opens: 2,
+  views: 3,
+  page_views: 4,
+  completions: 10,
+  downloads: 11,
+  clicks: 12,
+  ctr: 20,
+  completion_rate: 21,
+};
+const keyOrder = (key: string) => KEY_ORDER[key] ?? 15;
+
+/**
+ * Spreadsheet-style matrix: one table, publishers as group-header rows, a row
+ * per template, metric columns. Values edit inline (click → input); empty
+ * cells offer "+" when the template declares that metric. The form handles
+ * creation and detail edits (note, rate calculator, delete).
+ */
+function TargetMatrix({
   clientSlug,
   targets,
-  onEdit,
+  templates,
+  onEditDetails,
+  onAddCell,
 }: {
   clientSlug: string;
   targets: Baseline[];
-  onEdit: (b: Baseline) => void;
+  templates: MetricTemplate[];
+  onEditDetails: (b: Baseline) => void;
+  onAddCell: (preset: CellPreset) => void;
 }) {
-  const queryClient = useQueryClient();
-  const del = useMutation({
-    mutationFn: (id: string) => deleteBaseline(clientSlug, id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] }),
-  });
+  // Which metrics each template declares - gates the "+" on empty cells.
+  const templateFields = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of templates) {
+      for (const f of t.fields) set.add(`${t.id}:${f.key}`);
+    }
+    return set;
+  }, [templates]);
+
+  // Columns: every metric present this year, volume → engagements → rates.
+  const colKeys = useMemo(() => {
+    const keys = [...new Set(targets.map((t) => t.metricKey))];
+    return keys.sort((a, z) => keyOrder(a) - keyOrder(z) || a.localeCompare(z));
+  }, [targets]);
+
+  const groups = useMemo(() => {
+    const byPublisher = new Map<string, Baseline[]>();
+    for (const b of targets) {
+      const list = byPublisher.get(b.publisherId);
+      if (list) list.push(b);
+      else byPublisher.set(b.publisherId, [b]);
+    }
+    return [...byPublisher.values()]
+      .map((rows) => {
+        const byTemplate = new Map<string, Baseline[]>();
+        for (const b of rows) {
+          const list = byTemplate.get(b.templateId);
+          if (list) list.push(b);
+          else byTemplate.set(b.templateId, [b]);
+        }
+        const templateGroups = [...byTemplate.values()]
+          .map((trs) => ({
+            templateId: trs[0].templateId,
+            label: templateLabel(trs[0].templateCode),
+            rows: [...trs].sort(
+              (a, z) =>
+                keyOrder(a.metricKey) - keyOrder(z.metricKey) ||
+                a.metricKey.localeCompare(z.metricKey),
+            ),
+          }))
+          .sort((a, z) => a.label.localeCompare(z.label));
+        return {
+          publisherId: rows[0].publisherId,
+          publisherName: rows[0].publisherName,
+          templates: templateGroups,
+        };
+      })
+      .sort((a, z) => a.publisherName.localeCompare(z.publisherName));
+  }, [targets]);
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-ph-charcoal/10 text-xs uppercase tracking-wide text-ph-charcoal/60">
-          <tr>
-            <th className="py-2 pr-4 font-medium">Publisher</th>
-            <th className="py-2 pr-4 font-medium">Template</th>
-            <th className="py-2 pr-4 font-medium">Metric</th>
-            <th className="py-2 pr-4 text-right font-medium">Target</th>
-            <th className="py-2 pr-4 font-medium">Note</th>
-            <th className="py-2 text-right font-medium" />
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-ph-charcoal/10 text-xs uppercase tracking-wide text-ph-charcoal/60">
+            <th className="w-56 py-2 pr-4 text-left font-medium">Publisher / type</th>
+            {colKeys.map((k) => (
+              <th key={k} className="px-3 py-2 text-right font-medium">
+                {titleCaseKey(k)}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {targets.map((b) => (
-            <tr key={b.id} className="border-b border-ph-charcoal/5 last:border-0">
-              <td className="py-2 pr-4 font-medium text-ph-charcoal">{b.publisherName}</td>
-              <td className="py-2 pr-4 text-ph-charcoal/60">{b.templateCode}</td>
-              <td className="py-2 pr-4 font-mono text-xs text-ph-charcoal/80">{b.metricKey}</td>
-              <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">
-                {b.value.toLocaleString('en-AU')}
-              </td>
-              <td className="py-2 pr-4 text-ph-charcoal/60">{b.note ?? '—'}</td>
-              <td className="py-2 text-right">
-                <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(b)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={del.isPending}
-                  onClick={() => {
-                    if (confirm('Remove this KPI target?')) del.mutate(b.id);
-                  }}
+          {groups.map((pub) => (
+            <Fragment key={pub.publisherId}>
+              <tr className="bg-ph-charcoal/[0.03]">
+                <td
+                  colSpan={colKeys.length + 1}
+                  className="py-1.5 pl-2 pr-4 font-semibold text-ph-charcoal"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </td>
-            </tr>
+                  {pub.publisherName}
+                </td>
+              </tr>
+              {pub.templates.map((t) => (
+                <tr key={t.templateId} className="border-b border-ph-charcoal/5">
+                  <td className="py-1 pl-5 pr-4 text-xs uppercase tracking-wide text-ph-charcoal/50">
+                    {t.label}
+                  </td>
+                  {colKeys.map((k) => {
+                    const b = t.rows.find((r) => r.metricKey === k);
+                    if (b) {
+                      return (
+                        <td key={k} className="px-3 py-1 text-right">
+                          <EditableValue
+                            clientSlug={clientSlug}
+                            baseline={b}
+                            siblings={t.rows}
+                            onEditDetails={onEditDetails}
+                          />
+                        </td>
+                      );
+                    }
+                    const canAdd = templateFields.has(`${t.templateId}:${k}`);
+                    return (
+                      <td key={k} className="px-3 py-1 text-right">
+                        {canAdd ? (
+                          <button
+                            type="button"
+                            title={`Add ${titleCaseKey(k)} target`}
+                            onClick={() =>
+                              onAddCell({
+                                publisherId: pub.publisherId,
+                                templateId: t.templateId,
+                                metricKey: k,
+                              })
+                            }
+                            className="rounded p-1 text-ph-charcoal/20 hover:bg-ph-purple/5 hover:text-ph-purple"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <span className="text-ph-charcoal/15">-</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * Inline cell editor: the value is a click target; editing swaps in a number
+ * input with save / cancel / details. Rates are edited in percent (stored as
+ * a fraction). Enter saves, Escape cancels.
+ */
+function EditableValue({
+  clientSlug,
+  baseline,
+  siblings,
+  onEditDetails,
+}: {
+  clientSlug: string;
+  baseline: Baseline;
+  siblings: Baseline[];
+  onEditDetails: (b: Baseline) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const rate = isRateKey(baseline.metricKey);
+
+  const save = useMutation({
+    mutationFn: async (value: number) => {
+      await updateBaseline(clientSlug, baseline.id, {
+        publisherId: baseline.publisherId,
+        templateId: baseline.templateId,
+        year: baseline.year,
+        metricKey: baseline.metricKey,
+        value,
+        note: baseline.note ?? undefined,
+      });
+      const recalc = clicksRecalc(baseline, value, siblings);
+      if (recalc) {
+        await updateBaseline(clientSlug, recalc.target.id, {
+          publisherId: recalc.target.publisherId,
+          templateId: recalc.target.templateId,
+          year: recalc.target.year,
+          metricKey: recalc.target.metricKey,
+          value: recalc.value,
+          note: recalc.target.note ?? undefined,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
+      setEditing(false);
+    },
+  });
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        title={baseline.note ? `${baseline.note} - click to edit` : 'Click to edit'}
+        onClick={() => {
+          setText(String(rate ? parseFloat((baseline.value * 100).toFixed(6)) : baseline.value));
+          setEditing(true);
+        }}
+        className="group inline-flex items-center gap-1 rounded px-1.5 py-0.5 tabular-nums text-ph-charcoal hover:bg-ph-purple/5"
+      >
+        {formatTarget(baseline)}
+        <Pencil className="h-3 w-3 text-transparent group-hover:text-ph-purple/60" />
+      </button>
+    );
+  }
+
+  const commit = () => {
+    const n = Number(text);
+    if (!text.trim() || !Number.isFinite(n) || n < 0) return;
+    save.mutate(rate ? n / 100 : n);
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Input
+        autoFocus
+        type="number"
+        step="any"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+          }
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        className="h-7 w-24 text-right text-sm"
+      />
+      {rate && <span className="text-xs text-ph-charcoal/50">%</span>}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0"
+        title="Save"
+        disabled={save.isPending}
+        onClick={commit}
+      >
+        <Check className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0"
+        title="Cancel"
+        onClick={() => setEditing(false)}
+      >
+        <X className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0"
+        title="Details (note, rate calculator, delete)"
+        onClick={() => {
+          setEditing(false);
+          onEditDetails(baseline);
+        }}
+      >
+        <MoreHorizontal className="h-3.5 w-3.5" />
+      </Button>
+    </span>
   );
 }
 
@@ -176,6 +467,7 @@ function TargetForm({
   targets,
   year,
   editing,
+  preset,
   onDone,
 }: {
   clientSlug: string;
@@ -184,14 +476,15 @@ function TargetForm({
   targets: Baseline[];
   year: number;
   editing: Baseline | null;
+  preset?: CellPreset;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
   const formYear = editing?.year ?? year;
   const defaults = (b: Baseline | null): Values => ({
-    publisherId: b?.publisherId ?? '',
-    templateId: b?.templateId ?? '',
-    metricKey: b?.metricKey ?? '',
+    publisherId: b?.publisherId ?? preset?.publisherId ?? '',
+    templateId: b?.templateId ?? preset?.templateId ?? '',
+    metricKey: b?.metricKey ?? preset?.metricKey ?? '',
     value: b?.value ?? 0,
     note: b?.note ?? '',
   });
@@ -202,7 +495,8 @@ function TargetForm({
 
   useEffect(() => {
     form.reset(defaults(editing));
-  }, [editing, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- defaults closes over preset
+  }, [editing, preset, form]);
 
   const selectedPublisherId = form.watch('publisherId');
   const selectedTemplateId = form.watch('templateId');
@@ -215,11 +509,15 @@ function TargetForm({
     return templates.filter((t) => ids.has(t.id));
   }, [publishers, templates, selectedPublisherId]);
 
-  // Targets only exist for stored metrics — calculated ones (CTR, CPM…) derive.
+  // New targets only for stored metrics — calculated ones (CTR, CPM…) derive.
+  // The row's own / preset metric stays selectable even if calculated
+  // (seeded benchmark rates like CTR are legitimate existing targets).
   const availableMetrics = useMemo(() => {
     const template = templates.find((t) => t.id === selectedTemplateId);
-    return (template?.fields ?? []).filter((f) => !f.isCalculated);
-  }, [templates, selectedTemplateId]);
+    return (template?.fields ?? []).filter(
+      (f) => !f.isCalculated || f.key === editing?.metricKey || f.key === preset?.metricKey,
+    );
+  }, [templates, selectedTemplateId, editing, preset]);
 
   const mutation = useMutation({
     mutationFn: (v: Values) => {
@@ -233,6 +531,14 @@ function TargetForm({
       };
       return editing ? updateBaseline(clientSlug, editing.id, body) : createBaseline(clientSlug, body);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
+      onDone();
+    },
+  });
+
+  const del = useMutation({
+    mutationFn: () => deleteBaseline(clientSlug, editing!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
       onDone();
@@ -321,6 +627,21 @@ function TargetForm({
               Cancel
             </Button>
             {error && <span className="text-xs text-red-600">{error}</span>}
+            {editing && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="ml-auto text-red-600 hover:text-red-700"
+                disabled={del.isPending}
+                onClick={() => {
+                  if (confirm('Remove this KPI target?')) del.mutate();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete target
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>
