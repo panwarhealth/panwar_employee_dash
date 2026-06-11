@@ -12,6 +12,7 @@ function BrandsTab() {
     <NamedEntityTab
       entityLabel="brand"
       entityPluralLabel="brands"
+      withColor
       queryKey={['manage', 'clients', clientSlug, 'brands']}
       list={() => listBrands(clientSlug)}
       create={(body) => createBrand(clientSlug, body)}

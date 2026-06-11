@@ -4,6 +4,7 @@ export interface BrandRow {
   id: string;
   name: string;
   slug: string;
+  color: string | null;
   placementCount: number;
 }
 
@@ -72,9 +73,9 @@ export interface BaselineListResponse {
 // Brands
 export const listBrands = (clientSlug: string): Promise<BrandRow[]> =>
   apiFetch<{ brands: BrandRow[] }>(`/manage/clients/${clientSlug}/brands`).then((r) => r.brands);
-export const createBrand = (clientSlug: string, body: { name: string; slug: string }) =>
+export const createBrand = (clientSlug: string, body: { name: string; slug: string; color?: string }) =>
   apiFetch<BrandRow>(`/manage/clients/${clientSlug}/brands`, { method: 'POST', body });
-export const updateBrand = (clientSlug: string, id: string, body: { name: string; slug: string }) =>
+export const updateBrand = (clientSlug: string, id: string, body: { name: string; slug: string; color?: string }) =>
   apiFetch<BrandRow>(`/manage/clients/${clientSlug}/brands/${id}`, { method: 'PATCH', body });
 export const deleteBrand = (clientSlug: string, id: string) =>
   apiFetch<void>(`/manage/clients/${clientSlug}/brands/${id}`, { method: 'DELETE' });

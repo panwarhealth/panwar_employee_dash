@@ -13,6 +13,7 @@ export interface NamedRow {
   id: string;
   name: string;
   slug: string;
+  color?: string | null;
   placementCount: number;
 }
 
@@ -20,9 +21,11 @@ interface NamedEntityTabProps {
   entityLabel: string;            // "brand" / "audience"
   entityPluralLabel: string;       // "brands" / "audiences"
   queryKey: readonly unknown[];
+  /** Show a display-colour picker (brands only - colours the brand cell on client dashboards). */
+  withColor?: boolean;
   list: () => Promise<NamedRow[]>;
-  create: (body: { name: string; slug: string }) => Promise<NamedRow>;
-  update: (id: string, body: { name: string; slug: string }) => Promise<NamedRow>;
+  create: (body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
+  update: (id: string, body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -31,6 +34,8 @@ const schema = z.object({
   slug: z
     .string()
     .regex(/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/, 'Lowercase letters, numbers, hyphens only'),
+  // '' = no colour; the API clears the colour on empty string.
+  color: z.string().optional(),
 });
 type Values = z.infer<typeof schema>;
 
@@ -41,6 +46,7 @@ export function NamedEntityTab({
   entityLabel,
   entityPluralLabel,
   queryKey,
+  withColor = false,
   list,
   create,
   update,
@@ -67,6 +73,7 @@ export function NamedEntityTab({
         <EntityForm
           entityLabel={entityLabel}
           queryKey={queryKey}
+          withColor={withColor}
           editing={formState === 'new' ? null : formState}
           create={create}
           update={update}
@@ -100,6 +107,7 @@ export function NamedEntityTab({
 function EntityForm({
   entityLabel,
   queryKey,
+  withColor,
   editing,
   create,
   update,
@@ -107,25 +115,30 @@ function EntityForm({
 }: {
   entityLabel: string;
   queryKey: readonly unknown[];
+  withColor: boolean;
   editing: NamedRow | null;
-  create: (body: { name: string; slug: string }) => Promise<NamedRow>;
-  update: (id: string, body: { name: string; slug: string }) => Promise<NamedRow>;
+  create: (body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
+  update: (id: string, body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: editing?.name ?? '', slug: editing?.slug ?? '' },
+    defaultValues: { name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '' },
   });
 
   // Reset the fields when switching between rows / create.
   useEffect(() => {
-    form.reset({ name: editing?.name ?? '', slug: editing?.slug ?? '' });
+    form.reset({ name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '' });
   }, [editing, form]);
 
   const mutation = useMutation({
     mutationFn: (values: Values) => {
-      const body = { name: values.name.trim(), slug: values.slug.trim() };
+      const body = {
+        name: values.name.trim(),
+        slug: values.slug.trim(),
+        ...(withColor ? { color: values.color ?? '' } : {}),
+      };
       return editing ? update(editing.id, body) : create(body);
     },
     onSuccess: () => {
@@ -134,6 +147,7 @@ function EntityForm({
     },
   });
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
+  const color = form.watch('color') ?? '';
 
   return (
     <Card>
@@ -143,27 +157,47 @@ function EntityForm({
         </h2>
         <form
           onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
-          className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto_auto]"
+          className="mt-4 flex flex-wrap items-start gap-3"
         >
-          <div className="flex flex-col gap-1.5">
+          <div className="flex w-full max-w-64 flex-col gap-1.5">
             <Input placeholder="Name" {...form.register('name')} />
             {form.formState.errors.name && (
               <p className="text-xs text-red-600">{form.formState.errors.name.message}</p>
             )}
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex w-full max-w-64 flex-col gap-1.5">
             <Input placeholder="slug" {...form.register('slug')} />
             {form.formState.errors.slug && (
               <p className="text-xs text-red-600">{form.formState.errors.slug.message}</p>
             )}
           </div>
-          <Button type="submit" size="sm" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : editing ? 'Save' : 'Create'}
-          </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-            Cancel
-          </Button>
-          {error && <p className="col-span-full text-xs text-red-600">{error}</p>}
+          {withColor && (
+            <div className="flex h-10 items-center gap-1.5">
+              <input
+                type="color"
+                value={color || '#888888'}
+                onChange={(e) => form.setValue('color', e.target.value)}
+                className="h-8 w-8 cursor-pointer rounded border border-ph-charcoal/20 bg-white p-0.5"
+                title="Display colour (used to highlight the brand on the client dashboard)"
+              />
+              {color ? (
+                <Button type="button" size="sm" variant="ghost" onClick={() => form.setValue('color', '')}>
+                  Clear
+                </Button>
+              ) : (
+                <span className="text-xs text-ph-charcoal/50">No colour</span>
+              )}
+            </div>
+          )}
+          <div className="flex h-10 items-center gap-1.5">
+            <Button type="submit" size="sm" disabled={mutation.isPending}>
+              {mutation.isPending ? 'Saving…' : editing ? 'Save' : 'Create'}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+              Cancel
+            </Button>
+          </div>
+          {error && <p className="w-full text-xs text-red-600">{error}</p>}
         </form>
       </CardContent>
     </Card>
@@ -207,7 +241,17 @@ function EntityTable({
         <tbody>
           {rows.map((r) => (
             <tr key={r.id} className="border-b border-ph-charcoal/5 last:border-0">
-              <td className="py-2 pr-4 font-medium text-ph-charcoal">{r.name}</td>
+              <td className="py-2 pr-4 font-medium text-ph-charcoal">
+                <span className="flex items-center gap-2">
+                  {r.color && (
+                    <span
+                      className="h-3.5 w-3.5 shrink-0 rounded-sm border border-ph-charcoal/10"
+                      style={{ backgroundColor: r.color }}
+                    />
+                  )}
+                  {r.name}
+                </span>
+              </td>
               <td className="py-2 pr-4 font-mono text-xs text-ph-charcoal/60">{r.slug}</td>
               <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">
                 {r.placementCount}

@@ -12,4 +12,15 @@
   body {
     @apply bg-white text-ph-charcoal;
   }
+
+  /* No spinner buttons on number inputs - they're useless for data entry grids. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }

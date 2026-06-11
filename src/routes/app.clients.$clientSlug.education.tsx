@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Pencil } from 'lucide-react';
@@ -243,7 +243,6 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
           key={chart.id}
           clientSlug={clientSlug}
           chart={chart}
-          tree={tree}
           dataYear={dataYear}
           onChanged={invalidate}
         />
@@ -296,21 +295,19 @@ interface AnnotationTarget {
 function ChartEditor({
   clientSlug,
   chart,
-  tree,
   dataYear,
   onChanged,
 }: {
   clientSlug: string;
   chart: EduChart;
-  tree: EducationPageTree;
   dataYear: number;
   onChanged: () => void;
 }) {
   const mut = <T,>(fn: () => Promise<T>) => fn().then(() => onChanged());
 
-  // Preview window: full data span, else the page's selected year.
-  const from = tree.period.availableFrom ?? `${dataYear}-01`;
-  const to = tree.period.availableTo ?? `${dataYear}-12`;
+  // Preview window follows the workspace year filter, like the entry grid.
+  const from = `${dataYear}-01`;
+  const to = `${dataYear}-12`;
 
   const [annTarget, setAnnTarget] = useState<AnnotationTarget | null>(null);
 
@@ -406,18 +403,18 @@ function ChartEditor({
           onChanged={onChanged}
         />
 
-        {/* Annotations list */}
-        {chart.annotations.length > 0 && (
+        {/* Annotations list - scoped to the workspace year like the preview */}
+        {chart.annotations.some((a) => a.year === dataYear) && (
           <div>
             <h4 className="text-sm font-semibold text-ph-charcoal">Notes</h4>
             <ul className="mt-2 flex flex-col gap-1">
-              {chart.annotations.map((a) => {
+              {chart.annotations.filter((a) => a.year === dataYear).map((a) => {
                 const s = chart.series.find((x) => x.id === a.seriesId);
                 return (
                   <li key={a.id} className="flex items-center justify-between gap-2 rounded border border-ph-charcoal/10 px-2 py-1 text-xs">
                     <span className="text-ph-charcoal/80">
                       <span className="font-medium">{MONTHS[a.month - 1]} {a.year}</span>
-                      {s && <span className="text-ph-charcoal/50"> · {s.label}</span>} — {a.text}
+                      {s && <span className="text-ph-charcoal/50"> · {s.label}</span>} - {a.text}
                     </span>
                     <button
                       type="button"
@@ -496,13 +493,24 @@ function SeriesDataEditor({
   // Grid inputs keyed `${seriesId}:${year}:${month}` — across ALL years, so
   // stepping between years never wipes unsaved edits. Seeded from every point.
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  // Ref so the seeding effect can read the current year without depending on
+  // it (a dataYear dep would wipe unsaved edits on every year switch).
+  const dataYearRef = useRef(dataYear);
+  useEffect(() => {
+    dataYearRef.current = dataYear;
+  }, [dataYear]);
   useEffect(() => {
     const next: Record<string, string> = {};
-    chart.series.forEach((s) =>
+    chart.series.forEach((s) => {
       s.points.forEach((p) => {
         next[`${s.id}:${p.year}:${p.month}`] = String(p.value);
-      }),
-    );
+      });
+      // Brand-new module with nothing saved yet: prefill the year with 0s so
+      // it persists on save even before real numbers are entered.
+      if (s.points.length === 0) {
+        for (let m = 1; m <= 12; m++) next[`${s.id}:${dataYearRef.current}:${m}`] = '0';
+      }
+    });
     setInputs(next);
   }, [chart]);
 
@@ -626,14 +634,21 @@ function SeriesRow({
   const [label, setLabel] = useState(series.label);
   useEffect(() => setLabel(series.label), [series.label]);
 
+  // The native colour picker fires onChange for every tick of a drag - saving
+  // each one floods the API (and trips its rate limit). Preview locally and
+  // save once on blur, like the label input.
+  const [color, setColor] = useState(series.color ?? '#888888');
+  useEffect(() => setColor(series.color ?? '#888888'), [series.color]);
+
   return (
     <tr>
       <td className="py-1 pr-3">
         <div className="flex items-center gap-1.5">
           <input
             type="color"
-            value={series.color ?? '#888888'}
-            onChange={(e) => updateSeries.mutate({ color: e.target.value })}
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            onBlur={() => color !== (series.color ?? '#888888') && updateSeries.mutate({ color })}
             className="h-6 w-6 shrink-0 cursor-pointer rounded border border-ph-charcoal/20 bg-white p-0"
             title="Bar colour"
           />
@@ -709,13 +724,42 @@ function AssetsEditor({
       }
     }
     setInputs(next);
-    setExtraStatuses({});
+    // A status row with no values exists only locally (the server derives
+    // statuses from saved values), so keep it across saves/refetches until
+    // it's filled in or explicitly deleted. Prune ones that became real.
+    setExtraStatuses((prev) => {
+      const pruned: Record<string, string[]> = {};
+      for (const a of tree.assets) {
+        const saved = new Set(a.statuses.map((s) => s.status));
+        const keep = (prev[a.id] ?? []).filter((s) => !saved.has(s));
+        if (keep.length > 0) pruned[a.id] = keep;
+      }
+      return pruned;
+    });
   }, [tree]);
 
   const statusesOf = (a: EduAsset) => {
     const fromData = a.statuses.map((s) => s.status);
     const extras = (extraStatuses[a.id] ?? []).filter((s) => !fromData.includes(s));
     return [...fromData, ...extras];
+  };
+
+  // Statuses added via "+ status" exist only in local state until saved, so
+  // deleting one can leave the server tree unchanged - the tree effect above
+  // never fires and the ghost row would stay. Clear the local state directly.
+  const removeStatusLocal = (assetId: string, status: string) => {
+    setExtraStatuses((prev) => ({
+      ...prev,
+      [assetId]: (prev[assetId] ?? []).filter((s) => s !== status),
+    }));
+    setInputs((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        const [aid, s] = key.split('|');
+        if (aid === assetId && s === status) delete next[key];
+      }
+      return next;
+    });
   };
 
   const groups = useMemo(() => {
@@ -759,7 +803,8 @@ function AssetsEditor({
             <h3 className="text-base font-semibold text-ph-charcoal">Detail table</h3>
             <p className="mt-0.5 text-xs text-ph-charcoal/60">
               The per-asset table shown under the charts on the client page. Monthly numbers per
-              status, entered for {dataYear}; switch the year to enter other years.
+              status, entered for {dataYear}; switch the year to enter other years. Typed numbers
+              are not saved until you hit Save values below.
             </p>
           </div>
           {formState === null && (
@@ -815,9 +860,20 @@ function AssetsEditor({
                       onCell={(status, month, value) =>
                         setInputs((prev) => ({ ...prev, [`${a.id}|${status}|${dataYear}|${month}`]: value }))
                       }
-                      onAddStatus={(name) =>
-                        setExtraStatuses((prev) => ({ ...prev, [a.id]: [...(prev[a.id] ?? []), name] }))
-                      }
+                      onAddStatus={(name) => {
+                        setExtraStatuses((prev) => ({ ...prev, [a.id]: [...(prev[a.id] ?? []), name] }));
+                        // Prefill the year with 0s so the row persists in the DB
+                        // on save even when no real numbers are entered yet.
+                        setInputs((prev) => {
+                          const next = { ...prev };
+                          for (let m = 1; m <= 12; m++) {
+                            const key = `${a.id}|${name}|${dataYear}|${m}`;
+                            if (!next[key]?.trim()) next[key] = '0';
+                          }
+                          return next;
+                        });
+                      }}
+                      onRemoveStatusLocal={(status) => removeStatusLocal(a.id, status)}
                       onEdit={() => setFormState(a)}
                       onChanged={onChanged}
                     />
@@ -849,6 +905,7 @@ function AssetRows({
   inputs,
   onCell,
   onAddStatus,
+  onRemoveStatusLocal,
   onEdit,
   onChanged,
 }: {
@@ -859,6 +916,7 @@ function AssetRows({
   inputs: Record<string, string>;
   onCell: (status: string, month: number, value: string) => void;
   onAddStatus: (name: string) => void;
+  onRemoveStatusLocal: (status: string) => void;
   onEdit: () => void;
   onChanged: (tree?: EducationPageTree) => void;
 }) {
@@ -879,7 +937,10 @@ function AssetRows({
       }
       return setEducationAssetValues(clientSlug, asset.id, values);
     },
-    onSuccess: (t) => onChanged(t),
+    onSuccess: (t, status) => {
+      onRemoveStatusLocal(status);
+      onChanged(t);
+    },
     onError: (e) => alert(e instanceof ApiError ? e.message : 'Failed to remove status row'),
   });
 

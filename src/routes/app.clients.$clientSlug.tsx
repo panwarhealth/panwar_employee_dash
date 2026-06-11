@@ -90,8 +90,8 @@ function ClientWorkspaceLayout() {
   );
 }
 
-/** The one shared YearPicker, fed by whichever year-scoped tab is active. */
+/** The one shared YearPicker for the client workspace. */
 function WorkspaceYearControl() {
-  const { year, setYear, yearsWithData } = useWorkspaceYear();
-  return <YearPicker year={year} onChange={setYear} yearsWithData={yearsWithData} />;
+  const { year, setYear } = useWorkspaceYear();
+  return <YearPicker year={year} onChange={setYear} />;
 }
