@@ -353,6 +353,7 @@ const schema = z.object({
   isCpdPackage: z.boolean(),
   circulation: z.coerce.number().nonnegative('Must be ≥ 0').optional(),
   placementsCount: z.coerce.number().int().nonnegative('Must be ≥ 0').optional(),
+  comments: z.string().optional(),
 });
 type Values = z.infer<typeof schema>;
 
@@ -361,7 +362,7 @@ const BLANK: Values = {
   objective: 'awareness', assetType: '', creativeCode: '', osCode: '', utmUrl: '',
   startDate: '', endDate: '', edmSubcategory: '', educationSubcategory: '',
   mediaCost: 0, plannedMediaCost: undefined, cpdInvestmentCost: undefined, isBonus: false, isCpdPackage: false,
-  circulation: undefined, placementsCount: undefined,
+  circulation: undefined, placementsCount: undefined, comments: '',
 };
 
 // Actuals can span years (education ranges), so the grid is keyed by
@@ -435,6 +436,7 @@ function PlacementEditor({
       isCpdPackage: detail.isCpdPackage,
       circulation: detail.circulation ?? undefined,
       placementsCount: detail.placementsCount ?? undefined,
+      comments: detail.comments ?? '',
     });
     setLiveMonths(detail.liveMonths);
     setKpiInputs(Object.fromEntries(detail.kpis.map((k) => [k.metricKey, String(k.targetValue)])));
@@ -539,6 +541,7 @@ function PlacementEditor({
     isCpdPackage: v.isCpdPackage,
     circulation: isPrint ? v.circulation ?? null : null,
     placementsCount: isPrint ? v.placementsCount ?? null : null,
+    comments: v.comments?.trim() || null,
   });
 
   const collectKpis = (): PlacementKpi[] =>
@@ -746,6 +749,16 @@ function PlacementEditor({
             <div className="col-span-full flex flex-wrap items-center gap-4">
               <Checkbox label="Bonus placement" {...form.register('isBonus')} />
               <Checkbox label="Part of CPD package" {...form.register('isCpdPackage')} />
+            </div>
+
+            <div className="col-span-full">
+              <label className="text-xs font-medium text-ph-charcoal">Findings / comments</label>
+              <textarea
+                {...form.register('comments')}
+                rows={4}
+                placeholder="Analyst commentary shown on the client's placement card (the workbook's per-placement comments)…"
+                className="mt-1.5 w-full rounded-md border border-ph-charcoal/20 bg-white px-2 py-1.5 text-sm leading-relaxed text-ph-charcoal focus:border-ph-purple focus:outline-none"
+              />
             </div>
 
             {!isEdm && !isEducation && (
