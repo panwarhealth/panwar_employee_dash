@@ -28,7 +28,6 @@ export interface PlacementListItem {
   name: string;
   objective: string;
   assetType: string | null;
-  creativeCode: string | null;
   osCode: string | null;
   artworkUrl: string | null;
   liveMonths: number[];
@@ -67,7 +66,6 @@ export interface PlacementWriteBody {
   name: string;
   objective: string;
   assetType?: string | null;
-  creativeCode?: string | null;
   osCode?: string | null;
   utmUrl?: string | null;
   artworkUrl?: string | null;

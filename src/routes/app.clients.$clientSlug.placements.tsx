@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,6 +39,9 @@ import {
 } from '@/api/placements';
 
 export const Route = createFileRoute('/app/clients/$clientSlug/placements')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    editId: typeof search.editId === 'string' ? search.editId : undefined,
+  }),
   component: PlacementsTab,
 });
 
@@ -118,9 +121,15 @@ function enumerateMonths(startIso: string, endIso: string): { year: number; mont
 
 function PlacementsTab() {
   const { clientSlug } = Route.useParams();
+  const { editId } = Route.useSearch();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  // null = list view; 'new' = create form; otherwise the placement id being edited.
-  const [editing, setEditing] = useState<string | null>(null);
+  const setEditing = (id: string | null) =>
+    navigate({
+      to: '/app/clients/$clientSlug/placements',
+      params: { clientSlug },
+      search: id ? { editId: id } : {},
+    });
   const { year: selectedYear, setYear: setSelectedYear, initYear } = useWorkspaceYear();
 
   const { data, isLoading } = useQuery({
@@ -162,11 +171,11 @@ function PlacementsTab() {
     },
   });
 
-  if (editing !== null) {
+  if (editId !== undefined) {
     return (
       <PlacementEditor
         clientSlug={clientSlug}
-        placementId={editing === 'new' ? null : editing}
+        placementId={editId === 'new' ? null : editId}
         selectedYear={selectedYear}
         brands={brands}
         audiences={audiences}
@@ -339,7 +348,6 @@ const schema = z.object({
   name: z.string().min(1, 'Name required'),
   objective: z.enum(OBJECTIVES),
   assetType: z.string().optional(),
-  creativeCode: z.string().optional(),
   osCode: z.string().optional(),
   utmUrl: z.string().optional(),
   startDate: z.string().optional(),
@@ -359,7 +367,7 @@ type Values = z.infer<typeof schema>;
 
 const BLANK: Values = {
   brandId: '', audienceId: '', publisherId: '', templateId: '', name: '',
-  objective: 'awareness', assetType: '', creativeCode: '', osCode: '', utmUrl: '',
+  objective: 'awareness', assetType: '', osCode: '', utmUrl: '',
   startDate: '', endDate: '', edmSubcategory: '', educationSubcategory: '',
   mediaCost: 0, plannedMediaCost: undefined, cpdInvestmentCost: undefined, isBonus: false, isCpdPackage: false,
   circulation: undefined, placementsCount: undefined, comments: '',
@@ -422,7 +430,6 @@ function PlacementEditor({
         ? (detail.objective as (typeof OBJECTIVES)[number])
         : 'awareness',
       assetType: detail.assetType ?? '',
-      creativeCode: detail.creativeCode ?? '',
       osCode: detail.osCode ?? '',
       utmUrl: detail.utmUrl ?? '',
       startDate: detail.startDate ?? '',
@@ -523,7 +530,6 @@ function PlacementEditor({
     name: v.name.trim(),
     objective: v.objective,
     assetType: v.assetType?.trim() || null,
-    creativeCode: v.creativeCode?.trim() || null,
     osCode: v.osCode?.trim() || null,
     utmUrl: v.utmUrl?.trim() || null,
     artworkUrl: artworkKey,
@@ -551,8 +557,7 @@ function PlacementEditor({
       .map((x) => ({ metricKey: x.metricKey, targetValue: Number(x.raw) }));
 
   const collectActuals = (): PlacementActual[] => {
-    // Every non-empty cell in the grid (keys are `${year}:${month}:${metric}`).
-    // The API upserts by (year, month, metric).
+    const validMetrics = new Set(storableFields.map((f) => f.key));
     const rows: PlacementActual[] = [];
     for (const [key, raw] of Object.entries(actualInputs)) {
       if (raw === undefined || raw.trim() === '') continue;
@@ -560,6 +565,7 @@ function PlacementEditor({
       const year = Number(yearStr);
       const month = Number(monthStr);
       const metricKey = rest.join(':');
+      if (!validMetrics.has(metricKey)) continue;
       rows.push({
         year,
         month,
@@ -588,14 +594,18 @@ function PlacementEditor({
       await setPlacementKpis(clientSlug, placementId!, collectKpis());
       await setPlacementActuals(clientSlug, placementId!, collectActuals());
     },
-    onSuccess: () => {
-      invalidateList();
-      // Refetch detail so the form resyncs to the persisted state (stay open for iterative editing).
-      queryClient.invalidateQueries({
-        queryKey: ['manage', 'clients', clientSlug, 'placements', placementId],
-      });
-    },
+    onSuccess: () => invalidateList(),
   });
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
+  const triggerSave = () => {
+    if (!isEdit || update.isPending) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      form.handleSubmit((v) => update.mutate(v))();
+    }, 500);
+  };
 
   const active = isEdit ? update : create;
   const error = active.error instanceof ApiError ? active.error.message : null;
@@ -627,21 +637,20 @@ function PlacementEditor({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-baseline gap-2 text-base font-semibold text-ph-charcoal">
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          ← Back to list
+        </Button>
+        <h2 className="flex items-baseline gap-2 text-base font-medium text-ph-charcoal">
+          <span className="text-sm font-normal text-ph-charcoal/50">{placementYear} ·</span>
           {isEdit ? 'Edit placement' : 'New placement'}
-          <span className="text-sm font-normal text-ph-charcoal/50">· {placementYear}</span>
         </h2>
-        <div className="flex items-center gap-3">
-          <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-            ← Back to list
-          </Button>
-        </div>
       </div>
 
       <Card>
         <CardContent className="pt-6">
           <form
             onSubmit={form.handleSubmit((v) => active.mutate(v))}
+            onBlur={isEdit ? triggerSave : undefined}
             className="grid grid-cols-1 gap-3 sm:grid-cols-3"
           >
             <Select label="Brand" {...form.register('brandId')} error={form.formState.errors.brandId?.message}>
@@ -681,14 +690,11 @@ function PlacementEditor({
               <Input {...form.register('name')} placeholder="e.g. AJP Solus eDM — Pharmacists" />
             </LabeledField>
 
-            <LabeledField label="Asset type">
-              <Input {...form.register('assetType')} placeholder="banner, solus_edm, dps…" />
+            <LabeledField label="Asset label">
+              <Input {...form.register('assetType')} placeholder="e.g. banner, solus_edm, dps…" />
             </LabeledField>
-            <LabeledField label="Creative code">
-              <Input {...form.register('creativeCode')} placeholder="RB0686" />
-            </LabeledField>
-            <LabeledField label="OS code">
-              <Input {...form.register('osCode')} placeholder="RT-M-Zv9qDM" />
+            <LabeledField label="OS codes">
+              <Input {...form.register('osCode')} placeholder="e.g. RT-M-Zv9qDM, RT-M-Ab3xKP" />
             </LabeledField>
 
             <LabeledField label="Media cost (AUD)" error={form.formState.errors.mediaCost?.message}>
@@ -771,11 +777,12 @@ function PlacementEditor({
                       <button
                         key={m.n}
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
                           setLiveMonths((prev) =>
                             prev.includes(m.n) ? prev.filter((x) => x !== m.n) : [...prev, m.n].sort((a, b) => a - b),
-                          )
-                        }
+                          );
+                          triggerSave();
+                        }}
                         className={
                           'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ' +
                           (on
@@ -871,7 +878,7 @@ function KpiSection({
                 type="number"
                 step="any"
                 value={values[f.key] ?? ''}
-                placeholder="—"
+                placeholder="0"
                 onChange={(e) => onChange(f.key, e.target.value)}
               />
             </LabeledField>
@@ -911,7 +918,7 @@ function ActualsSection({
           Set the placement&apos;s dates above to enter actuals.
         </p>
       ) : (
-        <div className="mt-2 overflow-x-auto">
+        <div className="mt-2 overflow-x-auto pb-2">
           <table className="text-sm">
             <thead className="text-xs uppercase tracking-wide text-ph-charcoal/60">
               <tr>
@@ -935,7 +942,7 @@ function ActualsSection({
                         type="number"
                         step="any"
                         value={values[`${p.year}:${p.month}:${f.key}`] ?? ''}
-                        placeholder="—"
+                        placeholder="0"
                         onChange={(e) => onChange(p.year, p.month, f.key, e.target.value)}
                         className="h-8 w-24 rounded-md border border-ph-charcoal/20 bg-white px-2 text-sm text-ph-charcoal focus:border-ph-purple focus:outline-none"
                       />

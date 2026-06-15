@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -61,6 +61,7 @@ function ClientsPage() {
 }
 
 function ClientsTable({ clients }: { clients: ManagedClient[] }) {
+  const navigate = useNavigate();
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
@@ -68,13 +69,16 @@ function ClientsTable({ clients }: { clients: ManagedClient[] }) {
           <tr>
             <th className="py-2 pr-4 font-medium">Client</th>
             <th className="py-2 pr-4 font-medium">Slug</th>
-            <th className="py-2 pr-4 text-right font-medium">Users</th>
-            <th className="py-2 text-right font-medium" />
+            <th className="py-2 font-medium text-right">Users</th>
           </tr>
         </thead>
         <tbody>
           {clients.map((c) => (
-            <tr key={c.id} className="border-b border-ph-charcoal/5 last:border-0">
+            <tr
+              key={c.id}
+              className="cursor-pointer border-b border-ph-charcoal/5 last:border-0 hover:bg-ph-charcoal/[0.03]"
+              onClick={() => navigate({ to: '/app/clients/$clientSlug/details', params: { clientSlug: c.slug } })}
+            >
               <td className="py-3 pr-4">
                 <div className="flex items-center gap-3">
                   {c.logoUrl ? (
@@ -91,20 +95,11 @@ function ClientsTable({ clients }: { clients: ManagedClient[] }) {
                 </div>
               </td>
               <td className="py-3 pr-4 font-mono text-xs text-ph-charcoal/60">{c.slug}</td>
-              <td className="py-3 pr-4 text-right tabular-nums text-ph-charcoal/80">
+              <td className="py-3 text-right tabular-nums text-ph-charcoal/80">
                 <span className="inline-flex items-center gap-1">
                   <Users className="h-3.5 w-3.5" />
                   {c.userCount}
                 </span>
-              </td>
-              <td className="py-3 text-right">
-                <Link
-                  to="/app/clients/$clientSlug/details"
-                  params={{ clientSlug: c.slug }}
-                  className="text-sm font-medium text-ph-purple hover:underline"
-                >
-                  Manage →
-                </Link>
               </td>
             </tr>
           ))}
