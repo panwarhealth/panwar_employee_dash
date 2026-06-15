@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
@@ -9,6 +10,7 @@ import {
   assignRole,
   removeRole,
   type GraphUser,
+  type AdminUsersResponse,
 } from '@/api/admin';
 
 export const Route = createFileRoute('/app/admin')({
@@ -136,14 +138,57 @@ function UserTable({ users }: { users: GraphUser[] }) {
 function UserRow({ user }: { user: GraphUser }) {
   const queryClient = useQueryClient();
 
+  // Graph writes take 1-3s to propagate - drive UI from mutation result, never refetch immediately.
+  const GRAPH_PROPAGATION_MS = 3000;
+
+  const [cooldownRoles, setCooldownRoles] = useState<Set<string>>(new Set());
+
+  const patchUserRoles = (
+    updater: (roles: GraphUser['roles']) => GraphUser['roles'],
+  ) =>
+    queryClient.setQueryData<AdminUsersResponse>(['admin', 'users'], (old) =>
+      old
+        ? {
+            ...old,
+            users: old.users.map((u) =>
+              u.id === user.id ? { ...u, roles: updater(u.roles) } : u,
+            ),
+          }
+        : old,
+    );
+
+  const [error, setError] = useState<string | null>(null);
+
   const assign = useMutation({
     mutationFn: ({ role }: { role: string }) => assignRole(user.id, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+    onMutate: () => setError(null),
+    onSuccess: (data, { role }) => {
+      const roleDisplayName = AVAILABLE_ROLES.find((r) => r.value === role)?.label ?? role;
+      patchUserRoles((roles) =>
+        roles.some((r) => r.roleValue === role)
+          ? roles
+          : [...roles, { assignmentId: data.assignmentId, roleValue: role, roleDisplayName }],
+      );
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : 'Failed to assign role.'),
   });
 
   const remove = useMutation({
-    mutationFn: ({ assignmentId }: { assignmentId: string }) => removeRole(assignmentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+    mutationFn: ({ assignmentId }: { assignmentId: string; roleValue: string }) =>
+      removeRole(user.id, assignmentId),
+    onMutate: () => setError(null),
+    onSuccess: (_data, { assignmentId, roleValue }) => {
+      patchUserRoles((roles) => roles.filter((r) => r.assignmentId !== assignmentId));
+      setCooldownRoles((prev) => new Set([...prev, roleValue]));
+      setTimeout(() => {
+        setCooldownRoles((prev) => {
+          const next = new Set(prev);
+          next.delete(roleValue);
+          return next;
+        });
+      }, GRAPH_PROPAGATION_MS);
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : 'Failed to remove role.'),
   });
 
   const activeRoleValues = new Set(user.roles.map((r) => r.roleValue));
@@ -160,6 +205,7 @@ function UserRow({ user }: { user: GraphUser }) {
           {AVAILABLE_ROLES.map((role) => {
             const active = activeRoleValues.has(role.value);
             const assignment = user.roles.find((r) => r.roleValue === role.value);
+            const isCoolingDown = cooldownRoles.has(role.value);
             return (
               <Button
                 key={role.value}
@@ -170,7 +216,9 @@ function UserRow({ user }: { user: GraphUser }) {
                 disabled={isPending}
                 onClick={() => {
                   if (active && assignment) {
-                    remove.mutate({ assignmentId: assignment.assignmentId });
+                    remove.mutate({ assignmentId: assignment.assignmentId, roleValue: role.value });
+                  } else if (isCoolingDown) {
+                    setError('Role was just removed - please wait a moment before reassigning.');
                   } else {
                     assign.mutate({ role: role.value });
                   }
@@ -181,6 +229,7 @@ function UserRow({ user }: { user: GraphUser }) {
             );
           })}
         </div>
+        {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
       </td>
     </tr>
   );

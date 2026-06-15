@@ -29,8 +29,8 @@ export async function assignRole(userId: string, role: string): Promise<{ assign
   });
 }
 
-export async function removeRole(assignmentId: string): Promise<void> {
-  await apiFetch(`/manage/users/roles/${assignmentId}`, {
+export async function removeRole(userId: string, assignmentId: string): Promise<void> {
+  await apiFetch(`/manage/users/${userId}/roles/${assignmentId}`, {
     method: 'DELETE',
   });
 }
