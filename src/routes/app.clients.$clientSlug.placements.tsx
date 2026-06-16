@@ -4,12 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Pencil, Upload, CopyPlus, Copy } from 'lucide-react';
+import { Plus, Trash2, Pencil, Upload, CopyPlus, Copy, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
 import { usePublishYears, useWorkspaceYear } from '@/lib/workspaceYear';
+import { blockNonNumericKey } from '@/lib/numberKeys';
 import {
   listBrands,
   listAudiences,
@@ -244,6 +245,20 @@ function PlacementsTab() {
   );
 }
 
+type SortKey = 'name' | 'type' | 'brand' | 'audience' | 'publisher' | 'when' | 'mediaCost';
+
+const sortValue = (p: PlacementListItem, key: SortKey): string | number => {
+  switch (key) {
+    case 'name': return p.name.toLowerCase();
+    case 'type': return templateLabel(p.templateCode).toLowerCase();
+    case 'brand': return p.brandName.toLowerCase();
+    case 'audience': return p.audienceName.toLowerCase();
+    case 'publisher': return p.publisherName.toLowerCase();
+    case 'when': return datesSummary(p).toLowerCase();
+    case 'mediaCost': return p.mediaCost;
+  }
+};
+
 function PlacementTable({
   clientSlug,
   placements,
@@ -254,6 +269,8 @@ function PlacementTable({
   onEdit: (id: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const [filter, setFilter] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
   const del = useMutation({
     mutationFn: (id: string) => deletePlacement(clientSlug, id),
     onSuccess: () =>
@@ -267,28 +284,89 @@ function PlacementTable({
     },
   });
 
+  const visible = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    const rows = q
+      ? placements.filter((p) =>
+          [p.name, templateLabel(p.templateCode), p.brandName, p.audienceName, p.publisherName]
+            .some((s) => s.toLowerCase().includes(q)),
+        )
+      : placements;
+    return [...rows].sort((a, b) => {
+      const av = sortValue(a, sort.key);
+      const bv = sortValue(b, sort.key);
+      const cmp =
+        typeof av === 'number' && typeof bv === 'number'
+          ? av - bv
+          : String(av).localeCompare(String(bv));
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
+  }, [placements, filter, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+
+  const isDefault = filter === '' && sort.key === 'name' && sort.dir === 'asc';
+  const reset = () => {
+    setFilter('');
+    setSort({ key: 'name', dir: 'asc' });
+  };
+
+  const SortTh = ({ k, label, align = 'left' }: { k: SortKey; label: string; align?: 'left' | 'right' }) => (
+    <th className={`py-2 ${align === 'right' ? 'text-right' : ''} pr-4 font-medium`}>
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={`inline-flex items-center gap-1 hover:text-ph-charcoal ${align === 'right' ? 'flex-row-reverse' : ''}`}
+      >
+        {label}
+        {sort.key === k ? (
+          sort.dir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronsUpDown className="h-3 w-3 opacity-30" />
+        )}
+      </button>
+    </th>
+  );
+
   return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <Input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter placements (name, type, brand, audience, publisher)…"
+          className="h-8 max-w-md text-sm"
+        />
+        {!isDefault && (
+          <Button type="button" size="sm" variant="ghost" onClick={reset}>
+            Reset
+          </Button>
+        )}
+        <span className="ml-auto text-xs text-ph-charcoal/50">
+          {visible.length} of {placements.length}
+        </span>
+      </div>
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-ph-charcoal/10 text-xs uppercase tracking-wide text-ph-charcoal/60">
           <tr>
-            <th className="py-2 pr-4 font-medium">Placement</th>
-            <th className="py-2 pr-4 font-medium">Type</th>
-            <th className="py-2 pr-4 font-medium">Brand</th>
-            <th className="py-2 pr-4 font-medium">Audience</th>
-            <th className="py-2 pr-4 font-medium">Publisher</th>
-            <th className="py-2 pr-4 font-medium">When</th>
-            <th className="py-2 pr-4 text-right font-medium">Media cost</th>
+            <SortTh k="name" label="Placement" />
+            <SortTh k="type" label="Type" />
+            <SortTh k="brand" label="Brand" />
+            <SortTh k="audience" label="Audience" />
+            <SortTh k="publisher" label="Publisher" />
+            <SortTh k="when" label="When" />
+            <SortTh k="mediaCost" label="Media cost" align="right" />
             <th className="py-2 text-right font-medium" />
           </tr>
         </thead>
         <tbody>
-          {placements.map((p) => (
+          {visible.map((p) => (
             <tr key={p.id} className="border-b border-ph-charcoal/5 last:border-0">
               <td className="py-2 pr-4 font-medium text-ph-charcoal">
                 {p.name}
                 {p.isBonus && <Tag>bonus</Tag>}
-                {p.isCpdPackage && <Tag>CPD</Tag>}
               </td>
               <td className="py-2 pr-4 text-ph-charcoal/70">
                 {templateLabel(p.templateCode)}
@@ -337,6 +415,7 @@ function PlacementTable({
         </tbody>
       </table>
     </div>
+    </div>
   );
 }
 
@@ -347,18 +426,14 @@ const schema = z.object({
   templateId: z.string().min(1, 'Pick a template'),
   name: z.string().min(1, 'Name required'),
   objective: z.enum(OBJECTIVES),
-  assetType: z.string().optional(),
   osCode: z.string().optional(),
-  utmUrl: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   edmSubcategory: z.string().optional(),
   educationSubcategory: z.string().optional(),
   mediaCost: z.coerce.number().nonnegative('Must be ≥ 0'),
   plannedMediaCost: z.coerce.number().nonnegative('Must be ≥ 0').optional(),
-  cpdInvestmentCost: z.coerce.number().nonnegative('Must be ≥ 0').optional(),
   isBonus: z.boolean(),
-  isCpdPackage: z.boolean(),
   circulation: z.coerce.number().nonnegative('Must be ≥ 0').optional(),
   placementsCount: z.coerce.number().int().nonnegative('Must be ≥ 0').optional(),
   comments: z.string().optional(),
@@ -367,9 +442,9 @@ type Values = z.infer<typeof schema>;
 
 const BLANK: Values = {
   brandId: '', audienceId: '', publisherId: '', templateId: '', name: '',
-  objective: 'awareness', assetType: '', osCode: '', utmUrl: '',
+  objective: 'awareness', osCode: '',
   startDate: '', endDate: '', edmSubcategory: '', educationSubcategory: '',
-  mediaCost: 0, plannedMediaCost: undefined, cpdInvestmentCost: undefined, isBonus: false, isCpdPackage: false,
+  mediaCost: 0, plannedMediaCost: undefined, isBonus: false,
   circulation: undefined, placementsCount: undefined, comments: '',
 };
 
@@ -429,18 +504,14 @@ function PlacementEditor({
       objective: (OBJECTIVES as readonly string[]).includes(detail.objective)
         ? (detail.objective as (typeof OBJECTIVES)[number])
         : 'awareness',
-      assetType: detail.assetType ?? '',
       osCode: detail.osCode ?? '',
-      utmUrl: detail.utmUrl ?? '',
       startDate: detail.startDate ?? '',
       endDate: detail.endDate ?? '',
       edmSubcategory: detail.edmSubcategory ?? '',
       educationSubcategory: detail.educationSubcategory ?? '',
       mediaCost: detail.mediaCost,
       plannedMediaCost: detail.plannedMediaCost ?? undefined,
-      cpdInvestmentCost: detail.cpdInvestmentCost ?? undefined,
       isBonus: detail.isBonus,
-      isCpdPackage: detail.isCpdPackage,
       circulation: detail.circulation ?? undefined,
       placementsCount: detail.placementsCount ?? undefined,
       comments: detail.comments ?? '',
@@ -529,9 +600,7 @@ function PlacementEditor({
     year: placementYear,
     name: v.name.trim(),
     objective: v.objective,
-    assetType: v.assetType?.trim() || null,
     osCode: v.osCode?.trim() || null,
-    utmUrl: v.utmUrl?.trim() || null,
     artworkUrl: artworkKey,
     // Date shape + sub-category follow the template; the API also normalises,
     // but sending the right shape keeps the payload honest.
@@ -542,9 +611,7 @@ function PlacementEditor({
     educationSubcategory: isEducation ? v.educationSubcategory || null : null,
     mediaCost: v.mediaCost,
     plannedMediaCost: v.plannedMediaCost ?? null,
-    cpdInvestmentCost: v.cpdInvestmentCost ?? null,
     isBonus: v.isBonus,
-    isCpdPackage: v.isCpdPackage,
     circulation: isPrint ? v.circulation ?? null : null,
     placementsCount: isPrint ? v.placementsCount ?? null : null,
     comments: v.comments?.trim() || null,
@@ -606,6 +673,16 @@ function PlacementEditor({
       form.handleSubmit((v) => update.mutate(v))();
     }, 500);
   };
+  const selectSave = (name: Parameters<typeof form.register>[0]) => {
+    const r = form.register(name);
+    return {
+      ...r,
+      onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
+        void r.onChange(e);
+        triggerSave();
+      },
+    };
+  };
 
   const active = isEdit ? update : create;
   const error = active.error instanceof ApiError ? active.error.message : null;
@@ -627,6 +704,7 @@ function PlacementEditor({
       if (!put.ok) throw new Error('Upload to storage failed');
       setArtworkKey(objectKey);
       setArtworkPreview(URL.createObjectURL(file));
+      triggerSave();
     } catch (e) {
       setUploadError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Upload failed');
     } finally {
@@ -653,23 +731,23 @@ function PlacementEditor({
             onBlur={isEdit ? triggerSave : undefined}
             className="grid grid-cols-1 gap-3 sm:grid-cols-3"
           >
-            <Select label="Brand" {...form.register('brandId')} error={form.formState.errors.brandId?.message}>
+            <Select label="Brand" {...selectSave('brandId')} error={form.formState.errors.brandId?.message}>
               <option value="">—</option>
               {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
 
-            <Select label="Audience" {...form.register('audienceId')} error={form.formState.errors.audienceId?.message}>
+            <Select label="Audience" {...selectSave('audienceId')} error={form.formState.errors.audienceId?.message}>
               <option value="">—</option>
               {audiences.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </Select>
 
-            <Select label="Objective" {...form.register('objective')} error={form.formState.errors.objective?.message}>
+            <Select label="Objective" {...selectSave('objective')} error={form.formState.errors.objective?.message}>
               {OBJECTIVES.map((o) => <option key={o} value={o}>{o}</option>)}
             </Select>
 
             <Select
               label="Publisher"
-              {...form.register('publisherId')}
+              {...selectSave('publisherId')}
               error={form.formState.errors.publisherId?.message}
             >
               <option value="">—</option>
@@ -678,7 +756,7 @@ function PlacementEditor({
 
             <Select
               label="Template"
-              {...form.register('templateId')}
+              {...selectSave('templateId')}
               error={form.formState.errors.templateId?.message}
               disabled={!selectedPublisherId}
             >
@@ -690,9 +768,6 @@ function PlacementEditor({
               <Input {...form.register('name')} placeholder="e.g. AJP Solus eDM — Pharmacists" />
             </LabeledField>
 
-            <LabeledField label="Asset label">
-              <Input {...form.register('assetType')} placeholder="e.g. banner, solus_edm, dps…" />
-            </LabeledField>
             <LabeledField label="OS codes">
               <Input {...form.register('osCode')} placeholder="e.g. RT-M-Zv9qDM, RT-M-Ab3xKP" />
             </LabeledField>
@@ -702,12 +777,6 @@ function PlacementEditor({
             </LabeledField>
             <LabeledField label="Planned media cost (AUD)" error={form.formState.errors.plannedMediaCost?.message}>
               <Input type="number" step="any" {...form.register('plannedMediaCost')} />
-            </LabeledField>
-            <LabeledField label="CPD investment (AUD)" error={form.formState.errors.cpdInvestmentCost?.message}>
-              <Input type="number" step="any" {...form.register('cpdInvestmentCost')} />
-            </LabeledField>
-            <LabeledField label="UTM URL">
-              <Input {...form.register('utmUrl')} placeholder="https://…" />
             </LabeledField>
 
             {isPrint && (
@@ -726,7 +795,7 @@ function PlacementEditor({
                 <LabeledField label="Send date">
                   <Input type="date" {...form.register('startDate')} />
                 </LabeledField>
-                <Select label="eDM type" {...form.register('edmSubcategory')}>
+                <Select label="eDM type" {...selectSave('edmSubcategory')}>
                   <option value="">—</option>
                   {EDM_SUBCATEGORIES.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -743,7 +812,7 @@ function PlacementEditor({
                 <LabeledField label="End date">
                   <Input type="date" {...form.register('endDate')} />
                 </LabeledField>
-                <Select label="Education type" {...form.register('educationSubcategory')}>
+                <Select label="Education type" {...selectSave('educationSubcategory')}>
                   <option value="">—</option>
                   {EDUCATION_SUBCATEGORIES.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -754,7 +823,6 @@ function PlacementEditor({
 
             <div className="col-span-full flex flex-wrap items-center gap-4">
               <Checkbox label="Bonus placement" {...form.register('isBonus')} />
-              <Checkbox label="Part of CPD package" {...form.register('isCpdPackage')} />
             </div>
 
             <div className="col-span-full">
@@ -832,19 +900,27 @@ function PlacementEditor({
                   onClear={() => {
                     setArtworkKey(null);
                     setArtworkPreview(null);
+                    triggerSave();
                   }}
                 />
               </>
             )}
 
             <div className="col-span-full flex items-center gap-2 border-t border-ph-charcoal/10 pt-4">
-              <Button type="submit" size="sm" disabled={active.isPending}>
-                {active.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create placement'}
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-                {isEdit ? 'Done' : 'Cancel'}
-              </Button>
+              {!isEdit && (
+                <>
+                  <Button type="submit" size="sm" disabled={active.isPending}>
+                    {active.isPending ? 'Saving…' : 'Create placement'}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+                    Cancel
+                  </Button>
+                </>
+              )}
               {error && <span className="text-xs text-red-600">{error}</span>}
+              {isEdit && update.isPending && (
+                <span className="text-xs text-ph-charcoal/50">Saving…</span>
+              )}
               {isEdit && update.isSuccess && !update.isPending && (
                 <span className="text-xs text-green-700">Saved ✓</span>
               )}
@@ -941,9 +1017,11 @@ function ActualsSection({
                       <input
                         type="number"
                         step="any"
+                        inputMode="numeric"
                         value={values[`${p.year}:${p.month}:${f.key}`] ?? ''}
                         placeholder="0"
-                        onChange={(e) => onChange(p.year, p.month, f.key, e.target.value)}
+                        onKeyDown={blockNonNumericKey}
+                        onChange={(e) => onChange(p.year, p.month, f.key, e.target.value.replace(/[^\d.]/g, ''))}
                         className="h-8 w-24 rounded-md border border-ph-charcoal/20 bg-white px-2 text-sm text-ph-charcoal focus:border-ph-purple focus:outline-none"
                       />
                     </td>

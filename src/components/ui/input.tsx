@@ -1,11 +1,16 @@
 import { forwardRef, type InputHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
+import { blockNonNumericKey } from '@/lib/numberKeys';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, type = 'text', ...props }, ref) => (
+  ({ className, type = 'text', onKeyDown, ...props }, ref) => (
     <input
       ref={ref}
       type={type}
+      onKeyDown={(e) => {
+        onKeyDown?.(e);
+        if (type === 'number' && !e.defaultPrevented) blockNonNumericKey(e);
+      }}
       className={cn(
         'flex h-9 w-full rounded-md border border-ph-charcoal/20 bg-white px-3 py-1 text-sm text-ph-charcoal shadow-sm transition-colors',
         'placeholder:text-ph-charcoal/40',

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -176,6 +176,7 @@ function PublisherForm({
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
+  const [savedId, setSavedId] = useState<string | null>(editing?.id ?? null);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -186,8 +187,8 @@ function PublisherForm({
     },
   });
 
-  // Re-seed when switching between create / a different publisher.
   useEffect(() => {
+    setSavedId(editing?.id ?? null);
     form.reset({
       name: editing?.name ?? '',
       slug: editing?.slug ?? '',
@@ -199,39 +200,51 @@ function PublisherForm({
   const selectedIds = form.watch('templateIds');
 
   const mutation = useMutation({
-    mutationFn: (values: Values) => {
+    mutationFn: async (values: Values) => {
       const body = {
         name: values.name.trim(),
         slug: values.slug.trim(),
         website: values.website?.trim() || undefined,
         templateIds: values.templateIds,
       };
-      return editing ? updatePublisher(editing.id, body) : createPublisher(body);
+      if (savedId) await updatePublisher(savedId, body);
+      else {
+        const created = await createPublisher(body);
+        setSavedId(created.id);
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['manage', 'publishers'] });
-      onDone();
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['manage', 'publishers'] }),
   });
 
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
+  const triggerSave = () => {
+    if (mutation.isPending) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => form.handleSubmit((v) => mutation.mutate(v))(), 500);
+  };
+  const flushDone = () => {
+    clearTimeout(saveTimer.current);
+    form.handleSubmit((v) => mutation.mutate(v))();
+    onDone();
+  };
 
   const toggleTemplate = (id: string) => {
     const current = form.getValues('templateIds');
     const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
     form.setValue('templateIds', next, { shouldValidate: true });
+    triggerSave();
   };
 
   return (
     <Card>
       <CardContent className="pt-6">
         <h2 className="text-base font-semibold text-ph-charcoal">
-          {editing ? 'Edit publisher' : 'New publisher'}
+          {savedId ? 'Edit publisher' : 'New publisher'}
         </h2>
-        <form
-          onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
-          className="mt-4 flex flex-col gap-4"
-        >
+        <form onBlur={triggerSave} className="mt-4 flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Name" error={form.formState.errors.name?.message}>
               <Input {...form.register('name')} placeholder="AJP Magazine" />
@@ -277,12 +290,10 @@ function PublisherForm({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving…' : editing ? 'Save publisher' : 'Create publisher'}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-              Cancel
-            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={flushDone}>Done</Button>
+            {mutation.isPending && <span className="text-xs text-ph-charcoal/50">Saving…</span>}
+            {!mutation.isPending && mutation.isSuccess && <span className="text-xs text-green-700">Saved ✓</span>}
+            {!savedId && <span className="text-xs text-ph-charcoal/45">Fill name, slug &amp; a template to save</span>}
             {error && <span className="text-xs text-red-600">{error}</span>}
           </div>
         </form>

@@ -21,7 +21,8 @@ const TABS = [
   { to: '/app/clients/$clientSlug/brands', label: 'Brands', hasYear: false },
   { to: '/app/clients/$clientSlug/audiences', label: 'Audiences', hasYear: false },
   { to: '/app/clients/$clientSlug/placements', label: 'Placements', hasYear: true },
-  { to: '/app/clients/$clientSlug/education', label: 'Education', hasYear: true },
+  { to: '/app/clients/$clientSlug/cpd-investments', label: 'CPD Investments', hasYear: true },
+  { to: '/app/clients/$clientSlug/education', label: 'Education Engagement', hasYear: true },
   { to: '/app/clients/$clientSlug/baselines', label: 'KPI Targets', hasYear: true },
   { to: '/app/clients/$clientSlug/summary', label: 'Summary', hasYear: true },
   { to: '/app/clients/$clientSlug/import', label: 'Import', hasYear: false },
@@ -62,27 +63,29 @@ function ClientWorkspaceLayout() {
         </div>
       </div>
 
-      <nav className="flex flex-wrap items-center gap-1 border-b border-ph-charcoal/10">
-        {TABS.map((t) => (
-          <Link
-            key={t.to}
-            to={t.to}
-            params={{ clientSlug }}
-            className={cn(
-              '-mb-px border-b-2 border-transparent px-4 py-2 text-sm font-medium text-ph-charcoal/70 transition-colors',
-              'hover:text-ph-charcoal',
-            )}
-            activeProps={{ className: 'border-ph-purple text-ph-purple' }}
-          >
-            {t.label}
-          </Link>
-        ))}
+      <div className="flex flex-col-reverse gap-2 min-[1450px]:flex-row min-[1450px]:items-end min-[1450px]:gap-0">
+        <nav className="flex flex-wrap items-center gap-1 border-b border-ph-charcoal/10 min-[1450px]:flex-1">
+          {TABS.map((t) => (
+            <Link
+              key={t.to}
+              to={t.to}
+              params={{ clientSlug }}
+              className={cn(
+                '-mb-px border-b-2 border-transparent px-4 py-2 text-sm font-medium text-ph-charcoal/70 transition-colors',
+                'hover:text-ph-charcoal',
+              )}
+              activeProps={{ className: 'border-ph-purple text-ph-purple' }}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </nav>
         {onYearTab && (
-          <div className="ml-auto pb-1.5 pl-4">
+          <div className="flex justify-end pb-1.5 min-[1450px]:pl-4">
             <WorkspaceYearControl />
           </div>
         )}
-      </nav>
+      </div>
 
       <Outlet />
       </div>

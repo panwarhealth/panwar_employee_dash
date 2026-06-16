@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -122,43 +122,55 @@ function EntityForm({
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
+  const [savedId, setSavedId] = useState<string | null>(editing?.id ?? null);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '' },
   });
 
-  // Reset the fields when switching between rows / create.
   useEffect(() => {
+    setSavedId(editing?.id ?? null);
     form.reset({ name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '' });
   }, [editing, form]);
 
   const mutation = useMutation({
-    mutationFn: (values: Values) => {
+    mutationFn: async (values: Values) => {
       const body = {
         name: values.name.trim(),
         slug: values.slug.trim(),
         ...(withColor ? { color: values.color ?? '' } : {}),
       };
-      return editing ? update(editing.id, body) : create(body);
+      if (savedId) await update(savedId, body);
+      else {
+        const created = await create(body);
+        setSavedId(created.id);
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-      onDone();
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
   const color = form.watch('color') ?? '';
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
+  const triggerSave = () => {
+    if (mutation.isPending) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => form.handleSubmit((v) => mutation.mutate(v))(), 500);
+  };
+  const flushDone = () => {
+    clearTimeout(saveTimer.current);
+    form.handleSubmit((v) => mutation.mutate(v))();
+    onDone();
+  };
 
   return (
     <Card>
       <CardContent className="pt-6">
         <h2 className="text-base font-semibold text-ph-charcoal">
-          {editing ? `Edit ${entityLabel}` : `New ${entityLabel}`}
+          {savedId ? `Edit ${entityLabel}` : `New ${entityLabel}`}
         </h2>
-        <form
-          onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
-          className="mt-4 flex flex-wrap items-start gap-3"
-        >
+        <form onBlur={triggerSave} className="mt-4 flex flex-wrap items-start gap-3">
           <div className="flex w-full max-w-64 flex-col gap-1.5">
             <Input placeholder="Name" {...form.register('name')} />
             {form.formState.errors.name && (
@@ -181,7 +193,7 @@ function EntityForm({
                 title="Display colour (used to highlight the brand on the client dashboard)"
               />
               {color ? (
-                <Button type="button" size="sm" variant="ghost" onClick={() => form.setValue('color', '')}>
+                <Button type="button" size="sm" variant="ghost" onClick={() => { form.setValue('color', ''); triggerSave(); }}>
                   Clear
                 </Button>
               ) : (
@@ -190,12 +202,10 @@ function EntityForm({
             </div>
           )}
           <div className="flex h-10 items-center gap-1.5">
-            <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving…' : editing ? 'Save' : 'Create'}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-              Cancel
-            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={flushDone}>Done</Button>
+            {mutation.isPending && <span className="text-xs text-ph-charcoal/50">Saving…</span>}
+            {!mutation.isPending && mutation.isSuccess && <span className="text-xs text-green-700">Saved ✓</span>}
+            {!savedId && <span className="text-xs text-ph-charcoal/45">Fill name &amp; slug to save</span>}
           </div>
           {error && <p className="w-full text-xs text-red-600">{error}</p>}
         </form>

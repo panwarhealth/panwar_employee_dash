@@ -27,7 +27,6 @@ export interface PlacementListItem {
   year: number;
   name: string;
   objective: string;
-  assetType: string | null;
   osCode: string | null;
   artworkUrl: string | null;
   liveMonths: number[];
@@ -38,15 +37,12 @@ export interface PlacementListItem {
   groupId: string | null;
   mediaCost: number;
   plannedMediaCost: number | null;
-  cpdInvestmentCost: number | null;
   isBonus: boolean;
-  isCpdPackage: boolean;
 }
 
 /** Full placement for the edit form. */
 export interface PlacementDetail extends PlacementListItem {
   templateName: string;
-  utmUrl: string | null;
   artworkViewUrl: string | null;
   comments: string | null;
   notes: string | null;
@@ -65,9 +61,7 @@ export interface PlacementWriteBody {
   year: number;
   name: string;
   objective: string;
-  assetType?: string | null;
   osCode?: string | null;
-  utmUrl?: string | null;
   artworkUrl?: string | null;
   comments?: string | null;
   notes?: string | null;
@@ -78,9 +72,7 @@ export interface PlacementWriteBody {
   educationSubcategory?: string | null;
   mediaCost: number;
   plannedMediaCost?: number | null;
-  cpdInvestmentCost?: number | null;
   isBonus: boolean;
-  isCpdPackage: boolean;
   circulation?: number | null;
   placementsCount?: number | null;
   targetCourseId?: string | null;

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
 import { usePublishYears, useWorkspaceYear } from '@/lib/workspaceYear';
+import { blockNonNumericKey } from '@/lib/numberKeys';
 import { EducationBarChart, EducationLegend, PALETTE } from '@/components/education/EducationBarChart';
 import {
   listEducationPages,
@@ -195,18 +196,23 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3 border-t border-ph-charcoal/10 pt-4">
         {editingName ? (
-          <form
-            className="flex items-center gap-1"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (name.trim()) renamePage.mutate(name.trim());
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              if (name.trim() && name.trim() !== tree.page.name) renamePage.mutate(name.trim());
               setEditingName(false);
             }}
-          >
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 w-56" autoFocus />
-            <Button type="submit" size="sm">Save</Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setEditingName(false)}>Cancel</Button>
-          </form>
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+              if (e.key === 'Escape') {
+                setName(tree.page.name);
+                setEditingName(false);
+              }
+            }}
+            className="h-8 w-56"
+            autoFocus
+          />
         ) : (
           <h2 className="flex items-center gap-2 text-lg font-semibold text-ph-charcoal">
             {tree.page.name}
@@ -327,22 +333,26 @@ function ChartEditor({
   return (
     <Card>
       <CardContent className="flex flex-col gap-4 pt-6">
-        {/* Chart header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
             {editTitle ? (
-              <form
-                className="flex items-center gap-1"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (titleVal.trim()) updateChart.mutate({ title: titleVal.trim() });
+              <Input
+                value={titleVal}
+                onChange={(e) => setTitleVal(e.target.value)}
+                onBlur={() => {
+                  if (titleVal.trim() && titleVal.trim() !== chart.title) updateChart.mutate({ title: titleVal.trim() });
                   setEditTitle(false);
                 }}
-              >
-                <Input value={titleVal} onChange={(e) => setTitleVal(e.target.value)} className="h-8" autoFocus />
-                <Button type="submit" size="sm">Save</Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setEditTitle(false)}>Cancel</Button>
-              </form>
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                  if (e.key === 'Escape') {
+                    setTitleVal(chart.title);
+                    setEditTitle(false);
+                  }
+                }}
+                className="h-8"
+                autoFocus
+              />
             ) : (
               <h3 className="flex items-center gap-2 text-base font-semibold text-ph-charcoal">
                 {chart.title}
@@ -464,18 +474,24 @@ function SubtitleField({ value, onSave }: { value: string | null; onSave: (v: st
     );
   }
   return (
-    <form
-      className="mt-1 flex items-center gap-1"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(val.trim());
+    <Input
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={() => {
+        if (val.trim() !== (value ?? '')) onSave(val.trim());
         setEditing(false);
       }}
-    >
-      <Input value={val} onChange={(e) => setVal(e.target.value)} className="h-7 text-xs" placeholder="Subtitle" autoFocus />
-      <Button type="submit" size="sm">Save</Button>
-      <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-    </form>
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Escape') {
+          setVal(value ?? '');
+          setEditing(false);
+        }
+      }}
+      className="mt-1 h-7 text-xs"
+      placeholder="Subtitle"
+      autoFocus
+    />
   );
 }
 
@@ -667,9 +683,11 @@ function SeriesRow({
             <input
               type="number"
               step="any"
+              inputMode="numeric"
               value={inputs[`${series.id}:${dataYear}:${m}`] ?? ''}
-              placeholder="—"
-              onChange={(e) => onCell(m, e.target.value)}
+              placeholder="0"
+              onKeyDown={blockNonNumericKey}
+              onChange={(e) => onCell(m, e.target.value.replace(/[^\d.]/g, ''))}
               className="h-7 w-14 rounded-md border border-ph-charcoal/20 bg-white px-1 text-center text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none"
             />
           </td>
@@ -690,7 +708,7 @@ function SeriesRow({
   );
 }
 
-const STATUS_SUGGESTIONS = ['Completed', 'Enrolled', 'Views'];
+const EDU_STATUSES = ['Completed', 'Enrolled', 'Views'];
 
 /**
  * Editor for the page's detail table (the workbook's per-asset education
@@ -710,11 +728,11 @@ function AssetsEditor({
   onChanged: (tree?: EducationPageTree) => void;
 }) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
-  // Statuses added locally that have no saved values yet (assetId -> names).
   const [extraStatuses, setExtraStatuses] = useState<Record<string, string[]>>({});
+  const [removedStatuses, setRemovedStatuses] = useState<Record<string, string[]>>({});
   const [formState, setFormState] = useState<EduAsset | 'new' | null>(null);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
     const next: Record<string, string> = {};
@@ -724,9 +742,6 @@ function AssetsEditor({
       }
     }
     setInputs(next);
-    // A status row with no values exists only locally (the server derives
-    // statuses from saved values), so keep it across saves/refetches until
-    // it's filled in or explicitly deleted. Prune ones that became real.
     setExtraStatuses((prev) => {
       const pruned: Record<string, string[]> = {};
       for (const a of tree.assets) {
@@ -736,17 +751,78 @@ function AssetsEditor({
       }
       return pruned;
     });
+    setRemovedStatuses((prev) => {
+      const pruned: Record<string, string[]> = {};
+      for (const a of tree.assets) {
+        const saved = new Set(a.statuses.map((s) => s.status));
+        const keep = (prev[a.id] ?? []).filter((s) => saved.has(s));
+        if (keep.length > 0) pruned[a.id] = keep;
+      }
+      return pruned;
+    });
   }, [tree]);
 
+  const inputsRef = useRef(inputs);
+  useEffect(() => { inputsRef.current = inputs; }, [inputs]);
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  useEffect(() => () => { for (const t of Object.values(saveTimers.current)) clearTimeout(t); }, []);
+
+  const saveAsset = useMutation({
+    mutationFn: (assetId: string) => {
+      const values: { status: string; year: number; month: number; value: number }[] = [];
+      for (const [key, raw] of Object.entries(inputsRef.current)) {
+        if (!key.startsWith(`${assetId}|`) || raw.trim() === '') continue;
+        const [, status, yearStr, monthStr] = key.split('|');
+        values.push({ status, year: Number(yearStr), month: Number(monthStr), value: Number(raw) });
+      }
+      return setEducationAssetValues(clientSlug, assetId, values);
+    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : 'Save failed'),
+  });
+
+  // The server replace isn't safe under concurrent saves of the same asset, so
+  // serialise per asset: one in flight at a time; if edits land mid-flight,
+  // re-save once after it settles.
+  const inFlight = useRef<Set<string>>(new Set());
+  const pendingResave = useRef<Set<string>>(new Set());
+  const runSave = (assetId: string) => {
+    if (inFlight.current.has(assetId)) {
+      pendingResave.current.add(assetId);
+      return;
+    }
+    inFlight.current.add(assetId);
+    saveAsset.mutate(assetId, {
+      onSettled: () => {
+        inFlight.current.delete(assetId);
+        if (pendingResave.current.delete(assetId)) runSave(assetId);
+      },
+    });
+  };
+
+  const scheduleSave = (assetId: string) => {
+    setError(null);
+    clearTimeout(saveTimers.current[assetId]);
+    saveTimers.current[assetId] = setTimeout(() => runSave(assetId), 600);
+  };
+
+  const removeStatusRow = (assetId: string, status: string) => {
+    setRemovedStatuses((prev) => ({ ...prev, [assetId]: [...(prev[assetId] ?? []), status] }));
+    removeStatusLocal(assetId, status);
+    scheduleSave(assetId);
+  };
+
+  const cancelSaves = (assetId: string) => {
+    clearTimeout(saveTimers.current[assetId]);
+    pendingResave.current.delete(assetId);
+  };
+
   const statusesOf = (a: EduAsset) => {
-    const fromData = a.statuses.map((s) => s.status);
-    const extras = (extraStatuses[a.id] ?? []).filter((s) => !fromData.includes(s));
+    const removed = new Set(removedStatuses[a.id] ?? []);
+    const fromData = a.statuses.map((s) => s.status).filter((s) => !removed.has(s));
+    const extras = (extraStatuses[a.id] ?? []).filter((s) => !fromData.includes(s) && !removed.has(s));
     return [...fromData, ...extras];
   };
 
-  // Statuses added via "+ status" exist only in local state until saved, so
-  // deleting one can leave the server tree unchanged - the tree effect above
-  // never fires and the ghost row would stay. Clear the local state directly.
   const removeStatusLocal = (assetId: string, status: string) => {
     setExtraStatuses((prev) => ({
       ...prev,
@@ -763,37 +839,22 @@ function AssetsEditor({
   };
 
   const groups = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    const assets = q
+      ? tree.assets.filter((a) =>
+          [a.title, a.brand, a.type, a.groupLabel].some((s) => (s ?? '').toLowerCase().includes(q)),
+        )
+      : tree.assets;
     const out: { label: string; rows: EduAsset[] }[] = [];
-    for (const a of tree.assets) {
+    for (const a of assets) {
       const g = out.find((x) => x.label === a.groupLabel);
       if (g) g.rows.push(a);
       else out.push({ label: a.groupLabel, rows: [a] });
     }
     return out;
-  }, [tree.assets]);
+  }, [tree.assets, filter]);
 
-  async function saveValues() {
-    setSaving(true);
-    setError(null);
-    try {
-      // Full replace per asset from every non-empty cell across all years.
-      let latest: EducationPageTree | undefined;
-      for (const a of tree.assets) {
-        const values: { status: string; year: number; month: number; value: number }[] = [];
-        for (const [key, raw] of Object.entries(inputs)) {
-          if (!key.startsWith(`${a.id}|`) || raw.trim() === '') continue;
-          const [, status, yearStr, monthStr] = key.split('|');
-          values.push({ status, year: Number(yearStr), month: Number(monthStr), value: Number(raw) });
-        }
-        latest = await setEducationAssetValues(clientSlug, a.id, values);
-      }
-      onChanged(latest);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Save failed');
-    } finally {
-      setSaving(false);
-    }
-  }
+  const shownCount = useMemo(() => groups.reduce((n, g) => n + g.rows.length, 0), [groups]);
 
   return (
     <Card>
@@ -803,8 +864,8 @@ function AssetsEditor({
             <h3 className="text-base font-semibold text-ph-charcoal">Detail table</h3>
             <p className="mt-0.5 text-xs text-ph-charcoal/60">
               The per-asset table shown under the charts on the client page. Monthly numbers per
-              status, entered for {dataYear}; switch the year to enter other years. Typed numbers
-              are not saved until you hit Save values below.
+              status, entered for {dataYear}; switch the year to enter other years. Changes save
+              automatically.
             </p>
           </div>
           {formState === null && (
@@ -822,7 +883,24 @@ function AssetsEditor({
             editing={formState === 'new' ? null : formState}
             groupOptions={groups.map((g) => g.label)}
             onDone={(t) => {
+              const wasCreate = formState === 'new';
               setFormState(null);
+              if (wasCreate && t) {
+                const knownIds = new Set(tree.assets.map((a) => a.id));
+                const created = t.assets.find((a) => !knownIds.has(a.id));
+                if (created) {
+                  setExtraStatuses((prev) => ({ ...prev, [created.id]: ['Completed'] }));
+                  setInputs((prev) => {
+                    const next = { ...prev };
+                    for (let m = 1; m <= 12; m++) {
+                      const key = `${created.id}|Completed|${dataYear}|${m}`;
+                      if (!next[key]?.trim()) next[key] = '0';
+                    }
+                    return next;
+                  });
+                  scheduleSave(created.id);
+                }
+              }
               onChanged(t);
             }}
             onCancel={() => setFormState(null)}
@@ -833,6 +911,25 @@ function AssetsEditor({
           <p className="text-sm text-ph-charcoal/60">No assets yet - add the first one above.</p>
         )}
 
+        {tree.assets.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter assets (title, brand, type, group)…"
+              className="h-8 max-w-md text-sm"
+            />
+            {filter && (
+              <Button type="button" size="sm" variant="ghost" onClick={() => setFilter('')}>
+                Reset
+              </Button>
+            )}
+            <span className="ml-auto text-xs text-ph-charcoal/50">
+              {shownCount} of {tree.assets.length}
+            </span>
+          </div>
+        )}
+
         {groups.map((g) => (
           <div key={g.label}>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-ph-charcoal/60">{g.label}</h4>
@@ -840,30 +937,31 @@ function AssetsEditor({
               <table className="text-sm">
                 <thead className="text-xs uppercase tracking-wide text-ph-charcoal/60">
                   <tr>
-                    <th className="py-1 pr-3 text-left font-medium">Asset</th>
+                    <th className="py-1 pl-3 pr-3 text-left font-medium">Asset</th>
                     <th className="py-1 pr-2 text-left font-medium">Status</th>
                     {MONTHS_FULL.map((m) => (
                       <th key={m} className="px-1 py-1 text-center font-medium">{m}</th>
                     ))}
-                    <th />
+                    <th className="pr-3" />
                   </tr>
                 </thead>
                 <tbody>
-                  {g.rows.map((a) => (
+                  {g.rows.map((a, i) => (
                     <AssetRows
                       key={a.id}
                       clientSlug={clientSlug}
                       asset={a}
+                      zebra={i % 2 === 1}
                       statuses={statusesOf(a)}
                       dataYear={dataYear}
                       inputs={inputs}
                       onCell={(status, month, value) =>
                         setInputs((prev) => ({ ...prev, [`${a.id}|${status}|${dataYear}|${month}`]: value }))
                       }
+                      onSave={() => scheduleSave(a.id)}
                       onAddStatus={(name) => {
+                        setRemovedStatuses((prev) => ({ ...prev, [a.id]: (prev[a.id] ?? []).filter((s) => s !== name) }));
                         setExtraStatuses((prev) => ({ ...prev, [a.id]: [...(prev[a.id] ?? []), name] }));
-                        // Prefill the year with 0s so the row persists in the DB
-                        // on save even when no real numbers are entered yet.
                         setInputs((prev) => {
                           const next = { ...prev };
                           for (let m = 1; m <= 12; m++) {
@@ -872,8 +970,10 @@ function AssetsEditor({
                           }
                           return next;
                         });
+                        scheduleSave(a.id);
                       }}
-                      onRemoveStatusLocal={(status) => removeStatusLocal(a.id, status)}
+                      onRemoveStatus={(status) => removeStatusRow(a.id, status)}
+                      cancelSaves={() => cancelSaves(a.id)}
                       onEdit={() => setFormState(a)}
                       onChanged={onChanged}
                     />
@@ -885,11 +985,14 @@ function AssetsEditor({
         ))}
 
         {tree.assets.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button type="button" size="sm" onClick={saveValues} disabled={saving}>
-              {saving ? 'Saving…' : 'Save values'}
-            </Button>
-            {error && <span className="text-xs text-red-600">{error}</span>}
+          <div className="flex h-4 items-center gap-2 text-xs">
+            {saveAsset.isPending ? (
+              <span className="text-ph-charcoal/50">Saving…</span>
+            ) : error ? (
+              <span className="text-red-600">{error}</span>
+            ) : saveAsset.isSuccess ? (
+              <span className="text-green-700">All changes saved ✓</span>
+            ) : null}
           </div>
         )}
       </CardContent>
@@ -900,23 +1003,29 @@ function AssetsEditor({
 function AssetRows({
   clientSlug,
   asset,
+  zebra,
   statuses,
   dataYear,
   inputs,
   onCell,
+  onSave,
   onAddStatus,
-  onRemoveStatusLocal,
+  onRemoveStatus,
+  cancelSaves,
   onEdit,
   onChanged,
 }: {
   clientSlug: string;
   asset: EduAsset;
+  zebra: boolean;
   statuses: string[];
   dataYear: number;
   inputs: Record<string, string>;
   onCell: (status: string, month: number, value: string) => void;
+  onSave: () => void;
   onAddStatus: (name: string) => void;
-  onRemoveStatusLocal: (status: string) => void;
+  onRemoveStatus: (status: string) => void;
+  cancelSaves: () => void;
   onEdit: () => void;
   onChanged: (tree?: EducationPageTree) => void;
 }) {
@@ -925,24 +1034,6 @@ function AssetRows({
     onSuccess: () => onChanged(),
     onError: (e) => alert(e instanceof ApiError ? e.message : 'Failed to delete asset'),
   });
-  const removeStatus = useMutation({
-    mutationFn: (status: string) => {
-      // Replace with everything except the removed status' cells.
-      const values: { status: string; year: number; month: number; value: number }[] = [];
-      for (const [key, raw] of Object.entries(inputs)) {
-        if (!key.startsWith(`${asset.id}|`) || raw.trim() === '') continue;
-        const [, s, yearStr, monthStr] = key.split('|');
-        if (s === status) continue;
-        values.push({ status: s, year: Number(yearStr), month: Number(monthStr), value: Number(raw) });
-      }
-      return setEducationAssetValues(clientSlug, asset.id, values);
-    },
-    onSuccess: (t, status) => {
-      onRemoveStatusLocal(status);
-      onChanged(t);
-    },
-    onError: (e) => alert(e instanceof ApiError ? e.message : 'Failed to remove status row'),
-  });
 
   const meta = [asset.brand, asset.type, asset.author].filter(Boolean).join(' · ');
   const rows: (string | null)[] = statuses.length > 0 ? statuses : [null];
@@ -950,9 +1041,12 @@ function AssetRows({
   return (
     <>
       {rows.map((status, si) => (
-        <tr key={status ?? 'none'} className={si === rows.length - 1 ? 'border-b border-ph-charcoal/5' : ''}>
+        <tr
+          key={status ?? 'none'}
+          className={`${zebra ? 'bg-slate-100/50' : ''} ${si === rows.length - 1 ? 'border-b border-ph-charcoal/5' : ''}`}
+        >
           {si === 0 && (
-            <td rowSpan={rows.length} className="max-w-72 py-1.5 pr-3 align-top">
+            <td rowSpan={rows.length} className="max-w-72 py-1.5 pl-3 pr-3 align-top">
               <div className="text-xs font-medium text-ph-charcoal">{asset.title}</div>
               {(meta || asset.expiry) && (
                 <div className="text-[11px] text-ph-charcoal/50">
@@ -969,7 +1063,10 @@ function AssetRows({
                   className="text-ph-charcoal/40 hover:text-red-600"
                   title="Delete asset"
                   onClick={() => {
-                    if (confirm(`Delete asset "${asset.title}" and all its values?`)) removeAsset.mutate();
+                    if (confirm(`Delete asset "${asset.title}" and all its values?`)) {
+                      cancelSaves();
+                      removeAsset.mutate();
+                    }
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -989,9 +1086,12 @@ function AssetRows({
                   <input
                     type="number"
                     step="any"
+                    inputMode="numeric"
                     value={inputs[`${asset.id}|${status}|${dataYear}|${m}`] ?? ''}
-                    placeholder="-"
-                    onChange={(e) => onCell(status, m, e.target.value)}
+                    placeholder="0"
+                    onKeyDown={blockNonNumericKey}
+                    onChange={(e) => onCell(status, m, e.target.value.replace(/[^\d.]/g, ''))}
+                    onBlur={onSave}
                     className="h-7 w-14 rounded-md border border-ph-charcoal/20 bg-white px-1 text-center text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none"
                   />
                 </td>
@@ -1000,15 +1100,14 @@ function AssetRows({
           ) : (
             <td colSpan={12} />
           )}
-          <td className="pl-1">
+          <td className="pl-1 pr-3">
             {status && (
               <button
                 type="button"
-                className="text-ph-charcoal/40 hover:text-red-600 disabled:animate-pulse disabled:text-ph-charcoal/20"
+                className="text-ph-charcoal/40 hover:text-red-600"
                 title={`Remove ${status} row`}
-                disabled={removeStatus.isPending}
                 onClick={() => {
-                  if (confirm(`Remove status "${status}" and its saved values?`)) removeStatus.mutate(status);
+                  if (confirm(`Remove status "${status}" and its saved values?`)) onRemoveStatus(status);
                 }}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -1022,45 +1121,22 @@ function AssetRows({
 }
 
 function AddStatusInline({ existing, onAdd }: { existing: string[]; onAdd: (name: string) => void }) {
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState('');
-  if (!adding) {
-    return (
-      <button
-        type="button"
-        onClick={() => setAdding(true)}
-        className="text-[11px] font-medium text-ph-charcoal/50 hover:text-ph-purple"
-      >
-        + status
-      </button>
-    );
-  }
+  const available = EDU_STATUSES.filter((s) => !existing.includes(s));
+  if (available.length === 0) return null;
   return (
-    <form
-      className="flex items-center gap-1"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = name.trim();
-        if (trimmed && !existing.includes(trimmed)) onAdd(trimmed);
-        setName('');
-        setAdding(false);
+    <select
+      value=""
+      onChange={(e) => {
+        if (e.target.value) onAdd(e.target.value);
       }}
+      title="Add a status row"
+      className="h-6 rounded-md border border-ph-charcoal/20 bg-white px-1 text-[11px] font-medium text-ph-charcoal/50 hover:text-ph-purple focus:border-ph-purple focus:outline-none"
     >
-      <input
-        autoFocus
-        list="asset-status-suggestions"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Status"
-        className="h-6 w-24 rounded-md border border-ph-charcoal/20 bg-white px-1.5 text-[11px] text-ph-charcoal focus:border-ph-purple focus:outline-none"
-      />
-      <datalist id="asset-status-suggestions">
-        {STATUS_SUGGESTIONS.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-      <Button type="submit" size="sm" className="h-6 px-2 text-[11px]">Add</Button>
-    </form>
+      <option value="">+ status</option>
+      {available.map((s) => (
+        <option key={s} value={s}>{s}</option>
+      ))}
+    </select>
   );
 }
 
@@ -1106,58 +1182,64 @@ function AssetForm({
     onError: (e) => setError(e instanceof ApiError ? e.message : 'Save failed'),
   });
 
-  const field = 'h-8 rounded-md border border-ph-charcoal/20 bg-white px-2 text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none';
+  const field = 'h-8 w-full rounded-md border border-ph-charcoal/20 bg-white px-2 text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none';
+  const lbl = 'flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal';
 
   return (
-    <form
-      className="flex flex-wrap items-end gap-2 rounded-md border border-dashed border-ph-charcoal/15 p-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (group.trim() && title.trim()) save.mutate();
-      }}
-    >
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
-        Group (publisher block)
-        <input list="asset-group-suggestions" value={group} onChange={(e) => setGroup(e.target.value)} placeholder="e.g. AJP" className={`${field} w-36`} required />
-        <datalist id="asset-group-suggestions">
-          {groupOptions.map((g) => (
-            <option key={g} value={g} />
-          ))}
-        </datalist>
-      </label>
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
-        Brand
-        <input value={brand} onChange={(e) => setBrand(e.target.value)} className={`${field} w-28`} />
-      </label>
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
-        Type
-        <input list="asset-type-suggestions" value={type} onChange={(e) => setType(e.target.value)} className={`${field} w-28`} />
-        <datalist id="asset-type-suggestions">
-          {['Article', 'Podcast', 'Webinar', 'Module', 'Video', 'Webcast'].map((t) => (
-            <option key={t} value={t} />
-          ))}
-        </datalist>
-      </label>
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
-        Title
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${field} w-72`} required />
-      </label>
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
-        By
-        <input value={author} onChange={(e) => setAuthor(e.target.value)} className={`${field} w-40`} />
-      </label>
-      <label className="flex flex-col gap-1 text-[11px] font-medium text-ph-charcoal">
-        Expiry
-        <input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className={`${field} w-36`} />
-      </label>
-      <div className="flex items-center gap-1 pb-0.5">
-        <Button type="submit" size="sm" disabled={save.isPending}>
-          {save.isPending ? 'Saving…' : editing ? 'Save asset' : 'Add asset'}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onCancel}>
+      <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-sm font-semibold text-ph-charcoal">{editing ? 'Edit asset' : 'Add asset'}</h3>
+        <form
+          className="mt-3 grid grid-cols-2 gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (group.trim() && title.trim()) save.mutate();
+          }}
+        >
+          <label className={lbl}>
+            Group (publisher block)
+            <input list="asset-group-suggestions" value={group} onChange={(e) => setGroup(e.target.value)} placeholder="e.g. AJP" className={field} required />
+            <datalist id="asset-group-suggestions">
+              {groupOptions.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
+          </label>
+          <label className={lbl}>
+            Brand
+            <input value={brand} onChange={(e) => setBrand(e.target.value)} className={field} />
+          </label>
+          <label className={lbl}>
+            Type
+            <input list="asset-type-suggestions" value={type} onChange={(e) => setType(e.target.value)} className={field} />
+            <datalist id="asset-type-suggestions">
+              {['Article', 'Podcast', 'Webinar', 'Module', 'Video', 'Webcast'].map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </label>
+          <label className={lbl}>
+            By
+            <input value={author} onChange={(e) => setAuthor(e.target.value)} className={field} />
+          </label>
+          <label className={`${lbl} col-span-2`}>
+            Title
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className={field} required />
+          </label>
+          <label className={lbl}>
+            Expiry
+            <input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className={field} />
+          </label>
+          <div className="col-span-2 flex items-center gap-2 border-t border-ph-charcoal/10 pt-3">
+            <Button type="submit" size="sm" disabled={save.isPending}>
+              {save.isPending ? 'Saving…' : editing ? 'Save asset' : 'Add asset'}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+            {error && <p className="text-xs text-red-600">{error}</p>}
+          </div>
+        </form>
       </div>
-      {error && <p className="w-full text-xs text-red-600">{error}</p>}
-    </form>
+    </div>
   );
 }
 

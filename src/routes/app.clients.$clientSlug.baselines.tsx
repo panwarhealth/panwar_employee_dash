@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -488,12 +488,14 @@ function TargetForm({
     value: b?.value ?? 0,
     note: b?.note ?? '',
   });
+  const [savedId, setSavedId] = useState<string | null>(editing?.id ?? null);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: defaults(editing),
   });
 
   useEffect(() => {
+    setSavedId(editing?.id ?? null);
     form.reset(defaults(editing));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- defaults closes over preset
   }, [editing, preset, form]);
@@ -520,7 +522,7 @@ function TargetForm({
   }, [templates, selectedTemplateId, editing, preset]);
 
   const mutation = useMutation({
-    mutationFn: (v: Values) => {
+    mutationFn: async (v: Values) => {
       const body = {
         publisherId: v.publisherId,
         templateId: v.templateId,
@@ -529,16 +531,17 @@ function TargetForm({
         value: v.value,
         note: v.note?.trim() || undefined,
       };
-      return editing ? updateBaseline(clientSlug, editing.id, body) : createBaseline(clientSlug, body);
+      if (savedId) await updateBaseline(clientSlug, savedId, body);
+      else {
+        const created = await createBaseline(clientSlug, body);
+        setSavedId(created.id);
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
-      onDone();
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] }),
   });
 
   const del = useMutation({
-    mutationFn: () => deleteBaseline(clientSlug, editing!.id),
+    mutationFn: () => deleteBaseline(clientSlug, savedId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
       onDone();
@@ -546,6 +549,29 @@ function TargetForm({
   });
 
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
+  const triggerSave = () => {
+    if (mutation.isPending) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => form.handleSubmit((v) => mutation.mutate(v))(), 500);
+  };
+  const flushDone = () => {
+    clearTimeout(saveTimer.current);
+    form.handleSubmit((v) => mutation.mutate(v))();
+    onDone();
+  };
+  const selectSave = (name: Parameters<typeof form.register>[0]) => {
+    const r = form.register(name);
+    return {
+      ...r,
+      onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
+        void r.onChange(e);
+        triggerSave();
+      },
+    };
+  };
 
   // Rate calculator seed: a volume target already saved for the same
   // publisher + template + year (impressions or sends - the usual base the
@@ -564,16 +590,13 @@ function TargetForm({
     <Card>
       <CardContent className="pt-6">
         <h2 className="flex items-baseline gap-2 text-base font-semibold text-ph-charcoal">
-          {editing ? 'Edit KPI target' : 'New KPI target'}
+          {savedId ? 'Edit KPI target' : 'New KPI target'}
           <span className="text-sm font-normal text-ph-charcoal/50">· {formYear}</span>
         </h2>
-        <form
-          onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
-          className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
-        >
+        <form onBlur={triggerSave} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label="Publisher"
-            {...form.register('publisherId')}
+            {...selectSave('publisherId')}
             error={form.formState.errors.publisherId?.message}
           >
             <option value="">—</option>
@@ -584,7 +607,7 @@ function TargetForm({
 
           <Select
             label="Template"
-            {...form.register('templateId')}
+            {...selectSave('templateId')}
             error={form.formState.errors.templateId?.message}
             disabled={!selectedPublisherId}
           >
@@ -596,7 +619,7 @@ function TargetForm({
 
           <Select
             label="Metric"
-            {...form.register('metricKey')}
+            {...selectSave('metricKey')}
             error={form.formState.errors.metricKey?.message}
             disabled={!selectedTemplateId}
           >
@@ -616,18 +639,19 @@ function TargetForm({
 
           <RateCalculator
             seedBase={calcBase}
-            onUse={(v) => form.setValue('value', v, { shouldValidate: true })}
+            onUse={(v) => {
+              form.setValue('value', v, { shouldValidate: true });
+              triggerSave();
+            }}
           />
 
           <div className="col-span-full flex items-center gap-2">
-            <Button type="submit" size="sm" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Saving…' : editing ? 'Update target' : 'Save target'}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-              Cancel
-            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={flushDone}>Done</Button>
+            {mutation.isPending && <span className="text-xs text-ph-charcoal/50">Saving…</span>}
+            {!mutation.isPending && mutation.isSuccess && <span className="text-xs text-green-700">Saved ✓</span>}
+            {!savedId && <span className="text-xs text-ph-charcoal/45">Pick publisher, template, metric &amp; value to save</span>}
             {error && <span className="text-xs text-red-600">{error}</span>}
-            {editing && (
+            {savedId && (
               <Button
                 type="button"
                 size="sm"
