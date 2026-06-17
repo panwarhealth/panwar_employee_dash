@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Pencil, Upload, CopyPlus, Copy, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Pencil, Upload, Copy, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
@@ -29,7 +30,6 @@ import {
   updatePlacement,
   deletePlacement,
   duplicatePlacement,
-  clonePlacementYear,
   setPlacementKpis,
   setPlacementActuals,
   requestArtworkUploadUrl,
@@ -124,7 +124,6 @@ function PlacementsTab() {
   const { clientSlug } = Route.useParams();
   const { editId } = Route.useSearch();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const setEditing = (id: string | null) =>
     navigate({
       to: '/app/clients/$clientSlug/placements',
@@ -164,58 +163,34 @@ function PlacementsTab() {
     queryFn: listTemplates,
   });
 
-  const cloneYear = useMutation({
-    mutationFn: () => clonePlacementYear(clientSlug, selectedYear, selectedYear + 1),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'placements'] });
-      setSelectedYear(selectedYear + 1);
-    },
-  });
-
-  if (editId !== undefined) {
-    return (
-      <PlacementEditor
-        clientSlug={clientSlug}
-        placementId={editId === 'new' ? null : editId}
-        selectedYear={selectedYear}
-        brands={brands}
-        audiences={audiences}
-        publishers={publishers}
-        templates={templates}
-        onDone={() => setEditing(null)}
-      />
-    );
-  }
-
   return (
     <div className="flex flex-col gap-4">
+      <Modal
+        open={editId !== undefined}
+        onClose={() => setEditing(null)}
+        className="max-w-5xl"
+        title={`${selectedYear} · ${editId === 'new' ? 'New placement' : 'Edit placement'}`}
+      >
+        {editId !== undefined && (
+          <PlacementEditor
+            key={editId}
+            clientSlug={clientSlug}
+            placementId={editId === 'new' ? null : editId}
+            selectedYear={selectedYear}
+            brands={brands}
+            audiences={audiences}
+            publishers={publishers}
+            templates={templates}
+            onDone={() => setEditing(null)}
+          />
+        )}
+      </Modal>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-sm text-ph-charcoal/70">
-          Media placements for the selected reporting year. Each year holds its own buys and costs;
-          carry a year forward to start the next without rebuilding.
+          Media placements for {selectedYear}. Placements are saved per year.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          {placements.length > 0 && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={cloneYear.isPending}
-              onClick={() => {
-                if (
-                  confirm(
-                    `Carry ${selectedYear}'s placements into ${selectedYear + 1}? ` +
-                      `Names, publishers, creative and KPI targets copy over; media/CPD cost and monthly data start blank.`,
-                  )
-                ) {
-                  cloneYear.mutate();
-                }
-              }}
-            >
-              <CopyPlus className="h-4 w-4" />
-              {cloneYear.isPending ? 'Copying…' : `Start ${selectedYear + 1}`}
-            </Button>
-          )}
           <Button type="button" size="sm" onClick={() => setEditing('new')}>
             <Plus className="h-4 w-4" />
             New placement
@@ -228,8 +203,7 @@ function PlacementsTab() {
           {isLoading && <p className="text-sm text-ph-charcoal/60">Loading…</p>}
           {!isLoading && placements.length === 0 && (
             <p className="text-sm text-ph-charcoal/60">
-              No placements for {selectedYear} yet — create one
-              {years.length > 0 ? ', or carry a previous year forward.' : '.'}
+              No placements for {selectedYear} yet. Add one with "New placement".
             </p>
           )}
           {placements.length > 0 && (
@@ -362,8 +336,11 @@ function PlacementTable({
           </tr>
         </thead>
         <tbody>
-          {visible.map((p) => (
-            <tr key={p.id} className="border-b border-ph-charcoal/5 last:border-0">
+          {visible.map((p, i) => (
+            <tr
+              key={p.id}
+              className={`border-b border-ph-charcoal/5 last:border-0 ${i % 2 === 1 ? 'bg-slate-100/50' : ''}`}
+            >
               <td className="py-2 pr-4 font-medium text-ph-charcoal">
                 {p.name}
                 {p.isBonus && <Tag>bonus</Tag>}
@@ -713,17 +690,7 @@ function PlacementEditor({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-          ← Back to list
-        </Button>
-        <h2 className="flex items-baseline gap-2 text-base font-medium text-ph-charcoal">
-          <span className="text-sm font-normal text-ph-charcoal/50">{placementYear} ·</span>
-          {isEdit ? 'Edit placement' : 'New placement'}
-        </h2>
-      </div>
-
+    <div className="flex flex-col gap-4 p-6">
       <Card>
         <CardContent className="pt-6">
           <form

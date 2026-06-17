@@ -1,11 +1,12 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2, Pencil, Check, X, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Pencil, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
@@ -67,27 +68,31 @@ function KpiTargetsTab() {
           year pick these up automatically as their KPI targets.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          {formState === null && (
-            <Button type="button" size="sm" onClick={() => setFormState({ mode: 'new' })}>
-              <Plus className="h-4 w-4" />
-              New target
-            </Button>
-          )}
+          <Button type="button" size="sm" onClick={() => setFormState({ mode: 'new' })}>
+            <Plus className="h-4 w-4" />
+            New target
+          </Button>
         </div>
       </div>
 
-      {formState !== null && (
-        <TargetForm
-          clientSlug={clientSlug}
-          publishers={publishers}
-          templates={templates}
-          targets={targets}
-          year={selectedYear}
-          editing={formState.mode === 'edit' ? formState.baseline : null}
-          preset={formState.mode === 'new' ? formState.preset : undefined}
-          onDone={() => setFormState(null)}
-        />
-      )}
+      <Modal
+        open={formState !== null}
+        onClose={() => setFormState(null)}
+        title={`${formState?.mode === 'edit' ? 'Edit' : 'New'} KPI target · ${selectedYear}`}
+      >
+        {formState !== null && (
+          <TargetForm
+            key={formState.mode === 'edit' ? formState.baseline.id : 'new'}
+            clientSlug={clientSlug}
+            publishers={publishers}
+            templates={templates}
+            targets={targets}
+            year={selectedYear}
+            editing={formState.mode === 'edit' ? formState.baseline : null}
+            onDone={() => setFormState(null)}
+          />
+        )}
+      </Modal>
 
       <Card>
         <CardContent className="pt-6">
@@ -98,13 +103,7 @@ function KpiTargetsTab() {
             </p>
           )}
           {targets.length > 0 && (
-            <TargetMatrix
-              clientSlug={clientSlug}
-              targets={targets}
-              templates={templates}
-              onEditDetails={(b) => setFormState({ mode: 'edit', baseline: b })}
-              onAddCell={(preset) => setFormState({ mode: 'new', preset })}
-            />
+            <TargetTable targets={targets} onEdit={(b) => setFormState({ mode: 'edit', baseline: b })} />
           )}
         </CardContent>
       </Card>
@@ -138,29 +137,6 @@ const formatTarget = (b: Baseline) =>
     ? `${(b.value * 100).toLocaleString('en-AU', { maximumFractionDigits: 2 })}%`
     : Math.round(b.value).toLocaleString('en-AU');
 
-/**
- * Clicks targets are quoted as impressions x CTR, so editing either side
- * keeps the clicks target in sync (when the row has all three). Editing
- * clicks directly is an explicit override - nothing recomputes from it.
- */
-function clicksRecalc(
-  edited: Baseline,
-  newValue: number,
-  siblings: Baseline[],
-): { target: Baseline; value: number } | null {
-  if (edited.metricKey !== 'ctr' && edited.metricKey !== 'impressions') return null;
-  const clicksTarget = siblings.find((s) => s.metricKey === 'clicks');
-  if (!clicksTarget) return null;
-  const ctr =
-    edited.metricKey === 'ctr' ? newValue : siblings.find((s) => s.metricKey === 'ctr')?.value;
-  const impressions =
-    edited.metricKey === 'impressions'
-      ? newValue
-      : siblings.find((s) => s.metricKey === 'impressions')?.value;
-  if (ctr === undefined || impressions === undefined) return null;
-  return { target: clicksTarget, value: Math.round(impressions * ctr) };
-}
-
 // Canonical chip order: volume → engagements → rates, so every row reads the
 // way targets are quoted ("120,960 impressions at 0.62% CTR = 750 clicks").
 const KEY_ORDER: Record<string, number> = {
@@ -177,277 +153,131 @@ const KEY_ORDER: Record<string, number> = {
 };
 const keyOrder = (key: string) => KEY_ORDER[key] ?? 15;
 
-/**
- * Spreadsheet-style matrix: one table, publishers as group-header rows, a row
- * per template, metric columns. Values edit inline (click → input); empty
- * cells offer "+" when the template declares that metric. The form handles
- * creation and detail edits (note, rate calculator, delete).
- */
-function TargetMatrix({
-  clientSlug,
-  targets,
-  templates,
-  onEditDetails,
-  onAddCell,
-}: {
-  clientSlug: string;
-  targets: Baseline[];
-  templates: MetricTemplate[];
-  onEditDetails: (b: Baseline) => void;
-  onAddCell: (preset: CellPreset) => void;
-}) {
-  // Which metrics each template declares - gates the "+" on empty cells.
-  const templateFields = useMemo(() => {
-    const set = new Set<string>();
-    for (const t of templates) {
-      for (const f of t.fields) set.add(`${t.id}:${f.key}`);
-    }
-    return set;
-  }, [templates]);
+type SortKey = 'publisher' | 'type' | 'metric' | 'target' | 'note';
 
-  // Columns: every metric present this year, volume → engagements → rates.
-  const colKeys = useMemo(() => {
-    const keys = [...new Set(targets.map((t) => t.metricKey))];
-    return keys.sort((a, z) => keyOrder(a) - keyOrder(z) || a.localeCompare(z));
-  }, [targets]);
-
-  const groups = useMemo(() => {
-    const byPublisher = new Map<string, Baseline[]>();
-    for (const b of targets) {
-      const list = byPublisher.get(b.publisherId);
-      if (list) list.push(b);
-      else byPublisher.set(b.publisherId, [b]);
-    }
-    return [...byPublisher.values()]
-      .map((rows) => {
-        const byTemplate = new Map<string, Baseline[]>();
-        for (const b of rows) {
-          const list = byTemplate.get(b.templateId);
-          if (list) list.push(b);
-          else byTemplate.set(b.templateId, [b]);
-        }
-        const templateGroups = [...byTemplate.values()]
-          .map((trs) => ({
-            templateId: trs[0].templateId,
-            label: templateLabel(trs[0].templateCode),
-            rows: [...trs].sort(
-              (a, z) =>
-                keyOrder(a.metricKey) - keyOrder(z.metricKey) ||
-                a.metricKey.localeCompare(z.metricKey),
-            ),
-          }))
-          .sort((a, z) => a.label.localeCompare(z.label));
-        return {
-          publisherId: rows[0].publisherId,
-          publisherName: rows[0].publisherName,
-          templates: templateGroups,
-        };
-      })
-      .sort((a, z) => a.publisherName.localeCompare(z.publisherName));
-  }, [targets]);
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-ph-charcoal/10 text-xs uppercase tracking-wide text-ph-charcoal/60">
-            <th className="w-56 py-2 pr-4 text-left font-medium">Publisher / type</th>
-            {colKeys.map((k) => (
-              <th key={k} className="px-3 py-2 text-right font-medium">
-                {titleCaseKey(k)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((pub) => (
-            <Fragment key={pub.publisherId}>
-              <tr className="bg-ph-charcoal/[0.03]">
-                <td
-                  colSpan={colKeys.length + 1}
-                  className="py-1.5 pl-2 pr-4 font-semibold text-ph-charcoal"
-                >
-                  {pub.publisherName}
-                </td>
-              </tr>
-              {pub.templates.map((t) => (
-                <tr key={t.templateId} className="border-b border-ph-charcoal/5">
-                  <td className="py-1 pl-5 pr-4 text-xs uppercase tracking-wide text-ph-charcoal/50">
-                    {t.label}
-                  </td>
-                  {colKeys.map((k) => {
-                    const b = t.rows.find((r) => r.metricKey === k);
-                    if (b) {
-                      return (
-                        <td key={k} className="px-3 py-1 text-right">
-                          <EditableValue
-                            clientSlug={clientSlug}
-                            baseline={b}
-                            siblings={t.rows}
-                            onEditDetails={onEditDetails}
-                          />
-                        </td>
-                      );
-                    }
-                    const canAdd = templateFields.has(`${t.templateId}:${k}`);
-                    return (
-                      <td key={k} className="px-3 py-1 text-right">
-                        {canAdd ? (
-                          <button
-                            type="button"
-                            title={`Add ${titleCaseKey(k)} target`}
-                            onClick={() =>
-                              onAddCell({
-                                publisherId: pub.publisherId,
-                                templateId: t.templateId,
-                                metricKey: k,
-                              })
-                            }
-                            className="rounded p-1 text-ph-charcoal/20 hover:bg-ph-purple/5 hover:text-ph-purple"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        ) : (
-                          <span className="text-ph-charcoal/15">-</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/**
- * Inline cell editor: the value is a click target; editing swaps in a number
- * input with save / cancel / details. Rates are edited in percent (stored as
- * a fraction). Enter saves, Escape cancels.
- */
-function EditableValue({
-  clientSlug,
-  baseline,
-  siblings,
-  onEditDetails,
-}: {
-  clientSlug: string;
-  baseline: Baseline;
-  siblings: Baseline[];
-  onEditDetails: (b: Baseline) => void;
-}) {
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState('');
-  const rate = isRateKey(baseline.metricKey);
-
-  const save = useMutation({
-    mutationFn: async (value: number) => {
-      await updateBaseline(clientSlug, baseline.id, {
-        publisherId: baseline.publisherId,
-        templateId: baseline.templateId,
-        year: baseline.year,
-        metricKey: baseline.metricKey,
-        value,
-        note: baseline.note ?? undefined,
-      });
-      const recalc = clicksRecalc(baseline, value, siblings);
-      if (recalc) {
-        await updateBaseline(clientSlug, recalc.target.id, {
-          publisherId: recalc.target.publisherId,
-          templateId: recalc.target.templateId,
-          year: recalc.target.year,
-          metricKey: recalc.target.metricKey,
-          value: recalc.value,
-          note: recalc.target.note ?? undefined,
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
-      setEditing(false);
-    },
-  });
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        title={baseline.note ? `${baseline.note} - click to edit` : 'Click to edit'}
-        onClick={() => {
-          setText(String(rate ? parseFloat((baseline.value * 100).toFixed(6)) : baseline.value));
-          setEditing(true);
-        }}
-        className="group inline-flex items-center gap-1 rounded px-1.5 py-0.5 tabular-nums text-ph-charcoal hover:bg-ph-purple/5"
-      >
-        {formatTarget(baseline)}
-        <Pencil className="h-3 w-3 text-transparent group-hover:text-ph-purple/60" />
-      </button>
-    );
+const sortValue = (b: Baseline, key: SortKey): string | number => {
+  switch (key) {
+    case 'publisher': return b.publisherName.toLowerCase();
+    case 'type': return templateLabel(b.templateCode).toLowerCase();
+    case 'metric': return keyOrder(b.metricKey);
+    case 'target': return b.value;
+    case 'note': return (b.note ?? '').toLowerCase();
   }
+};
 
-  const commit = () => {
-    const n = Number(text);
-    if (!text.trim() || !Number.isFinite(n) || n < 0) return;
-    save.mutate(rate ? n / 100 : n);
+const compareByKey = (a: Baseline, b: Baseline, key: SortKey): number => {
+  const av = sortValue(a, key);
+  const bv = sortValue(b, key);
+  return typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
+};
+
+function TargetTable({
+  targets,
+  onEdit,
+}: {
+  targets: Baseline[];
+  onEdit: (b: Baseline) => void;
+}) {
+  const [filter, setFilter] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'publisher', dir: 'asc' });
+
+  const visible = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    const rows = q
+      ? targets.filter((b) =>
+          [b.publisherName, templateLabel(b.templateCode), titleCaseKey(b.metricKey), b.note ?? ''].some((s) =>
+            s.toLowerCase().includes(q),
+          ),
+        )
+      : targets;
+    return [...rows].sort((a, b) => {
+      const primary = compareByKey(a, b, sort.key);
+      if (primary !== 0) return sort.dir === 'asc' ? primary : -primary;
+      for (const k of ['publisher', 'type', 'metric', 'target'] as SortKey[]) {
+        const c = compareByKey(a, b, k);
+        if (c !== 0) return c;
+      }
+      return a.id.localeCompare(b.id);
+    });
+  }, [targets, filter, sort]);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+  const isDefault = filter === '' && sort.key === 'publisher' && sort.dir === 'asc';
+  const reset = () => {
+    setFilter('');
+    setSort({ key: 'publisher', dir: 'asc' });
   };
 
+  const SortTh = ({ k, label, align = 'left', w }: { k: SortKey; label: string; align?: 'left' | 'right'; w?: string }) => (
+    <th className={`${w ?? ''} py-2 ${align === 'right' ? 'text-right' : ''} pr-4 font-medium`}>
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className={`inline-flex items-center gap-1 hover:text-ph-charcoal ${align === 'right' ? 'flex-row-reverse' : ''}`}
+      >
+        {label}
+        {sort.key === k ? (
+          sort.dir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronsUpDown className="h-3 w-3 opacity-30" />
+        )}
+      </button>
+    </th>
+  );
+
   return (
-    <span className="inline-flex items-center gap-1">
-      <Input
-        autoFocus
-        type="number"
-        step="any"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-          }
-          if (e.key === 'Escape') setEditing(false);
-        }}
-        className="h-7 w-24 text-right text-sm"
-      />
-      {rate && <span className="text-xs text-ph-charcoal/50">%</span>}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0"
-        title="Save"
-        disabled={save.isPending}
-        onClick={commit}
-      >
-        <Check className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0"
-        title="Cancel"
-        onClick={() => setEditing(false)}
-      >
-        <X className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0"
-        title="Details (note, rate calculator, delete)"
-        onClick={() => {
-          setEditing(false);
-          onEditDetails(baseline);
-        }}
-      >
-        <MoreHorizontal className="h-3.5 w-3.5" />
-      </Button>
-    </span>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <Input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter (publisher, type, metric, note)..."
+          className="h-8 max-w-md text-sm"
+        />
+        {!isDefault && (
+          <Button type="button" size="sm" variant="ghost" onClick={reset}>
+            Reset
+          </Button>
+        )}
+        <span className="ml-auto text-xs text-ph-charcoal/50">
+          {visible.length} of {targets.length}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full table-fixed text-left text-sm">
+          <thead className="border-b border-ph-charcoal/10 text-xs uppercase tracking-wide text-ph-charcoal/60">
+            <tr>
+              <SortTh k="publisher" label="Publisher" w="w-[26%]" />
+              <SortTh k="type" label="Type" w="w-[16%]" />
+              <SortTh k="metric" label="Metric" w="w-[16%]" />
+              <SortTh k="target" label="Target" align="right" w="w-[12%]" />
+              <SortTh k="note" label="Notes" w="w-[26%]" />
+              <th className="w-[4%] py-2 text-right font-medium" />
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((b, i) => (
+              <tr
+                key={b.id}
+                className={`border-b border-ph-charcoal/5 last:border-0 ${i % 2 === 1 ? 'bg-slate-100/50' : ''}`}
+              >
+                <td className="truncate py-2 pr-4 font-medium text-ph-charcoal" title={b.publisherName}>{b.publisherName}</td>
+                <td className="truncate py-2 pr-4 text-ph-charcoal/70">{templateLabel(b.templateCode)}</td>
+                <td className="truncate py-2 pr-4 text-ph-charcoal/70">{titleCaseKey(b.metricKey)}</td>
+                <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">{formatTarget(b)}</td>
+                <td className="truncate py-2 pr-4 text-ph-charcoal/60" title={b.note ?? ''}>{b.note}</td>
+                <td className="py-2 text-right whitespace-nowrap">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(b)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -488,14 +318,12 @@ function TargetForm({
     value: b?.value ?? 0,
     note: b?.note ?? '',
   });
-  const [savedId, setSavedId] = useState<string | null>(editing?.id ?? null);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: defaults(editing),
   });
 
   useEffect(() => {
-    setSavedId(editing?.id ?? null);
     form.reset(defaults(editing));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- defaults closes over preset
   }, [editing, preset, form]);
@@ -531,17 +359,17 @@ function TargetForm({
         value: v.value,
         note: v.note?.trim() || undefined,
       };
-      if (savedId) await updateBaseline(clientSlug, savedId, body);
-      else {
-        const created = await createBaseline(clientSlug, body);
-        setSavedId(created.id);
-      }
+      if (editing) await updateBaseline(clientSlug, editing.id, body);
+      else await createBaseline(clientSlug, body);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
+      onDone();
+    },
   });
 
   const del = useMutation({
-    mutationFn: () => deleteBaseline(clientSlug, savedId!),
+    mutationFn: () => deleteBaseline(clientSlug, editing!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'baselines'] });
       onDone();
@@ -549,29 +377,6 @@ function TargetForm({
   });
 
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(() => () => clearTimeout(saveTimer.current), []);
-  const triggerSave = () => {
-    if (mutation.isPending) return;
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => form.handleSubmit((v) => mutation.mutate(v))(), 500);
-  };
-  const flushDone = () => {
-    clearTimeout(saveTimer.current);
-    form.handleSubmit((v) => mutation.mutate(v))();
-    onDone();
-  };
-  const selectSave = (name: Parameters<typeof form.register>[0]) => {
-    const r = form.register(name);
-    return {
-      ...r,
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
-        void r.onChange(e);
-        triggerSave();
-      },
-    };
-  };
 
   // Rate calculator seed: a volume target already saved for the same
   // publisher + template + year (impressions or sends - the usual base the
@@ -587,19 +392,14 @@ function TargetForm({
   }, [targets, selectedPublisherId, selectedTemplateId]);
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <h2 className="flex items-baseline gap-2 text-base font-semibold text-ph-charcoal">
-          {savedId ? 'Edit KPI target' : 'New KPI target'}
-          <span className="text-sm font-normal text-ph-charcoal/50">· {formYear}</span>
-        </h2>
-        <form onBlur={triggerSave} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="p-6">
+        <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label="Publisher"
-            {...selectSave('publisherId')}
+            {...form.register('publisherId')}
             error={form.formState.errors.publisherId?.message}
           >
-            <option value="">—</option>
+            <option value="">-</option>
             {publishers.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -607,11 +407,11 @@ function TargetForm({
 
           <Select
             label="Template"
-            {...selectSave('templateId')}
+            {...form.register('templateId')}
             error={form.formState.errors.templateId?.message}
             disabled={!selectedPublisherId}
           >
-            <option value="">—</option>
+            <option value="">-</option>
             {availableTemplates.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
@@ -619,11 +419,11 @@ function TargetForm({
 
           <Select
             label="Metric"
-            {...selectSave('metricKey')}
+            {...form.register('metricKey')}
             error={form.formState.errors.metricKey?.message}
             disabled={!selectedTemplateId}
           >
-            <option value="">—</option>
+            <option value="">-</option>
             {availableMetrics.map((f) => (
               <option key={f.key} value={f.key}>{f.label}</option>
             ))}
@@ -641,17 +441,16 @@ function TargetForm({
             seedBase={calcBase}
             onUse={(v) => {
               form.setValue('value', v, { shouldValidate: true });
-              triggerSave();
             }}
           />
 
           <div className="col-span-full flex items-center gap-2">
-            <Button type="button" size="sm" variant="ghost" onClick={flushDone}>Done</Button>
-            {mutation.isPending && <span className="text-xs text-ph-charcoal/50">Saving…</span>}
-            {!mutation.isPending && mutation.isSuccess && <span className="text-xs text-green-700">Saved ✓</span>}
-            {!savedId && <span className="text-xs text-ph-charcoal/45">Pick publisher, template, metric &amp; value to save</span>}
+            <Button type="submit" size="sm" disabled={mutation.isPending}>
+              {mutation.isPending ? 'Saving...' : editing ? 'Save changes' : 'Create target'}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={onDone}>Cancel</Button>
             {error && <span className="text-xs text-red-600">{error}</span>}
-            {savedId && (
+            {editing && (
               <Button
                 type="button"
                 size="sm"
@@ -668,8 +467,7 @@ function TargetForm({
             )}
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 

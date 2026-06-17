@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2, Pencil, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
@@ -18,6 +19,8 @@ import {
   deleteCpdInvestment,
   CPD_FORMATS,
   cpdFormatLabel,
+  MONTHS,
+  monthRangeLabel,
   type CpdInvestmentListItem,
   type CpdInvestmentWriteBody,
 } from '@/api/cpdInvestments';
@@ -116,14 +119,21 @@ function CpdInvestmentsTab() {
         )}
       </div>
 
-      {editing !== null && (
-        <CpdEditor
-          clientSlug={clientSlug}
-          year={year}
-          existing={editing === 'new' ? null : editing}
-          onDone={() => setEditing(null)}
-        />
-      )}
+      <Modal
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={`${year} · ${editing === 'new' ? 'New CPD investment' : 'Edit CPD investment'}`}
+      >
+        {editing !== null && (
+          <CpdEditor
+            key={editing === 'new' ? 'new' : editing.id}
+            clientSlug={clientSlug}
+            year={year}
+            existing={editing === 'new' ? null : editing}
+            onDone={() => setEditing(null)}
+          />
+        )}
+      </Modal>
 
       <Card>
         <CardContent className="pt-6">
@@ -158,18 +168,23 @@ function CpdInvestmentsTab() {
                       <SortTh k="publisher" label="Publisher" />
                       <SortTh k="format" label="Format" />
                       <SortTh k="title" label="Title" />
+                      <th className="py-2 pr-4 font-medium">Period</th>
                       <SortTh k="cost" label="Cost" align="right" />
                       <th className="py-2 text-right font-medium" />
                     </tr>
                   </thead>
                   <tbody>
-                    {visible.map((it) => (
-                      <tr key={it.id} className="border-b border-ph-charcoal/5 last:border-0">
+                    {visible.map((it, i) => (
+                      <tr
+                        key={it.id}
+                        className={`border-b border-ph-charcoal/5 last:border-0 ${i % 2 === 1 ? 'bg-slate-100/50' : ''}`}
+                      >
                         <td className="py-2 pr-4 font-medium text-ph-charcoal">{it.brandName}</td>
                         <td className="py-2 pr-4 text-ph-charcoal/70">{it.audienceName}</td>
                         <td className="py-2 pr-4 text-ph-charcoal/70">{it.publisherName}</td>
                         <td className="py-2 pr-4 text-ph-charcoal/70">{cpdFormatLabel(it.format)}</td>
                         <td className="py-2 pr-4 text-ph-charcoal/80">{it.title}</td>
+                        <td className="py-2 pr-4 text-ph-charcoal/70">{monthRangeLabel(it.startMonth, it.endMonth)}</td>
                         <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">{currency(it.cost)}</td>
                         <td className="py-2 text-right whitespace-nowrap">
                           <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(it)}>
@@ -182,7 +197,7 @@ function CpdInvestmentsTab() {
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-ph-charcoal/10 font-medium text-ph-charcoal">
-                      <td className="py-3 pr-4" colSpan={5}>
+                      <td className="py-3 pr-4" colSpan={6}>
                         Total CPD investment
                       </td>
                       <td className="py-3 pr-4 text-right tabular-nums">{currency(total)}</td>
@@ -220,15 +235,27 @@ function DeleteButton({ clientSlug, id, title }: { clientSlug: string; id: strin
   );
 }
 
-const schema = z.object({
-  brandId: z.string().min(1, 'Pick a brand'),
-  audienceId: z.string().min(1, 'Pick an audience'),
-  publisherId: z.string().min(1, 'Pick a publisher'),
-  format: z.string().min(1, 'Pick a format'),
-  title: z.string().min(1, 'Title required'),
-  cost: z.coerce.number().nonnegative('Must be ≥ 0'),
-  notes: z.string().optional(),
-});
+const monthField = z.preprocess(
+  (v) => (v === '' || v == null ? undefined : Number(v)),
+  z.number().int().min(1).max(12).optional(),
+);
+
+const schema = z
+  .object({
+    brandId: z.string().min(1, 'Pick a brand'),
+    audienceId: z.string().min(1, 'Pick an audience'),
+    publisherId: z.string().min(1, 'Pick a publisher'),
+    format: z.string().min(1, 'Pick a format'),
+    title: z.string().min(1, 'Title required'),
+    cost: z.coerce.number().nonnegative('Must be 0 or more'),
+    startMonth: monthField,
+    endMonth: monthField,
+    notes: z.string().optional(),
+  })
+  .refine((d) => d.startMonth == null || d.endMonth == null || d.startMonth <= d.endMonth, {
+    message: 'End month must be on or after the start',
+    path: ['endMonth'],
+  });
 type Values = z.infer<typeof schema>;
 
 function CpdEditor({
@@ -243,11 +270,14 @@ function CpdEditor({
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [savedId, setSavedId] = useState<string | null>(existing?.id ?? null);
 
-  const { data: brands = [] } = useQuery({ queryKey: ['manage', 'clients', clientSlug, 'brands'], queryFn: () => listBrands(clientSlug) });
-  const { data: audiences = [] } = useQuery({ queryKey: ['manage', 'clients', clientSlug, 'audiences'], queryFn: () => listAudiences(clientSlug) });
-  const { data: publishers = [] } = useQuery({ queryKey: ['manage', 'publishers'], queryFn: listPublishers });
+  const brandsQ = useQuery({ queryKey: ['manage', 'clients', clientSlug, 'brands'], queryFn: () => listBrands(clientSlug) });
+  const audiencesQ = useQuery({ queryKey: ['manage', 'clients', clientSlug, 'audiences'], queryFn: () => listAudiences(clientSlug) });
+  const publishersQ = useQuery({ queryKey: ['manage', 'publishers'], queryFn: listPublishers });
+  const brands = brandsQ.data ?? [];
+  const audiences = audiencesQ.data ?? [];
+  const publishers = publishersQ.data ?? [];
+  const optionsLoading = brandsQ.isLoading || audiencesQ.isLoading || publishersQ.isLoading;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -259,9 +289,11 @@ function CpdEditor({
           format: existing.format,
           title: existing.title,
           cost: existing.cost,
+          startMonth: existing.startMonth ?? undefined,
+          endMonth: existing.endMonth ?? undefined,
           notes: existing.notes ?? '',
         }
-      : { brandId: '', audienceId: '', publisherId: '', format: 'article', title: '', cost: 0, notes: '' },
+      : { brandId: '', audienceId: '', publisherId: '', format: 'article', title: '', cost: 0, startMonth: undefined, endMonth: undefined, notes: '' },
   });
 
   const save = useMutation({
@@ -274,71 +306,45 @@ function CpdEditor({
         format: v.format,
         title: v.title.trim(),
         cost: v.cost || 0,
+        startMonth: v.startMonth ?? v.endMonth ?? null,
+        endMonth: v.endMonth ?? v.startMonth ?? null,
         notes: v.notes?.trim() || null,
       };
-      if (savedId) {
-        await updateCpdInvestment(clientSlug, savedId, body);
+      if (existing) {
+        await updateCpdInvestment(clientSlug, existing.id, body);
       } else {
-        const created = await createCpdInvestment(clientSlug, body);
-        setSavedId(created.id);
+        await createCpdInvestment(clientSlug, body);
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'cpd-investments'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug, 'cpd-investments'] });
+      onDone();
+    },
   });
-
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(() => () => clearTimeout(saveTimer.current), []);
-  const triggerSave = () => {
-    if (save.isPending) return;
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => form.handleSubmit((v) => save.mutate(v))(), 500);
-  };
-  const flushDone = () => {
-    clearTimeout(saveTimer.current);
-    form.handleSubmit((v) => save.mutate(v))();
-    onDone();
-  };
-  const selectSave = (name: Parameters<typeof form.register>[0]) => {
-    const r = form.register(name);
-    return {
-      ...r,
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
-        void r.onChange(e);
-        triggerSave();
-      },
-    };
-  };
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
 
   const error = save.error instanceof ApiError ? save.error.message : null;
 
+  if (optionsLoading) {
+    return <div className="p-6 text-sm text-ph-charcoal/60">Loading...</div>;
+  }
+
   return (
-    <div ref={scrollRef}>
-    <Card>
-      <CardContent className="pt-6">
-        <h2 className="flex items-baseline gap-2 text-base font-medium text-ph-charcoal">
-          <span className="text-sm font-normal text-ph-charcoal/50">{year} ·</span>
-          {savedId ? 'Edit CPD investment' : 'New CPD investment'}
-        </h2>
-        <form onBlur={triggerSave} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Select label="Brand" {...selectSave('brandId')} error={form.formState.errors.brandId?.message}>
-            <option value="">—</option>
+    <div className="p-6">
+        <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Select label="Brand" {...form.register('brandId')} error={form.formState.errors.brandId?.message}>
+            <option value="">-</option>
             {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </Select>
-          <Select label="Audience" {...selectSave('audienceId')} error={form.formState.errors.audienceId?.message}>
-            <option value="">—</option>
+          <Select label="Audience" {...form.register('audienceId')} error={form.formState.errors.audienceId?.message}>
+            <option value="">-</option>
             {audiences.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </Select>
-          <Select label="Publisher" {...selectSave('publisherId')} error={form.formState.errors.publisherId?.message}>
-            <option value="">—</option>
+          <Select label="Publisher" {...form.register('publisherId')} error={form.formState.errors.publisherId?.message}>
+            <option value="">-</option>
             {publishers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
 
-          <Select label="Format" {...selectSave('format')} error={form.formState.errors.format?.message}>
+          <Select label="Format" {...form.register('format')} error={form.formState.errors.format?.message}>
             {CPD_FORMATS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
           </Select>
           <LabeledField label="Title" error={form.formState.errors.title?.message}>
@@ -347,20 +353,26 @@ function CpdEditor({
           <LabeledField label="Cost (AUD)" error={form.formState.errors.cost?.message}>
             <Input type="number" step="any" {...form.register('cost')} />
           </LabeledField>
+          <Select label="Start month (optional)" {...form.register('startMonth')} error={form.formState.errors.startMonth?.message}>
+            <option value="">-</option>
+            {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </Select>
+          <Select label="End month (optional)" {...form.register('endMonth')} error={form.formState.errors.endMonth?.message}>
+            <option value="">-</option>
+            {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </Select>
           <LabeledField label="Notes (optional)">
             <Input {...form.register('notes')} />
           </LabeledField>
 
           <div className="col-span-full flex items-center gap-2 border-t border-ph-charcoal/10 pt-4">
-            <Button type="button" size="sm" variant="ghost" onClick={flushDone}>Done</Button>
-            {save.isPending && <span className="text-xs text-ph-charcoal/50">Saving…</span>}
-            {!save.isPending && save.isSuccess && <span className="text-xs text-green-700">Saved ✓</span>}
-            {!savedId && <span className="text-xs text-ph-charcoal/45">Fill brand, audience, publisher &amp; title to save</span>}
+            <Button type="submit" size="sm" disabled={save.isPending}>
+              {save.isPending ? 'Saving...' : existing ? 'Save changes' : 'Create'}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={onDone}>Cancel</Button>
             {error && <span className="text-xs text-red-600">{error}</span>}
           </div>
         </form>
-      </CardContent>
-    </Card>
     </div>
   );
 }
