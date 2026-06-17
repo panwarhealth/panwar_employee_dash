@@ -17,7 +17,7 @@ export const Route = createFileRoute('/app/clients/$clientSlug')({
 // hasYear marks tabs whose content is scoped to the workspace reporting year;
 // the shared YearPicker in the tab bar only shows on those.
 const TABS = [
-  { to: '/app/clients/$clientSlug/details', label: 'Details', hasYear: false },
+  { to: '/app/clients/$clientSlug/details', label: 'Admin', hasYear: false },
   { to: '/app/clients/$clientSlug/brands', label: 'Brands', hasYear: false },
   { to: '/app/clients/$clientSlug/audiences', label: 'Audiences', hasYear: false },
   { to: '/app/clients/$clientSlug/placements', label: 'Placements', hasYear: true },
