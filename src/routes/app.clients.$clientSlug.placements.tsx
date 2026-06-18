@@ -128,9 +128,9 @@ function PlacementsTab() {
     navigate({
       to: '/app/clients/$clientSlug/placements',
       params: { clientSlug },
-      search: id ? { editId: id } : {},
+      search: id ? { editId: id } : { editId: undefined },
     });
-  const { year: selectedYear, setYear: setSelectedYear, initYear } = useWorkspaceYear();
+  const { year: selectedYear, initYear } = useWorkspaceYear();
 
   const { data, isLoading } = useQuery({
     queryKey: ['manage', 'clients', clientSlug, 'placements', selectedYear],
@@ -641,7 +641,7 @@ function PlacementEditor({
     onSuccess: () => invalidateList(),
   });
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(saveTimer.current), []);
   const triggerSave = () => {
     if (!isEdit || update.isPending) return;

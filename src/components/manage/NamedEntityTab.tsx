@@ -151,7 +151,7 @@ function EntityForm({
   const error = mutation.error instanceof ApiError ? mutation.error.message : null;
   const color = form.watch('color') ?? '';
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(saveTimer.current), []);
   const triggerSave = () => {
     if (mutation.isPending) return;
