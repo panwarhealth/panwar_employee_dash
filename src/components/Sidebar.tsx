@@ -19,7 +19,7 @@ interface NavItem {
 // hover. overflow-hidden clips the text to the 0-width track when collapsed, so
 // there's no opacity/display hack and nothing fights the panel widening.
 const reveal =
-  'grid grid-cols-[0fr] overflow-hidden transition-[grid-template-columns] duration-200 ease-in-out group-hover:grid-cols-[1fr]';
+  'grid grid-cols-[minmax(0,0fr)] overflow-hidden transition-[grid-template-columns] duration-200 ease-in-out group-hover:grid-cols-[minmax(0,1fr)]';
 
 /**
  * Collapsed icon rail that expands over the content on hover (Cloudflare-style).
@@ -72,7 +72,7 @@ function GroupHeading({ title }: { title: string }) {
   return (
     <div className="mx-1 mt-2">
       <hr className="border-ph-charcoal/10" />
-      <div className="grid grid-rows-[0fr] overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out group-hover:grid-rows-[1fr]">
+      <div className="grid grid-rows-[minmax(0,0fr)] overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out group-hover:grid-rows-[minmax(0,1fr)]">
         <span className="overflow-hidden whitespace-nowrap pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-ph-charcoal/40">
           {title}
         </span>
