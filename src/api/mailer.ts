@@ -16,7 +16,7 @@ export interface ReportInvite {
   viewedAt: string | null;
 }
 
-export type PreviewMode = 'stats' | 'note' | 'none';
+export type PreviewMode = 'stats' | 'chart' | 'summary' | 'note' | 'none';
 
 export interface SendInvitesBody {
   template: string;

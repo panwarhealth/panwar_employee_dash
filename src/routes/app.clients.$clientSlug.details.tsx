@@ -81,6 +81,7 @@ function ReportInvitesCard({ clientSlug, users }: { clientSlug: string; users: C
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const fitIframe = () => {
@@ -90,6 +91,12 @@ function ReportInvitesCard({ clientSlug, users }: { clientSlug: string; users: C
     const h = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0);
     el.style.height = `${h + 2}px`;
   };
+
+  // The email reflows when the iframe width changes - re-measure after switching device.
+  useEffect(() => {
+    const id = setTimeout(fitIframe, 60);
+    return () => clearTimeout(id);
+  }, [previewDevice]);
 
   const onPreviewLoad = () => {
     fitIframe();
@@ -256,6 +263,8 @@ function ReportInvitesCard({ clientSlug, users }: { clientSlug: string; users: C
               className="h-9 rounded border border-ph-charcoal/15 px-2 text-sm"
             >
               <option value="stats">Headline stats (auto)</option>
+              <option value="chart">Spend by brand (auto)</option>
+              <option value="summary">Summary excerpt (auto)</option>
               <option value="note">Custom note</option>
               <option value="none">None</option>
             </select>
@@ -273,16 +282,34 @@ function ReportInvitesCard({ clientSlug, users }: { clientSlug: string; users: C
             </label>
           )}
         </div>
-        {previewMode === 'stats' && (
+        {(previewMode === 'stats' || previewMode === 'chart' || previewMode === 'summary') && (
           <p className="mt-1 text-xs text-ph-charcoal/45">
-            Auto-pulls Spend (incl CPD), Engagements and % vs KPI for the chosen period.
+            Pulled live from this client's data for the chosen period.
           </p>
         )}
 
         <div className="mt-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-ph-charcoal">Preview</span>
-            {previewLoading && <span className="text-xs text-ph-charcoal/45">Updating…</span>}
+            <div className="flex items-center gap-3">
+              {previewLoading && <span className="text-xs text-ph-charcoal/45">Updating…</span>}
+              <div className="flex overflow-hidden rounded border border-ph-charcoal/15 text-xs">
+                {(['desktop', 'mobile'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setPreviewDevice(d)}
+                    className={`px-3 py-1 capitalize ${
+                      previewDevice === d
+                        ? 'bg-ph-purple text-white'
+                        : 'text-ph-charcoal/60 hover:text-ph-charcoal'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           {previewError ? (
             <p className="mt-2 rounded border border-red-200 bg-red-50 p-3 text-xs text-red-600">
@@ -296,7 +323,8 @@ function ReportInvitesCard({ clientSlug, users }: { clientSlug: string; users: C
                 srcDoc={previewHtml}
                 onLoad={onPreviewLoad}
                 scrolling="no"
-                className="block w-[600px] max-w-full"
+                style={{ width: previewDevice === 'mobile' ? 390 : 600, maxWidth: '100%' }}
+                className="block"
               />
             </div>
           )}
@@ -343,7 +371,7 @@ function ReportInvitesCard({ clientSlug, users }: { clientSlug: string; users: C
           </>
         )}
 
-        <Modal open={confirming} onClose={closeConfirm} title="Confirm send">
+        <Modal open={confirming} onClose={closeConfirm} title="Confirm send" className="max-w-md">
           <div className="flex flex-col gap-3 p-6">
             <p className="text-sm text-ph-charcoal/80">
               This emails the "{inviteTemplateLabel(template)}" template for {periodLabel} to{' '}
@@ -408,7 +436,8 @@ function InviteHistory({ clientSlug }: { clientSlug: string }) {
                 <th className="py-2 pr-4 font-medium">Recipient</th>
                 <th className="py-2 pr-4 font-medium">Type</th>
                 <th className="py-2 pr-4 font-medium">Period</th>
-                <th className="py-2 pr-4 font-medium">Sent</th>
+                <th className="py-2 pr-4 font-medium">Last sent</th>
+                <th className="py-2 pr-4 font-medium">Sends</th>
                 <th className="py-2 pr-4 font-medium">Clicked</th>
                 <th className="py-2 pr-4 font-medium">Viewed</th>
               </tr>
@@ -423,6 +452,7 @@ function InviteHistory({ clientSlug }: { clientSlug: string }) {
                   <td className="py-2 pr-4 text-ph-charcoal/70">{inviteTemplateLabel(inv.template)}</td>
                   <td className="py-2 pr-4 text-ph-charcoal/70">{invitePeriodLabel(inv)}</td>
                   <td className="py-2 pr-4 text-ph-charcoal/70">{fmt(inv.sentAt)}</td>
+                  <td className="py-2 pr-4 text-ph-charcoal/70">{inv.sendCount > 1 ? `×${inv.sendCount}` : '1'}</td>
                   <td className="py-2 pr-4 text-ph-charcoal/70">{fmt(inv.clickedAt)}</td>
                   <td className="py-2 pr-4 text-ph-charcoal/70">
                     {inv.viewedAt ? (
