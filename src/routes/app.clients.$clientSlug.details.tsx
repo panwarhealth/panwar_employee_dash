@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,9 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { YearPicker } from '@/components/YearPicker';
 import { ApiError } from '@/api/client';
+import { useHasRole } from '@/hooks/useAuth';
 import {
   addClientUser,
+  deleteClient,
   listClientUsers,
+  listClients,
   removeClientUser,
   type ClientUser,
 } from '@/api/clients';
@@ -61,7 +64,106 @@ function DetailsTab() {
 
       <ReportInvitesCard clientSlug={clientSlug} users={users} />
       <InviteHistory clientSlug={clientSlug} />
+      <DangerZoneCard clientSlug={clientSlug} />
     </div>
+  );
+}
+
+function DangerZoneCard({ clientSlug }: { clientSlug: string }) {
+  const isAdmin = useHasRole('panwar-admin');
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: clients } = useQuery({
+    queryKey: ['manage', 'clients'],
+    queryFn: listClients,
+  });
+  const client = clients?.find((c) => c.slug === clientSlug);
+
+  const closeConfirm = () => {
+    setConfirming(false);
+    setConfirmText('');
+    setError(null);
+  };
+
+  const del = useMutation({
+    mutationFn: () => deleteClient(clientSlug, client?.name ?? ''),
+    onSuccess: async () => {
+      closeConfirm();
+      await queryClient.invalidateQueries({ queryKey: ['manage', 'clients'] });
+      navigate({ to: '/app/clients' });
+    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : 'Delete failed'),
+  });
+
+  if (!isAdmin || !client) return null;
+
+  const confirmed = confirmText === client.name;
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <h2 className="text-base font-semibold text-ph-charcoal">Danger zone</h2>
+        <div className="mt-4 flex flex-col gap-3 rounded border border-red-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-ph-charcoal">Delete this workbook</p>
+            <p className="mt-1 text-sm text-ph-charcoal/60">
+              Hides {client.name} and all its data immediately. Recoverable for 30 days (contact an
+              admin), then permanently deleted.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+            onClick={() => setConfirming(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete this workbook
+          </Button>
+        </div>
+      </CardContent>
+
+      <Modal open={confirming} onClose={closeConfirm} title="Delete workbook" className="max-w-md">
+        <div className="flex flex-col gap-3 p-6">
+          <p className="text-sm text-ph-charcoal/80">
+            This hides <span className="font-semibold">{client.name}</span> and everything in it,
+            and permanently deletes it after 30 days. Recoverable before then by contacting an admin.
+          </p>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-ph-charcoal">
+              Type &ldquo;{client.name}&rdquo; to confirm
+            </span>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={client.name}
+              autoFocus
+            />
+          </label>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={!confirmed || del.isPending}
+              onClick={() => del.mutate()}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete workbook
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={closeConfirm}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </Card>
   );
 }
 

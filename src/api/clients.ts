@@ -70,3 +70,10 @@ export async function removeClientUser(clientSlug: string, userId: string): Prom
     { method: 'DELETE' },
   );
 }
+
+export async function deleteClient(clientSlug: string, confirmName: string): Promise<void> {
+  await apiFetch(`/manage/clients/${encodeURIComponent(clientSlug)}`, {
+    method: 'DELETE',
+    body: { confirmName },
+  });
+}
