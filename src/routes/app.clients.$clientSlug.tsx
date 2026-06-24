@@ -25,7 +25,7 @@ const TABS = [
   { to: '/app/clients/$clientSlug/education', label: 'Education Engagement', hasYear: true },
   { to: '/app/clients/$clientSlug/baselines', label: 'KPI Targets', hasYear: true },
   { to: '/app/clients/$clientSlug/summary', label: 'Summary', hasYear: true },
-  { to: '/app/clients/$clientSlug/import', label: 'Import', hasYear: false },
+  { to: '/app/clients/$clientSlug/import', label: 'Import', hasYear: true },
 ] as const;
 
 function ClientWorkspaceLayout() {
