@@ -91,9 +91,15 @@ function formatIsoMonth(iso: string | null): string {
   return `${MONTHS[m - 1]?.label ?? '?'} ${y}`;
 }
 
+function formatIsoDay(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${MONTHS[m - 1]?.label ?? '?'} ${y}`;
+}
+
 /** The cell shown in the table's date column, per placement date shape. */
 function datesSummary(p: PlacementListItem): string {
   if (p.startDate && p.endDate) return `${formatIsoMonth(p.startDate)} - ${formatIsoMonth(p.endDate)}`;
+  if (p.sendDates.length > 1) return `${p.sendDates.length} sends: ${p.sendDates.map(formatIsoDay).join(', ')}`;
   if (p.startDate) return formatIsoMonth(p.startDate);
   return p.liveMonths.map((m) => MONTHS[m - 1]?.label).join(', ') || '—';
 }
@@ -462,6 +468,7 @@ function PlacementEditor({
 
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: BLANK });
   const [liveMonths, setLiveMonths] = useState<number[]>([]);
+  const [sendDates, setSendDates] = useState<string[]>([]);
   const [kpiInputs, setKpiInputs] = useState<Record<string, string>>({});
   const [actualInputs, setActualInputs] = useState<Record<string, string>>({});
   const [artworkKey, setArtworkKey] = useState<string | null>(null);
@@ -494,6 +501,11 @@ function PlacementEditor({
       comments: detail.comments ?? '',
     });
     setLiveMonths(detail.liveMonths);
+    // Legacy eDMs carry one date in startDate only - surface it as the first chip
+    // so saving the form migrates it into the send-date list.
+    setSendDates(detail.sendDates.length > 0
+      ? detail.sendDates
+      : detail.templateCode === 'edm' && detail.startDate ? [detail.startDate] : []);
     setKpiInputs(Object.fromEntries(detail.kpis.map((k) => [k.metricKey, String(k.targetValue)])));
     setArtworkKey(detail.artworkUrl);
     setArtworkPreview(null);
@@ -546,8 +558,8 @@ function PlacementEditor({
     if (isEducation && watchStart && watchEnd) {
       for (const p of enumerateMonths(watchStart, watchEnd)) add(p.year, p.month);
     } else if (isEdm) {
-      if (watchStart) {
-        const [y, m] = watchStart.split('-').map(Number);
+      for (const iso of sendDates) {
+        const [y, m] = iso.split('-').map(Number);
         if (y && m) add(y, m);
       }
     } else {
@@ -555,7 +567,7 @@ function PlacementEditor({
     }
     for (const a of detail?.actuals ?? []) add(a.year, a.month);
     return [...map.values()].sort((a, b) => a.year - b.year || a.month - b.month);
-  }, [isEducation, isEdm, watchStart, watchEnd, liveMonths, placementYear, detail]);
+  }, [isEducation, isEdm, watchStart, watchEnd, liveMonths, sendDates, placementYear, detail]);
 
   const periodsSpanYears = useMemo(
     () => new Set(periods.map((p) => p.year)).size > 1,
@@ -582,8 +594,11 @@ function PlacementEditor({
     // Date shape + sub-category follow the template; the API also normalises,
     // but sending the right shape keeps the payload honest.
     liveMonths: isEdm || isEducation ? [] : liveMonths,
-    startDate: isEdm || isEducation ? v.startDate || null : null,
+    // eDM dates travel in sendDates (the API derives StartDate = earliest send);
+    // education still uses the start/end range.
+    startDate: isEducation ? v.startDate || null : null,
     endDate: isEducation ? v.endDate || null : null,
+    sendDates: isEducation ? [] : sendDates,
     edmSubcategory: isEdm ? v.edmSubcategory || null : null,
     educationSubcategory: isEducation ? v.educationSubcategory || null : null,
     mediaCost: v.mediaCost,
@@ -758,17 +773,46 @@ function PlacementEditor({
             )}
 
             {isEdm && (
-              <>
-                <LabeledField label="Send date">
-                  <Input type="date" {...form.register('startDate')} />
-                </LabeledField>
-                <Select label="eDM type" {...selectSave('edmSubcategory')}>
-                  <option value="">—</option>
-                  {EDM_SUBCATEGORIES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
+              <Select label="eDM type" {...selectSave('edmSubcategory')}>
+                <option value="">—</option>
+                {EDM_SUBCATEGORIES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </Select>
+            )}
+
+            {/* eDMs always get send dates; other non-education buys show them when
+                an import stored dates from the file's notes (e.g. eDM-banner buys). */}
+            {!isEducation && (isEdm || sendDates.length > 0) && (
+              <div className="col-span-full">
+                <label className="text-xs font-medium text-ph-charcoal">Send dates</label>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {sendDates.length === 0 && <span className="text-xs text-ph-charcoal/45">none yet - add each send's date</span>}
+                  {sendDates.map((d) => (
+                    <span key={d} className="inline-flex items-center gap-1 rounded-full bg-ph-purple/10 px-2 py-0.5 text-xs text-ph-charcoal">
+                      {formatIsoDay(d)}
+                      <button
+                        type="button"
+                        className="leading-none text-ph-charcoal/50 hover:text-ph-charcoal"
+                        onClick={() => setSendDates((ds) => ds.filter((x) => x !== d))}
+                        aria-label={`remove ${formatIsoDay(d)}`}
+                      >
+                        ×
+                      </button>
+                    </span>
                   ))}
-                </Select>
-              </>
+                  <input
+                    type="date"
+                    value=""
+                    onChange={(e) => {
+                      const iso = e.target.value;
+                      if (iso) setSendDates((ds) => (ds.includes(iso) ? ds : [...ds, iso].sort()));
+                    }}
+                    className="h-7 rounded border border-ph-charcoal/20 bg-white px-1.5 text-xs text-ph-charcoal"
+                    title="Add a send date"
+                  />
+                </div>
+              </div>
             )}
 
             {isEducation && (

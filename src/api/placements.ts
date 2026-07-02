@@ -32,6 +32,7 @@ export interface PlacementListItem {
   liveMonths: number[];
   startDate: string | null;
   endDate: string | null;
+  sendDates: string[]; // ISO yyyy-MM-dd; eDMs and display buys with dated sends
   edmSubcategory: string | null;
   educationSubcategory: string | null;
   groupId: string | null;
@@ -68,6 +69,7 @@ export interface PlacementWriteBody {
   liveMonths: number[];
   startDate?: string | null;
   endDate?: string | null;
+  sendDates?: string[];
   edmSubcategory?: string | null;
   educationSubcategory?: string | null;
   mediaCost: number;
