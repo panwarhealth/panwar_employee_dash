@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/api/client';
@@ -22,6 +22,7 @@ import {
   type EducationValueDiff,
   type Outcome,
   type PlacementSuggestion,
+  type PlacementCandidate,
   type SourceView,
 } from '@/api/import';
 
@@ -31,7 +32,10 @@ export const Route = createFileRoute('/app/clients/$clientSlug/import')({
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const XLS = 'application/vnd.ms-excel';
-const CREATE = '__create__'; // target sentinel: create a new placement
+// Destination sentinels. '' means unanswered and blocks Approve; SKIP is a
+// deliberate "leave it out" so a dropped send is always someone's decision.
+const CREATE = '__create__';
+const SKIP = '__skip__';
 const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 type Decision = 'approve' | 'skip';
@@ -47,11 +51,69 @@ const OUTCOME_CELL: Record<Outcome, string> = {
   match: 'bg-emerald-50 border-emerald-200',
   change: 'bg-amber-50 border-amber-300',
   new: 'bg-sky-50 border-sky-300',
-  invalid: 'bg-red-50 border-red-300',
 };
 
 function fmt(n: number): string {
   return Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+// Several placements can share a name; what they already hold is what tells them apart.
+function monthSummary(months: number[]): string {
+  if (months.length === 0) return 'no numbers yet';
+  const sorted = [...months].sort((a, b) => a - b);
+  const contiguous = sorted.every((m, i) => i === 0 || m === sorted[i - 1] + 1);
+  if (contiguous && sorted.length > 2) return `${MONTHS[sorted[0]]}-${MONTHS[sorted[sorted.length - 1]]}`;
+  const shown = sorted.slice(0, 3).map((m) => MONTHS[m]).join(', ');
+  return sorted.length > 3 ? `${shown} +${sorted.length - 3}` : shown;
+}
+
+// Re-importing a file you've already imported should say so from the data, not from
+// the file's name: every value already matches what's saved and every destination is
+// a placement we already have, so approving this card would change nothing.
+function writesNothing(p: PlacementDiff, i: number, target: Record<string, string>, edits: Record<string, string>): boolean {
+  if (p.rows.some((r) => edits[`p${i}:${r.metric}:${r.month}`] !== undefined)) return false;
+
+  // A fanned-out block has no single match of its own, so each send answers for itself.
+  if (p.suggestions.length > 0) {
+    const withData = p.suggestions
+      .map((s, si) => ({ s, si }))
+      .filter(({ s }) => s.values.length > 0 || p.rows.some((r) => r.month === s.month));
+    if (withData.length === 0) return false;
+    return withData.every(({ s, si }) => {
+      const tgt = target[`p${i}:s${si}`] ?? '';
+      if (!tgt || tgt === CREATE || tgt === SKIP) return false;
+      return s.values.length > 0
+        ? s.alreadySaved && tgt === s.targetPlacementId
+        : tgt === p.placementId && p.rows.filter((r) => r.month === s.month).every((r) => r.outcome === 'match');
+    });
+  }
+
+  if (!p.placementId || p.rows.length === 0) return false;
+  return p.rows.every((r) => r.outcome === 'match') && (target[`p${i}`] ?? '') === p.placementId;
+}
+
+// Same rule for a course: already matched, every value identical, nothing to write.
+function eduWritesNothing(e: EducationDiff, i: number, target: Record<string, string>, edits: Record<string, string>): boolean {
+  if (!e.assetId || e.rows.length === 0) return false;
+  if (edits[`e${i}:expiry`] !== undefined) return false;
+  if (e.rows.some((r) => edits[`e${i}:${r.status}:${r.year}:${r.month}`] !== undefined)) return false;
+  return e.rows.every((r) => r.outcome === 'match') && (target[`e${i}`] ?? '') === e.assetId;
+}
+
+// An AI card line is one email for an eDM, one month for anything else.
+function sendNoun(template: string, n: number): string {
+  const word = template === 'Edm' ? 'email' : 'month';
+  return n === 1 ? word : `${word}s`;
+}
+
+// "131.60000000000002" -> "131.6"; display only
+function fmtCell(raw: string): string {
+  const t = raw.trim();
+  if (!/^-?\d*\.\d{6,}$/.test(t)) return raw;
+  const n = Number(t);
+  if (!Number.isFinite(n)) return raw;
+  const rounded = Math.abs(n) < 0.01 ? Number(n.toPrecision(3)) : Number(n.toFixed(2));
+  return String(rounded);
 }
 
 function fmtDate(iso: string): string {
@@ -69,10 +131,15 @@ const eduNeedsReview = (e: EducationDiff) => e.matchStatus !== 'matched';
 function ImportTab() {
   const { clientSlug } = Route.useParams();
   const { year } = useWorkspaceYear();
+  const queryClient = useQueryClient();
 
+  // Same key, same shape as the Placements tab - they share this cache entry, and
+  // storing the bare array here made whichever refetched last hand the other side a
+  // value it couldn't read.
   const { data: allPlacements = [] } = useQuery({
-    queryKey: ['manage', 'clients', clientSlug, 'placements', year],
-    queryFn: () => listPlacements(clientSlug, { year }).then((r) => r.placements),
+    queryKey: ['manage', 'clients', clientSlug, 'placements', 'list', year],
+    queryFn: () => listPlacements(clientSlug, { year }),
+    select: (r) => r.placements,
   });
   const { data: publishers = [] } = useQuery({
     queryKey: ['manage', 'publishers'],
@@ -157,14 +224,19 @@ function ImportTab() {
       setPreviewError(null);
       const t: Record<string, string> = {};
       const sd: Record<string, string[]> = {};
+      const cn: Record<string, string> = {};
       data.placements.forEach((p, i) => {
-        // Evidence picks the default: a real match pre-fills, anything else starts
-        // unchosen so approving requires a conscious decision (no accidental creates).
-        t[`p${i}`] = p.matchStatus === 'matched' && p.placementId ? p.placementId : '';
-        // Each AI send gets its own destination, pre-filled with the AI's pick when it was confident.
+        // A destination is either a real answer or a visibly open question, never a
+        // blank wearing an answer's label. With nothing to match against, a new
+        // placement is the only outcome there is, so state it instead of asking.
+        const noMatchYet = p.candidates.length === 0 ? CREATE : '';
+        t[`p${i}`] = p.matchStatus === 'matched' && p.placementId ? p.placementId : noMatchYet;
+        if (t[`p${i}`] === CREATE) cn[`p${i}`] = p.parsedName;
         p.suggestions.forEach((s, si) => {
-          t[`p${i}:s${si}`] = s.targetPlacementId ?? '';
-          sd[`p${i}:s${si}`] = s.sendDates ?? [];
+          const sKey = `p${i}:s${si}`;
+          t[sKey] = s.targetPlacementId ?? noMatchYet;
+          if (t[sKey] === CREATE) cn[sKey] = newPlacementName(p.parsedName, s.topicLabel);
+          sd[sKey] = s.sendDates ?? [];
         });
       });
       data.education.forEach((e, i) => {
@@ -172,7 +244,7 @@ function ImportTab() {
       });
       setTarget(t);
       setSendDateEdits(sd);
-      setCreateNames({});
+      setCreateNames(cn);
       setEduCreatePage({});
       setDecision({});
       setEdits({});
@@ -213,7 +285,6 @@ function ImportTab() {
 
       const buildActuals = (i: number, rows: ActualDiff[], isMatched: boolean) =>
         rows
-          .filter((r) => r.outcome !== 'invalid')
           .filter((r) => !isMatched || r.outcome !== 'match' || isEdited(pKey(i, r)))
           .map((r) => ({ year: preview!.year, month: r.month, metricKey: r.metric, value: effective(pKey(i, r), r.newValue), note: r.note }));
 
@@ -229,32 +300,49 @@ function ImportTab() {
         // for that month; only the first send of a month may claim them, so two
         // same-month sends can't write the same numbers twice.
         if (p.suggestions.length > 0) {
-          return p.suggestions
-            .map((s, si) => {
-              const tgt = target[`p${i}:s${si}`] ?? '';
-              if (!tgt) return null;
-              const creating = tgt === CREATE;
-              const isMatched = !creating && tgt === p.placementId;
-              const firstForMonth = p.suggestions.findIndex((x) => x.month === s.month) === si;
-              const actuals = s.values.length > 0
-                ? s.values.map((v) => ({ year: preview!.year, month: s.month, metricKey: v.metric, value: v.value, note: null }))
-                : firstForMonth
-                  ? buildActuals(i, p.rows.filter((r) => r.month === s.month), isMatched)
-                  : [];
-              if (!actuals.length) return null;
-              const sDates = sendDateEdits[`p${i}:s${si}`] ?? [];
-              const cp: CommitPlacement = creating
-                ? { source: p.source, parsedName: null, newPlacement: { brand: p.brand, publisher, audience, template: p.template, name: (createNames[`p${i}:s${si}`] ?? '').trim() || `${p.parsedName} - ${s.topicLabel}`, objective: p.objective }, actuals, sendDates: sDates }
-                : { source: p.source, parsedName: null, placementId: tgt, actuals, sendDates: sDates };
-              return cp;
-            })
-            .filter((x): x is CommitPlacement => x !== null);
+          // Sends only split into separate placements when their topics differ. When
+          // several months carry the same topic they are one placement's months, so
+          // group by destination first - otherwise a three-month block creates three
+          // identically named placements that nothing can tell apart afterwards.
+          const byDestination = new Map<string, CommitPlacement>();
+          p.suggestions.forEach((s, si) => {
+            const tgt = target[`p${i}:s${si}`] ?? '';
+            if (!tgt || tgt === SKIP) return;
+            const creating = tgt === CREATE;
+            const isMatched = !creating && tgt === p.placementId;
+            const firstForMonth = p.suggestions.findIndex((x) => x.month === s.month) === si;
+            const actuals = s.values.length > 0
+              ? s.values.map((v) => ({ year: preview!.year, month: s.month, metricKey: v.metric, value: v.value, note: null }))
+              : firstForMonth
+                ? buildActuals(i, p.rows.filter((r) => r.month === s.month), isMatched)
+                : [];
+            if (!actuals.length) return;
+            const sDates = sendDateEdits[`p${i}:s${si}`] ?? [];
+            const name = creating
+              ? (createNames[`p${i}:s${si}`] ?? '').trim() || newPlacementName(p.parsedName, s.topicLabel)
+              : '';
+            const slot = creating ? `new:${name.toLowerCase()}` : `id:${tgt}`;
+            const found = byDestination.get(slot);
+            if (found) {
+              found.actuals.push(...actuals);
+              found.sendDates = [...new Set([...(found.sendDates ?? []), ...sDates])].sort();
+              return;
+            }
+            byDestination.set(slot, creating
+              ? { source: p.source, parsedName: null, newPlacement: { brand: p.brand, publisher, audience, template: p.template, name, objective: p.objective }, actuals, sendDates: sDates }
+              : { source: p.source, parsedName: null, placementId: tgt, actuals, sendDates: sDates });
+          });
+          // Two sends of the same month can both ground the same metric; the later one wins.
+          return [...byDestination.values()].map((cp) => ({
+            ...cp,
+            actuals: [...new Map(cp.actuals.map((a) => [`${a.year}:${a.month}:${a.metricKey}`, a])).values()],
+          }));
         }
 
         // Plain card: one write for the whole block to the single chosen destination.
         // parsedName lets the backend remember the mapping for next month's import.
         const tgt = target[`p${i}`] ?? '';
-        if (!tgt) return [];
+        if (!tgt || tgt === SKIP) return [];
         const creating = tgt === CREATE;
         const isMatched = !creating && tgt === p.placementId;
         const actuals = buildActuals(i, p.rows, isMatched);
@@ -289,6 +377,12 @@ function ImportTab() {
 
       return commitImport(clientSlug, { year: preview!.year, files, placements, education, acknowledged });
     },
+    // A commit changes this client's placements, education and summary. Nothing
+    // invalidated them, so every other tab kept serving what it fetched before the
+    // import - the Placements tab showed an empty table until a hard refresh.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['manage', 'clients', clientSlug] });
+    },
   });
 
   // ── derive review state ────────────────────────────────────────────────────
@@ -300,8 +394,31 @@ function ImportTab() {
     ];
   }, [preview]);
 
-  const cleanKeys = items.filter((it) => !it.needsReview).map((it) => it.key);
-  const reviewKeys = items.filter((it) => it.needsReview).map((it) => it.key);
+  const settledKeys = useMemo(() => {
+    const s = new Set<string>();
+    preview?.placements.forEach((p, i) => { if (writesNothing(p, i, target, edits)) s.add(`p${i}`); });
+    preview?.education.forEach((e, i) => { if (eduWritesNothing(e, i, target, edits)) s.add(`e${i}`); });
+    return s;
+  }, [preview, target, edits]);
+
+  // Nothing to check means nothing to ask: those arrive already approved, so the
+  // queue only ever contains real decisions. A card that would change nothing is the
+  // same deal - re-importing a file you've already imported shouldn't ask you to
+  // re-approve every card it contains.
+  useEffect(() => {
+    if (!preview) return;
+    setDecision((d) => {
+      const next = { ...d };
+      for (const it of items) if ((!it.needsReview || settledKeys.has(it.key)) && next[it.key] === undefined) next[it.key] = 'approve';
+      return next;
+    });
+  }, [preview, items, settledKeys]);
+
+  // A card that would change nothing belongs with the ready ones, whatever the
+  // backend flagged it for.
+  const stillNeedsLook = (it: { key: string; needsReview: boolean }) => it.needsReview && !settledKeys.has(it.key);
+  const cleanKeys = items.filter((it) => !stillNeedsLook(it)).map((it) => it.key);
+  const reviewKeys = items.filter(stillNeedsLook).map((it) => it.key);
   const pendingCount = items.filter((it) => decision[it.key] === undefined).length;
   const cleanPending = cleanKeys.filter((k) => decision[k] === undefined).length;
 
@@ -314,7 +431,20 @@ function ImportTab() {
 
   const setItemDecision = (key: string, val: Decision) => setDecision((d) => ({ ...d, [key]: val }));
 
-  const needsAck = !!preview?.sources.some((s) => s.alreadyImported);
+  // Uploading a file twice is harmless - values are keyed by month and metric, so a
+  // re-import of unchanged numbers writes nothing. Only stop for a number that's
+  // already saved and about to become a different one.
+  const overwriteCount = useMemo(() => {
+    if (!preview) return 0;
+    const pl = preview.placements
+      .filter((_p, i) => decision[`p${i}`] === 'approve')
+      .flatMap((p) => p.rows.filter((r) => r.outcome === 'change')).length;
+    const ed = preview.education
+      .filter((_e, i) => decision[`e${i}`] === 'approve')
+      .flatMap((e) => e.rows.filter((r) => r.outcome === 'change')).length;
+    return pl + ed;
+  }, [preview, decision]);
+  const needsAck = overwriteCount > 0;
   const hasDoneUploads = uploads.some((u) => u.status === 'done');
   const canCommit = pendingCount === 0 && (!needsAck || acknowledged) && !commitMutation.data;
 
@@ -324,16 +454,27 @@ function ImportTab() {
   const cardProps = {
     target, setTarget, decision, setDecision: setItemDecision, edits, setEdits, sendDateEdits, setSendDateEdits, createNames, setCreateNames, eduCreatePage, setEduCreatePage, effective, pKey, eKey, allPlacements,
     publishers, audiences, educationPages, publisherOverride, setPublisherOverride, audienceOverride, setAudienceOverride,
+    settledKeys,
   };
 
   // Split into two visible piles: the ones that need a look, and the ones that
   // already match a placement with nothing to decide.
   const pIdx = preview ? preview.placements.map((p, i) => ({ p, i })) : [];
+  // Same name under a different audience or template is a different placement, not a clash.
+  const blockKey = (p: PlacementDiff) =>
+    [p.parsedName.trim().toLowerCase(), p.audience ?? '', p.template].join('|');
+  const repeatedNames = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const p of preview?.placements ?? []) seen.set(blockKey(p), (seen.get(blockKey(p)) ?? 0) + 1);
+    return new Set(Array.from(seen).filter(([, n]) => n > 1).map(([k]) => k));
+  }, [preview]);
   const eIdx = preview ? preview.education.map((e, i) => ({ e, i })) : [];
-  const reviewP = pIdx.filter((x) => x.p.needsReview);
-  const cleanP = pIdx.filter((x) => !x.p.needsReview);
-  const reviewE = eIdx.filter((x) => eduNeedsReview(x.e));
-  const cleanE = eIdx.filter((x) => !eduNeedsReview(x.e));
+  const savedP = pIdx.filter((x) => settledKeys.has(`p${x.i}`));
+  const reviewP = pIdx.filter((x) => x.p.needsReview && !settledKeys.has(`p${x.i}`));
+  const cleanP = pIdx.filter((x) => !x.p.needsReview && !settledKeys.has(`p${x.i}`));
+  const savedE = eIdx.filter((x) => settledKeys.has(`e${x.i}`));
+  const reviewE = eIdx.filter((x) => eduNeedsReview(x.e) && !settledKeys.has(`e${x.i}`));
+  const cleanE = eIdx.filter((x) => !eduNeedsReview(x.e) && !settledKeys.has(`e${x.i}`));
 
   return (
     <div className="flex flex-col gap-4">
@@ -397,6 +538,7 @@ function ImportTab() {
             onApproveAllClean={approveAllClean}
             aiTriggeredCount={aiTriggeredCount}
             aiResolvedCount={aiResolvedCount}
+            settledCount={settledKeys.size}
           />
 
           {/* Pile 1: needs a human decision */}
@@ -405,7 +547,7 @@ function ImportTab() {
               Need a look ({reviewP.length + reviewE.length})
             </div>
           )}
-          {reviewP.map(({ p, i }) => <PlacementCard key={`p${i}`} pi={i} p={p} {...cardProps} />)}
+          {reviewP.map(({ p, i }) => <PlacementCard key={`p${i}`} pi={i} p={p} nameRepeated={repeatedNames.has(blockKey(p))} {...cardProps} />)}
           {reviewE.map(({ e, i }) => <EducationCard key={`e${i}`} ei={i} e={e} {...cardProps} />)}
 
           {/* Pile 2: already match a placement, nothing to decide */}
@@ -414,8 +556,24 @@ function ImportTab() {
               Already match a placement - nothing to check ({cleanP.length + cleanE.length})
             </div>
           )}
-          {cleanP.map(({ p, i }) => <PlacementCard key={`p${i}`} pi={i} p={p} {...cardProps} />)}
+          {cleanP.map(({ p, i }) => <PlacementCard key={`p${i}`} pi={i} p={p} nameRepeated={repeatedNames.has(blockKey(p))} {...cardProps} />)}
           {cleanE.map(({ e, i }) => <EducationCard key={`e${i}`} ei={i} e={e} {...cardProps} />)}
+
+          {/* Pile 3: already on the dashboard. Folded away - there's nothing to decide. */}
+          {savedP.length + savedE.length > 0 && (
+            <details className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+              <summary className="cursor-pointer text-sm font-semibold text-emerald-900">
+                Already on the dashboard - nothing to do ({savedP.length + savedE.length})
+              </summary>
+              <div className="mt-1 text-xs text-emerald-900/70">
+                Every number in {savedP.length + savedE.length === 1 ? 'this one' : 'these'} matches what's already saved. Open if you want to check.
+              </div>
+              <div className="mt-3 flex flex-col gap-4">
+                {savedP.map(({ p, i }) => <PlacementCard key={`p${i}`} pi={i} p={p} nameRepeated={repeatedNames.has(blockKey(p))} {...cardProps} />)}
+                {savedE.map(({ e, i }) => <EducationCard key={`e${i}`} ei={i} e={e} {...cardProps} />)}
+              </div>
+            </details>
+          )}
 
           {/* Commit */}
           <Card>
@@ -423,21 +581,29 @@ function ImportTab() {
               {needsAck && (
                 <label className="flex items-center gap-2 text-sm text-amber-800">
                   <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />
-                  One or more of these files was already imported - tick to import again.
+                  This changes {overwriteCount} number{overwriteCount === 1 ? '' : 's'} you've already saved - tick to overwrite {overwriteCount === 1 ? 'it' : 'them'}.
                 </label>
               )}
               <div className="flex items-center gap-3">
                 <Button onClick={() => commitMutation.mutate()} disabled={!canCommit || commitMutation.isPending}>
-                  {commitMutation.isPending ? 'Committing…' : 'Commit import'}
+                  {commitMutation.isPending ? 'Saving…' : 'Save to dashboard'}
                 </Button>
-                {pendingCount > 0 && <span className="text-sm text-ph-charcoal/60">{pendingCount} item{pendingCount === 1 ? '' : 's'} still need a decision</span>}
+                {pendingCount > 0 && <span className="text-sm text-ph-charcoal/60">{pendingCount} item{pendingCount === 1 ? ' still needs' : 's still need'} a decision</span>}
                 {commitMutation.error && (
                   <span className="text-sm text-red-600">{commitMutation.error instanceof ApiError ? commitMutation.error.message : 'Commit failed'}</span>
                 )}
                 {commitMutation.data && (
                   <span className="text-sm text-emerald-600">
                     Wrote {commitMutation.data.valuesWritten} placement values across {commitMutation.data.placementsWritten} placements and{' '}
-                    {commitMutation.data.educationValuesWritten} education values. Re-run the preview to confirm.
+                    {commitMutation.data.educationValuesWritten} education values.{' '}
+                    <Link
+                      to="/app/clients/$clientSlug/placements"
+                      params={{ clientSlug }}
+                      search={{ editId: undefined }}
+                      className="font-medium underline underline-offset-2 hover:text-emerald-700"
+                    >
+                      See them on the Placements tab
+                    </Link>
                   </span>
                 )}
               </div>
@@ -460,6 +626,7 @@ function SummaryBar({
   onApproveAllClean,
   aiTriggeredCount,
   aiResolvedCount,
+  settledCount,
 }: {
   preview: ImportPreview;
   cleanCount: number;
@@ -469,25 +636,41 @@ function SummaryBar({
   onApproveAllClean: () => void;
   aiTriggeredCount: number;
   aiResolvedCount: number;
+  settledCount: number;
 }) {
-  const h = preview.headline;
-  const unmappedMetrics = useMemo(
-    () => Array.from(new Set(preview.placements.flatMap((p) => p.rows.filter((r) => r.outcome === 'invalid').map((r) => prettyMetric(r.metric))))).sort(),
-    [preview.placements],
-  );
+  const skipped = useMemo(() => {
+    const byKind = new Map<string, Set<string>>();
+    for (const c of preview.placements.flatMap((p) => p.skippedColumns)) {
+      if (!byKind.has(c.kind)) byKind.set(c.kind, new Set());
+      byKind.get(c.kind)!.add(prettyMetric(c.metric));
+    }
+    const of = (k: string) => Array.from(byKind.get(k) ?? []).sort();
+    return { targets: of('target'), calculated: of('calculated'), unknown: of('unknown') };
+  }, [preview.placements]);
+  const skippedCount = skipped.targets.length + skipped.calculated.length + skipped.unknown.length;
 
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 pt-6">
         <div className="text-sm font-semibold text-ph-charcoal">Here's what we found in your file{preview.sources.length > 1 ? 's' : ''}</div>
 
+        {settledCount > 0 && (
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            {settledCount === cleanCount + reviewCount
+              ? "You've already saved everything in here. Every number matches the dashboard, so there's nothing left to import."
+              : `${settledCount} of these are already saved and won't change anything. The rest are below.`}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <Pill className="bg-emerald-100 text-emerald-800">{cleanCount} ready to go</Pill>
-          <Pill className="bg-amber-100 text-amber-800">{reviewCount} need a look</Pill>
-          {h.invalid > 0 && <Pill className="bg-red-100 text-red-800">{h.invalid} can't be saved</Pill>}
+          {settledCount > 0 && <Pill className="bg-emerald-100 text-emerald-800">{settledCount} already saved</Pill>}
+          {cleanCount - settledCount > 0 && <Pill className="bg-emerald-100 text-emerald-800">{cleanCount - settledCount} ready to go</Pill>}
+          {reviewCount > 0 && <Pill className="bg-amber-100 text-amber-800">{reviewCount} need a look</Pill>}
+          {skippedCount > 0 && <Pill className="bg-ph-charcoal/10 text-ph-charcoal/70">{skippedCount} column{skippedCount > 1 ? 's' : ''} not imported</Pill>}
         </div>
 
-        <div className="text-sm">
+        {/* Nothing to say about what the AI worked out when there's nothing left to decide. */}
+        <div className={settledCount === cleanCount + reviewCount ? 'hidden' : 'text-sm'}>
           {!preview.aiEnabled ? (
             <span className="text-ph-charcoal/50">The AI helper is turned off, so you'll match everything by hand below.</span>
           ) : aiTriggeredCount === 0 ? (
@@ -518,29 +701,52 @@ function SummaryBar({
             </Button>
           )}
           <span className="text-sm text-ph-charcoal/60">
-            {pendingCount === 0 ? "You've reviewed everything - ready to save." : `${pendingCount} still need a yes/no from you`}
+            {pendingCount === 0
+              ? "You've reviewed everything - ready to save."
+              : `${pendingCount} still ${pendingCount === 1 ? 'needs' : 'need'} a yes/no from you`}
           </span>
         </div>
 
-        {unmappedMetrics.length > 0 && (
-          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-            <div className="font-medium">Some numbers can't be saved yet</div>
-            <div className="mt-0.5">These types of number don't have anywhere to live in the system yet: {unmappedMetrics.join(', ')}. They're shown in red below. If you need them stored, give Rob a shout.</div>
+        {skippedCount > 0 && (
+          <div className="rounded-md border border-ph-charcoal/15 bg-ph-charcoal/5 p-3 text-sm text-ph-charcoal/80">
+            <div className="font-medium text-ph-charcoal">Columns we didn't import</div>
+            {skipped.targets.length > 0 && (
+              <div className="mt-0.5">
+                These are target numbers, targets are set under the KPI Targets tab so they aren't imported here: {skipped.targets.join(', ')}.
+              </div>
+            )}
+            {skipped.calculated.length > 0 && (
+              <div className="mt-0.5">
+                {skipped.calculated.join(', ')} - worked out from the raw numbers, so nothing to import.
+              </div>
+            )}
+            {skipped.unknown.length > 0 && (
+              <div className="mt-0.5">
+                {skipped.unknown.join(', ')} - nothing in the system stores these yet.
+              </div>
+            )}
+            <div className="mt-0.5">Everything else imports as normal.</div>
           </div>
         )}
 
         <ul className="flex flex-col gap-1.5 text-xs">
-          {preview.sources.map((s, i) => (
-            <li key={i} className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-ph-charcoal">{s.file}</span>
-              {s.alreadyImported && (
-                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">
-                  already imported {new Date(s.alreadyImported.date).toLocaleDateString()}
-                  {s.alreadyImported.by ? ` by ${s.alreadyImported.by}` : ''}
-                </span>
-              )}
-            </li>
-          ))}
+          {preview.sources
+            .filter((s) => s.alreadyImported || s.warnings.length > 0)
+            .map((s, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-ph-charcoal">{s.file}</span>
+                {/* History, not a warning: whether it matters is decided from the numbers below. */}
+                {s.alreadyImported && (
+                  <span className="rounded bg-ph-charcoal/5 px-1.5 py-0.5 text-ph-charcoal/60">
+                    you uploaded this file before, on {new Date(s.alreadyImported.date).toLocaleDateString()}
+                    {s.alreadyImported.by ? ` by ${s.alreadyImported.by}` : ''}
+                  </span>
+                )}
+                {s.warnings.map((w, wi) => (
+                  <span key={wi} className="text-ph-charcoal/60">{w}</span>
+                ))}
+              </li>
+            ))}
         </ul>
       </CardContent>
     </Card>
@@ -573,6 +779,7 @@ interface CardProps {
   setPublisherOverride: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   audienceOverride: Record<string, string>;
   setAudienceOverride: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  settledKeys: Set<string>;
 }
 
 function statusRing(decided: Decision | undefined, needsReview: boolean): string {
@@ -668,7 +875,7 @@ function SourceViews({ views, file }: { views: SourceView[]; file: string }) {
                           key={ci}
                           className={`whitespace-nowrap border border-ph-charcoal/15 px-2 py-0.5 ${c.highlight ? 'bg-yellow-200 font-semibold text-ph-charcoal' : 'text-ph-charcoal/80'}`}
                         >
-                          {c.value}
+                          {fmtCell(c.value)}
                         </td>
                       ))}
                     </tr>
@@ -689,10 +896,11 @@ function SourceViews({ views, file }: { views: SourceView[]; file: string }) {
 // ── Placement card ────────────────────────────────────────────────────────────
 
 function PlacementCard({
-  pi, p, target, setTarget, decision, setDecision, edits, setEdits, sendDateEdits, setSendDateEdits, createNames, setCreateNames, effective, pKey, allPlacements,
-  publishers, audiences, publisherOverride, setPublisherOverride, audienceOverride, setAudienceOverride,
-}: CardProps & { pi: number; p: PlacementDiff }) {
+  pi, p, nameRepeated, target, setTarget, decision, setDecision, edits, setEdits, sendDateEdits, setSendDateEdits, createNames, setCreateNames, effective, pKey, allPlacements,
+  publishers, audiences, publisherOverride, setPublisherOverride, audienceOverride, setAudienceOverride, settledKeys,
+}: CardProps & { pi: number; p: PlacementDiff; nameRepeated?: boolean }) {
   const key = `p${pi}`;
+  const settled = settledKeys.has(key);
   const tgt = target[key] ?? '';
   const decided = decision[key];
   const [showChooser, setShowChooser] = useState(false);
@@ -725,31 +933,32 @@ function PlacementCard({
   const audienceName = audiences.find((x) => x.slug === effectiveAudience)?.name ?? effectiveAudience;
   const hasSuggestions = p.suggestions.length > 0;
 
-  // A send can only save something if the AI pulled numbers for it, or the block has
-  // numbers sitting in that send's month. Sends with neither are informational only.
   const sendHasData = (s: PlacementSuggestion) =>
-    s.values.length > 0 || p.rows.some((r) => r.month === s.month && r.outcome !== 'invalid');
+    s.values.length > 0 || p.rows.some((r) => r.month === s.month);
   const dataSendCount = p.suggestions.filter(sendHasData).length;
   const unresolvedDataSends = p.suggestions.filter((s, si) => sendHasData(s) && (target[`${key}:s${si}`] ?? '') === '').length;
+  const skippedDataSends = p.suggestions.filter((s, si) => sendHasData(s) && target[`${key}:s${si}`] === SKIP).length;
   const anySendCreates = p.suggestions.some((_s, si) => (target[`${key}:s${si}`] ?? '') === CREATE);
 
   const creatingBlocked = hasSuggestions
     ? anySendCreates && (!effectivePublisher || !effectiveAudience)
     : tgt === CREATE && (!effectivePublisher || !effectiveAudience);
-  const aiApproveBlocked = hasSuggestions && dataSendCount > 0 && unresolvedDataSends === dataSendCount;
+  // Every send with numbers needs an answer, not just one - otherwise approving
+  // throws the unanswered ones away without saying so.
+  const aiApproveBlocked = hasSuggestions && unresolvedDataSends > 0;
   const approveDisabled = hasSuggestions ? (aiApproveBlocked || creatingBlocked) : (!tgt || creatingBlocked);
   const approveHintText = creatingBlocked
     ? 'pick the missing details above first'
     : aiApproveBlocked
-      ? 'choose where at least one email goes first'
+      ? `choose where ${unresolvedDataSends} ${sendNoun(p.template, unresolvedDataSends)} ${unresolvedDataSends > 1 ? 'go' : 'goes'} first`
       : !hasSuggestions && !tgt
         ? 'choose where these numbers go first'
         : undefined;
   const warnHintText =
-    hasSuggestions && !approveDisabled && unresolvedDataSends > 0
-      ? `${unresolvedDataSends} email${unresolvedDataSends > 1 ? 's' : ''} above ${unresolvedDataSends > 1 ? 'have' : 'has'} no destination and won't be saved`
-      : hasSuggestions && dataSendCount === 0
-        ? 'nothing on this card has numbers to save yet'
+    hasSuggestions && dataSendCount === 0
+      ? 'nothing on this card has numbers to save yet'
+      : hasSuggestions && dataSendCount > 0 && skippedDataSends === dataSendCount
+        ? "nothing on this card will be saved - you've left every one out"
         : undefined;
 
   return (
@@ -762,7 +971,15 @@ function PlacementCard({
               {TEMPLATE_LABELS[p.template] ?? p.template}
             </span>
           </div>
-          <div className="text-sm font-medium text-ph-charcoal/80">{p.brand}{publisherName ? ` · ${publisherName}` : ''}</div>
+          <div className="text-sm font-medium text-ph-charcoal/80">
+            {[p.brand, publisherName, audienceName].filter(Boolean).join(' · ')}
+          </div>
+          <div className="text-xs text-ph-charcoal/50">from {p.source}</div>
+          {nameRepeated && (
+            <div className="mt-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
+              Another file in this import has a block with the same name. Check whether they belong in the same placement before you save.
+            </div>
+          )}
         </div>
 
         {/* Plain-English status first: matched banner, then why it needs a look */}
@@ -787,7 +1004,12 @@ function PlacementCard({
             )}
           </div>
         )}
-        {p.needsReview && p.reviewReasons.length > 0 && (
+        {settled && (
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            <span className="font-semibold">You've already saved this.</span> Every number here matches what's on the dashboard, so approving it changes nothing.
+          </div>
+        )}
+        {!settled && p.needsReview && p.reviewReasons.length > 0 && (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <div className="font-semibold">Why this needs a look</div>
             <ul className="mt-0.5 list-disc pl-5">
@@ -819,8 +1041,8 @@ function PlacementCard({
             <div className="font-semibold text-violet-900">What the AI worked out</div>
             <div className="mt-0.5 mb-2 text-xs text-violet-800/80">
               {dataSendCount > 0
-                ? <>Based on the notes in your file, this looks like {dataSendCount} email{dataSendCount > 1 ? 's' : ''} with numbers to save. Here's where each one should go:</>
-                : <>The notes name upcoming emails, but none of them have numbers in the file yet.</>}
+                ? <>Based on the notes in your file, this looks like {dataSendCount} {sendNoun(p.template, dataSendCount)} with numbers to save. Here's where each one should go:</>
+                : <>The notes name upcoming {sendNoun(p.template, 2)}, but none of them have numbers in the file yet.</>}
             </div>
             <ul className="flex flex-col gap-2">
               {p.suggestions.map((s, si) => {
@@ -835,36 +1057,48 @@ function PlacementCard({
                       </div>
                     )}
                     {s.reason && <div className="mt-0.5 text-[11px] text-violet-700/55">Why: {s.reason}</div>}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-medium text-ph-charcoal/70">Save to:</span>
-                        <TypeaheadTarget keyId={sKey} value={target[sKey] ?? ''} setTarget={setTarget} candidates={p.candidates} allPlacements={allPlacements} matchedName={s.targetName} canCreate emptyLabel="choose a placement" />
-                        {s.targetName && <span className="text-[11px] text-ph-charcoal/45">the AI's suggestion</span>}
-                        {(target[sKey] ?? '') !== '' &&
-                          target[sKey] !== CREATE &&
-                          p.suggestions.some((s2, si2) => sendHasData(s2) && (target[`${key}:s${si2}`] ?? '') !== target[sKey]) && (
-                            <button
-                              type="button"
-                              className="text-[11px] text-violet-700 underline underline-offset-2"
-                              onClick={() => {
-                                const v = target[sKey]!;
-                                setTarget((m) => {
-                                  const next = { ...m };
-                                  p.suggestions.forEach((s2, si2) => {
-                                    if (sendHasData(s2)) next[`${key}:s${si2}`] = v;
-                                  });
-                                  return next;
+                    <div className="mt-1.5">
+                      <DestinationPicker
+                        keyId={sKey}
+                        value={target[sKey] ?? ''}
+                        setTarget={setTarget}
+                        candidates={p.candidates}
+                        allPlacements={allPlacements}
+                        matchedName={s.targetName}
+                        aiPickId={s.targetPlacementId}
+                        heading={`Where should ${MONTHS[s.month]}'s numbers go?`}
+                        defaultCreateName={newPlacementName(p.parsedName, s.topicLabel)}
+                        matchHint={s.topicLabel}
+                        createNames={createNames}
+                        setCreateNames={setCreateNames}
+                        brand={p.brand}
+                        publisherName={publisherName}
+                        audienceName={audienceName}
+                        template={p.template}
+                        canSkip
+                      />
+                      {(target[sKey] ?? '') !== '' &&
+                        target[sKey] !== CREATE &&
+                        target[sKey] !== SKIP &&
+                        p.suggestions.some((s2, si2) => sendHasData(s2) && (target[`${key}:s${si2}`] ?? '') !== target[sKey]) && (
+                          <button
+                            type="button"
+                            className="mt-1 text-[11px] text-violet-700 underline underline-offset-2"
+                            onClick={() => {
+                              const v = target[sKey]!;
+                              setTarget((m) => {
+                                const next = { ...m };
+                                p.suggestions.forEach((s2, si2) => {
+                                  if (sendHasData(s2)) next[`${key}:s${si2}`] = v;
                                 });
-                              }}
-                            >
-                              use this for all the emails on this card
-                            </button>
-                          )}
+                                return next;
+                              });
+                            }}
+                          >
+                            use this for every {sendNoun(p.template, 1)} on this card
+                          </button>
+                        )}
                     </div>
-                    {target[sKey] === CREATE && (
-                      <div className="mt-1.5">
-                        <CreateSummary keyId={sKey} defaultName={`${p.parsedName} - ${s.topicLabel}`} matchHint={s.topicLabel} createNames={createNames} setCreateNames={setCreateNames} brand={p.brand} publisherName={publisherName} audienceName={audienceName} template={p.template} allPlacements={allPlacements} onUseExisting={(id) => setTarget((m) => ({ ...m, [sKey]: id }))} />
-                      </div>
-                    )}
                     {((sendDateEdits[sKey]?.length ?? 0) > 0 || p.template === 'Edm') && (
                       <SendDatesEditor sKey={sKey} dates={sendDateEdits[sKey] ?? []} setDates={setSendDateEdits} />
                     )}
@@ -881,18 +1115,24 @@ function PlacementCard({
         )}
 
         {!hasSuggestions && (p.matchStatus !== 'matched' || showChooser) && (
-          <DestinationChooser
+          <DestinationPicker
             keyId={key}
             value={tgt}
             setTarget={setTarget}
             candidates={p.candidates}
             allPlacements={allPlacements}
-            createName={p.parsedName}
+            matchedName={p.matchedName}
+            aiPickId={null}
+            heading="Where should these numbers go?"
+            defaultCreateName={p.parsedName}
+            matchHint={p.parsedName}
+            createNames={createNames}
+            setCreateNames={setCreateNames}
+            brand={p.brand}
+            publisherName={publisherName}
+            audienceName={audienceName}
+            template={p.template}
           />
-        )}
-
-        {!hasSuggestions && tgt === CREATE && (
-          <CreateSummary keyId={key} defaultName={p.parsedName} matchHint={p.parsedName} createNames={createNames} setCreateNames={setCreateNames} brand={p.brand} publisherName={publisherName} audienceName={audienceName} template={p.template} allPlacements={allPlacements} onUseExisting={(id) => setTarget((m) => ({ ...m, [key]: id }))} />
         )}
 
         {creatingBlocked && (
@@ -934,7 +1174,7 @@ function PlacementCard({
         <div>
           <div className="mb-1 text-xs font-medium text-ph-charcoal/70">
             {hasSuggestions
-              ? 'The numbers in this block (what saves is set per email above)'
+              ? `The numbers in this block (what saves is set per ${sendNoun(p.template, 1)} above)`
               : "The numbers we'll save"}
           </div>
           <div className="overflow-x-auto">
@@ -960,7 +1200,7 @@ function PlacementCard({
                               outcome={c.outcome}
                               oldValue={c.oldValue}
                               value={effective(pKey(pi, c), c.newValue)}
-                              disabled={c.outcome === 'invalid' || monthRelabel.has(m)}
+                              disabled={monthRelabel.has(m)}
                               edited={edits[pKey(pi, c)]}
                               onChange={(v) => setEdits((e) => ({ ...e, [pKey(pi, c)]: v }))}
                             />
@@ -976,14 +1216,25 @@ function PlacementCard({
           <DiffLegend />
         </div>
 
-        <DecisionBar
-          decided={decided}
-          onApprove={() => setDecision(key, 'approve')}
-          onSkip={() => setDecision(key, 'skip')}
-          approveDisabled={approveDisabled}
-          approveHint={approveDisabled ? approveHintText : undefined}
-          warnHint={warnHintText}
-        />
+        {/* Nothing to approve when nothing would change - but Skip stays, in case
+            they'd rather it wasn't touched at all. */}
+        {settled ? (
+          <div className="flex items-center justify-end gap-3 border-t border-ph-charcoal/10 pt-3">
+            <span className="text-xs text-ph-charcoal/50">Nothing to save here</span>
+            <Button variant="outline" className="px-5 py-2 text-sm" onClick={() => setDecision(key, decided === 'skip' ? 'approve' : 'skip')}>
+              {decided === 'skip' ? 'Put it back' : 'Leave it out'}
+            </Button>
+          </div>
+        ) : (
+          <DecisionBar
+            decided={decided}
+            onApprove={() => setDecision(key, 'approve')}
+            onSkip={() => setDecision(key, 'skip')}
+            approveDisabled={approveDisabled}
+            approveHint={approveDisabled ? approveHintText : undefined}
+            warnHint={warnHintText}
+          />
+        )}
       </CardContent>
     </Card>
   );
@@ -996,10 +1247,11 @@ function prettyMetric(key: string): string {
 
 // ── Education card ────────────────────────────────────────────────────────────
 
-function EducationCard({ ei, e, target, setTarget, decision, setDecision, edits, setEdits, eduCreatePage, setEduCreatePage, educationPages, effective, eKey }: CardProps & { ei: number; e: EducationDiff }) {
+function EducationCard({ ei, e, target, setTarget, decision, setDecision, edits, setEdits, eduCreatePage, setEduCreatePage, educationPages, effective, eKey, settledKeys }: CardProps & { ei: number; e: EducationDiff }) {
   const key = `e${ei}`;
   const tgt = target[key] ?? '';
   const decided = decision[key];
+  const settled = settledKeys.has(key);
 
   const eduOptions = e.candidates.map((c) => ({ id: c.assetId, label: `${c.title} (${c.pageName})` }));
   const creating = tgt === CREATE;
@@ -1015,7 +1267,11 @@ function EducationCard({ ei, e, target, setTarget, decision, setDecision, edits,
           <div className="text-sm font-medium text-ph-charcoal/80">{e.brand}{e.type ? ` · ${e.type}` : ''} · education</div>
         </div>
 
-        {e.matchStatus === 'matched' ? (
+        {settled ? (
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            <span className="font-semibold">You've already saved this.</span> Every number here matches what's on the dashboard, so approving it changes nothing.
+          </div>
+        ) : e.matchStatus === 'matched' ? (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
             This already matches: <span className="font-semibold">{e.pageName}</span>. The numbers below will be added to it.
           </div>
@@ -1102,13 +1358,22 @@ function EducationCard({ ei, e, target, setTarget, decision, setDecision, edits,
           <DiffLegend />
         </div>
 
-        <DecisionBar
-          decided={decided}
-          onApprove={() => setDecision(key, 'approve')}
-          onSkip={() => setDecision(key, 'skip')}
-          approveDisabled={approveDisabled}
-          approveHint={!tgt ? 'choose where it goes first' : creating && !chosenPage ? 'pick which page it goes on' : undefined}
-        />
+        {settled ? (
+          <div className="flex items-center justify-end gap-3 border-t border-ph-charcoal/10 pt-3">
+            <span className="text-xs text-ph-charcoal/50">Nothing to save here</span>
+            <Button variant="outline" className="px-5 py-2 text-sm" onClick={() => setDecision(key, decided === 'skip' ? 'approve' : 'skip')}>
+              {decided === 'skip' ? 'Put it back' : 'Leave it out'}
+            </Button>
+          </div>
+        ) : (
+          <DecisionBar
+            decided={decided}
+            onApprove={() => setDecision(key, 'approve')}
+            onSkip={() => setDecision(key, 'skip')}
+            approveDisabled={approveDisabled}
+            approveHint={!tgt ? 'choose where it goes first' : creating && !chosenPage ? 'pick which page it goes on' : undefined}
+          />
+        )}
       </CardContent>
     </Card>
   );
@@ -1135,6 +1400,19 @@ function DiffLegend() {
 }
 
 const normName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+// The AI falls back to the block name when a note names no topic, so joining the
+// two blindly yields "X - X". Keep whichever already contains the other.
+function newPlacementName(blockName: string, topic: string): string {
+  const block = blockName.trim();
+  const t = topic.trim();
+  if (!t) return block;
+  if (!block) return t;
+  const nb = normName(block), nt = normName(t);
+  if (nt.includes(nb)) return t;
+  if (nb.includes(nt)) return block;
+  return `${block} - ${t}`;
+}
 
 // Character-bigram Dice similarity: "AP Solus eDMs - MSK Pain" scores ~0.95 against
 // "AP Solus eDM - MSK Pain" and well below any other card sharing only the topic.
@@ -1203,14 +1481,13 @@ function CreateSummary({
 
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm">
-      <div className="text-xs font-semibold text-sky-900">This makes a brand-new placement when you save. Check its name:</div>
       <input
         value={proposed}
         onChange={(e) => setCreateNames((m) => ({ ...m, [keyId]: e.target.value }))}
         className="h-8 w-full max-w-md rounded border border-sky-300 bg-white px-2 text-sm text-ph-charcoal"
       />
       <div className="text-[11px] text-ph-charcoal/55">
-        {[brand, audienceName || 'audience: pick below', publisherName || 'publisher: pick below', TEMPLATE_LABELS[template] ?? template].join(' · ')}
+        {[brand, publisherName || 'publisher: pick below', audienceName || 'audience: pick below', TEMPLATE_LABELS[template] ?? template].join(' · ')}
       </div>
       {dupes.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
@@ -1280,37 +1557,41 @@ function SendDatesEditor({
   );
 }
 
-// ── Destination chooser: three visible choices, nothing hidden in a menu ───────
+// ── Destination picker: states the outcome, one click to change it ────────────
 
-function DestinationChooser({
-  keyId,
-  value,
-  setTarget,
-  candidates,
-  allPlacements,
-  createName,
+function DestinationPicker({
+  keyId, value, setTarget, candidates, allPlacements, matchedName, aiPickId, heading,
+  defaultCreateName, matchHint, createNames, setCreateNames, brand, publisherName, audienceName, template, canSkip,
 }: {
   keyId: string;
   value: string;
   setTarget: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  candidates: { placementId: string; name: string; template: string }[];
+  candidates: PlacementCandidate[];
   allPlacements: PlacementListItem[];
-  createName: string;
+  matchedName: string | null;
+  aiPickId: string | null;
+  heading: string;
+  defaultCreateName: string;
+  matchHint: string;
+  createNames: Record<string, string>;
+  setCreateNames: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  brand: string;
+  publisherName: string;
+  audienceName: string;
+  template: string;
+  canSkip?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
 
   const set = (v: string) => {
     setTarget((m) => ({ ...m, [keyId]: v }));
+    if (v === CREATE) setCreateNames((m) => (m[keyId] ? m : { ...m, [keyId]: defaultCreateName }));
+    setOpen(false);
     setSearching(false);
     setQ('');
   };
-
-  const chips = candidates.slice(0, 3);
-  const chosenViaSearch =
-    value !== '' && value !== CREATE && !chips.some((c) => c.placementId === value)
-      ? allPlacements.find((pl) => pl.id === value)?.name ?? 'chosen placement'
-      : null;
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -1318,31 +1599,93 @@ function DestinationChooser({
     return base.slice(0, 8);
   }, [q, allPlacements]);
 
+  const chosenName =
+    allPlacements.find((pl) => pl.id === value)?.name ??
+    candidates.find((c) => c.placementId === value)?.name ??
+    matchedName ??
+    'the placement you picked';
+  // Only worth spelling out when another candidate shares the name - otherwise the
+  // name alone already says which one you picked.
+  const chosen = candidates.find((c) => c.placementId === value);
+  const chosenDetail =
+    chosen && candidates.filter((c) => c.name === chosen.name).length > 1
+      ? `${TEMPLATE_LABELS[chosen.template] ?? chosen.template} · ${monthSummary(chosen.months)}`
+      : null;
+
+  // Answered: say what happens. Unanswered ('') always shows the question itself,
+  // so a blank can never sit there wearing an answer's label.
+  if (value !== '' && !open) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {value === SKIP ? (
+            <span className="text-ph-charcoal/55">Not saving this one</span>
+          ) : value === CREATE ? (
+            <span className="text-ph-charcoal">Saving to a new placement:</span>
+          ) : (
+            <>
+              <span className="text-ph-charcoal">
+                Saving to <span className="font-medium">{chosenName}</span>
+              </span>
+              {chosenDetail && <span className="text-[11px] text-ph-charcoal/55">{chosenDetail}</span>}
+              {aiPickId === value && <span className="text-[11px] text-ph-charcoal/45">the AI's pick</span>}
+            </>
+          )}
+          <button type="button" onClick={() => setOpen(true)} className="text-xs text-ph-purple underline underline-offset-2">
+            change
+          </button>
+        </div>
+        {value === CREATE && (
+          <CreateSummary
+            keyId={keyId}
+            defaultName={defaultCreateName}
+            matchHint={matchHint}
+            createNames={createNames}
+            setCreateNames={setCreateNames}
+            brand={brand}
+            publisherName={publisherName}
+            audienceName={audienceName}
+            template={template}
+            allPlacements={allPlacements}
+            onUseExisting={set}
+          />
+        )}
+      </div>
+    );
+  }
+
   const chipOn = 'rounded-md border-2 border-ph-purple bg-ph-purple/10 px-2.5 py-1 text-sm font-medium text-ph-charcoal';
   const chipOff = 'rounded-md border border-ph-charcoal/25 bg-white px-2.5 py-1 text-sm text-ph-charcoal hover:bg-ph-charcoal/5';
+  // The backend ranks these and caps the list; slicing again here would hide the
+  // tail of a list that is already the shortlist.
+  const chips = candidates;
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-ph-charcoal/15 bg-ph-charcoal/[0.03] px-3 py-2.5">
-      <div className="text-sm font-semibold text-ph-charcoal">Where should these numbers go?</div>
+      <div className="text-sm font-semibold text-ph-charcoal">{heading}</div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-ph-charcoal/60">Add to one you already have:</span>
-        {chips.map((c) => (
-          <button key={c.placementId} type="button" onClick={() => set(c.placementId)} className={value === c.placementId ? chipOn : chipOff}>
-            {c.name}
+      {allPlacements.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-ph-charcoal/60">Add to one you already have:</span>
+          {chips.map((c) => (
+            <button key={c.placementId} type="button" onClick={() => set(c.placementId)} className={value === c.placementId ? chipOn : chipOff}>
+              <span className="block">{c.name}</span>
+              <span className="block text-[11px] font-normal text-ph-charcoal/55">
+                {TEMPLATE_LABELS[c.template] ?? c.template} · {monthSummary(c.months)}
+              </span>
+            </button>
+          ))}
+          <button type="button" onClick={() => setSearching((v) => !v)} className="rounded-md px-2 py-1 text-sm text-ph-purple underline-offset-2 hover:underline">
+            Search my placements...
           </button>
-        ))}
-        {chosenViaSearch && <span className={chipOn}>{chosenViaSearch}</span>}
-        <button type="button" onClick={() => setSearching((v) => !v)} className="rounded-md px-2 py-1 text-sm text-ph-purple underline-offset-2 hover:underline">
-          {chips.length > 0 ? 'search all…' : 'search your placements…'}
-        </button>
-      </div>
+        </div>
+      )}
 
       {searching && (
         <div className="flex flex-col gap-1 rounded-md border border-ph-charcoal/15 bg-white p-2 text-xs">
           <input
             autoFocus
-            placeholder="Type part of a placement name…"
+            placeholder="Type part of a placement name..."
             value={q}
             onChange={(ev) => setQ(ev.target.value)}
             className="h-8 w-full rounded border border-ph-charcoal/20 px-2"
@@ -1360,99 +1703,16 @@ function DestinationChooser({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => set(CREATE)}
-        className={
-          value === CREATE
-            ? 'w-fit rounded-md border-2 border-ph-purple bg-ph-purple/10 px-2.5 py-1 text-left text-sm font-medium text-ph-charcoal'
-            : 'w-fit rounded-md border border-ph-charcoal/25 bg-white px-2.5 py-1 text-left text-sm text-ph-charcoal hover:bg-ph-charcoal/5'
-        }
-      >
-        None of these - create a new placement called "{createName}"
+      <button type="button" onClick={() => set(CREATE)} className={`w-fit text-left ${value === CREATE ? chipOn : chipOff}`}>
+        A new placement called "{createNames[keyId] ?? defaultCreateName}"
       </button>
 
-      <div className="text-[11px] text-ph-charcoal/45">Don't want to import this block at all? Use Skip at the bottom of the card.</div>
-    </div>
-  );
-}
-
-// ── Type-ahead target picker (placements) ─────────────────────────────────────
-
-function TypeaheadTarget({
-  keyId,
-  value,
-  setTarget,
-  candidates,
-  allPlacements,
-  matchedName,
-  canCreate,
-  emptyLabel = 'Skip',
-}: {
-  keyId: string;
-  value: string;
-  setTarget: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  candidates: { placementId: string; name: string; template: string }[];
-  allPlacements: PlacementListItem[];
-  matchedName: string | null;
-  canCreate?: boolean;
-  emptyLabel?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
-
-  const set = (v: string) => { setTarget((m) => ({ ...m, [keyId]: v })); setOpen(false); setQ(''); };
-
-  const chosenName =
-    value === CREATE ? 'Create new placement'
-    : value === '' ? emptyLabel
-    : allPlacements.find((p) => p.id === value)?.name ?? matchedName ?? 'the chosen placement';
-
-  const results = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const base = needle ? allPlacements.filter((p) => p.name.toLowerCase().includes(needle)) : allPlacements;
-    return base.slice(0, 8);
-  }, [q, allPlacements]);
-
-  return (
-    <div className="relative inline-block">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={
-          value === ''
-            ? 'inline-flex items-center gap-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100'
-            : 'inline-flex items-center gap-2 rounded-md border border-ph-charcoal/25 bg-white px-3 py-1.5 text-sm text-ph-charcoal hover:bg-ph-charcoal/5'
-        }
-      >
-        <span>{chosenName}</span>
-        <span className="inline-block h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-current opacity-50" />
-      </button>
-
-      {open && (
-        <div className="absolute z-10 mt-1 flex w-80 max-w-[90vw] flex-col gap-1 rounded-md border border-ph-charcoal/15 bg-white p-2 text-xs shadow-lg">
-          <input
-            autoFocus
-            placeholder="Search existing placements…"
-            value={q}
-            onChange={(ev) => setQ(ev.target.value)}
-            className="h-8 w-full rounded border border-ph-charcoal/20 px-2"
-          />
-          <div className="flex flex-wrap gap-1">
-            {canCreate && <button className="rounded bg-sky-50 px-2 py-1 text-sky-700 hover:bg-sky-100" onClick={() => set(CREATE)}>Create new placement</button>}
-            <button className="rounded bg-ph-charcoal/5 px-2 py-1 hover:bg-ph-charcoal/10" onClick={() => set('')}>Skip</button>
-          </div>
-          {candidates.length > 0 && q.trim() === '' && (
-            <div className="text-[10px] uppercase tracking-wide text-ph-charcoal/40">suggested</div>
-          )}
-          <ul className="max-h-48 overflow-y-auto">
-            {(q.trim() === '' ? candidates.map((c) => ({ id: c.placementId, name: `${c.name} (${c.template})` })) : results.map((r) => ({ id: r.id, name: `${r.name} (${r.templateCode})` }))).map((o) => (
-              <li key={o.id}>
-                <button className="w-full rounded px-2 py-1 text-left hover:bg-ph-purple/5" onClick={() => set(o.id)}>{o.name}</button>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {canSkip ? (
+        <button type="button" onClick={() => set(SKIP)} className={`w-fit text-left ${value === SKIP ? chipOn : chipOff}`}>
+          Don't save this one
+        </button>
+      ) : (
+        <div className="text-[11px] text-ph-charcoal/45">Don't want to import this block at all? Use Skip at the bottom of the card.</div>
       )}
     </div>
   );
@@ -1482,7 +1742,6 @@ function DiffCell({ outcome, oldValue, value, disabled, edited, onChange }: {
         className={`h-7 w-20 rounded border px-1.5 text-right text-xs text-ph-charcoal disabled:opacity-60 ${OUTCOME_CELL[outcome]}`}
       />
       {outcome === 'change' && oldValue !== null && <span className="text-[10px] text-ph-charcoal/50">was {fmt(oldValue)}</span>}
-      {outcome === 'invalid' && <span className="text-[10px] text-red-600">no metric</span>}
     </div>
   );
 }

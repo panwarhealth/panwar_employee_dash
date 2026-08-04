@@ -12,7 +12,7 @@ export interface ImportFileRef {
   formatId?: string | null;
 }
 
-export type Outcome = 'match' | 'change' | 'new' | 'invalid';
+export type Outcome = 'match' | 'change' | 'new';
 export type MatchStatus = 'matched' | 'ambiguous' | 'unmatched';
 
 export interface AlreadyImported {
@@ -34,7 +34,6 @@ export interface ImportHeadline {
   match: number;
   change: number;
   new: number;
-  invalid: number;
   unmatchedPlacements: number;
   totalValues: number;
 }
@@ -43,6 +42,7 @@ export interface PlacementCandidate {
   placementId: string;
   name: string;
   template: string;
+  months: number[]; // months this placement already has numbers for, in the import's year
 }
 
 export interface ActualDiff {
@@ -52,6 +52,11 @@ export interface ActualDiff {
   oldValue: number | null;
   outcome: Outcome;
   note: string | null;
+}
+
+export interface SkippedColumn {
+  metric: string;
+  kind: 'calculated' | 'target' | 'unknown';
 }
 
 export interface PlacementDiff {
@@ -68,6 +73,7 @@ export interface PlacementDiff {
   matchedByMemory: boolean;
   candidates: PlacementCandidate[];
   rows: ActualDiff[];
+  skippedColumns: SkippedColumn[];
   notes: string[];
   needsReview: boolean;
   reviewReasons: string[];
@@ -102,6 +108,7 @@ export interface PlacementSuggestion {
   values: SuggestionValue[];
   sendDates: string[]; // eDM send dates the AI read from the note (ISO yyyy-MM-dd)
   evidence: { sheet: string; cell: string }[]; // cells that told the AI when/what - highlighted in the grids
+  alreadySaved: boolean; // every value already stored on the target, same month, same number
 }
 
 // A value the AI pulled from a specific cell that passed the grounding check.
@@ -130,7 +137,7 @@ export interface EducationValueDiff {
 
 export interface EducationDiff {
   source: string;
-  group: string | null; // publisher block heading from the file ("AP", "Pharmacy Club")
+  group: string | null;
   brand: string;
   type: string | null;
   title: string;

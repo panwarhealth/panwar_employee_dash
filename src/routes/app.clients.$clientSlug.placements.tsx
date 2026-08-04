@@ -139,7 +139,7 @@ function PlacementsTab() {
   const { year: selectedYear, initYear } = useWorkspaceYear();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['manage', 'clients', clientSlug, 'placements', selectedYear],
+    queryKey: ['manage', 'clients', clientSlug, 'placements', 'list', selectedYear],
     queryFn: () => listPlacements(clientSlug, { year: selectedYear }),
   });
   const placements = data?.placements ?? [];
@@ -458,7 +458,7 @@ function PlacementEditor({
   const isEdit = placementId !== null;
 
   const { data: detail } = useQuery({
-    queryKey: ['manage', 'clients', clientSlug, 'placements', placementId],
+    queryKey: ['manage', 'clients', clientSlug, 'placements', 'detail', placementId],
     queryFn: () => getPlacement(clientSlug, placementId!),
     enabled: isEdit,
   });
@@ -747,7 +747,7 @@ function PlacementEditor({
             </Select>
 
             <LabeledField label="Name" error={form.formState.errors.name?.message}>
-              <Input {...form.register('name')} placeholder="e.g. AJP Solus eDM — Pharmacists" />
+              <Input {...form.register('name')} placeholder="e.g. Publisher Solus eDM - Pharmacists" />
             </LabeledField>
 
             <LabeledField label="OS codes">

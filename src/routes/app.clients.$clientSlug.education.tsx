@@ -1198,7 +1198,7 @@ function AssetForm({
         >
           <label className={lbl}>
             Group (publisher block)
-            <input list="asset-group-suggestions" value={group} onChange={(e) => setGroup(e.target.value)} placeholder="e.g. AJP" className={field} required />
+            <input list="asset-group-suggestions" value={group} onChange={(e) => setGroup(e.target.value)} placeholder="e.g. the publisher's name" className={field} required />
             <datalist id="asset-group-suggestions">
               {groupOptions.map((g) => (
                 <option key={g} value={g} />
