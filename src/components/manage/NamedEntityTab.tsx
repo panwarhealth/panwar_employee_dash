@@ -14,18 +14,21 @@ export interface NamedRow {
   name: string;
   slug: string;
   color?: string | null;
+  sortOrder?: number;
   placementCount: number;
 }
 
+type WriteBody = { name: string; slug: string; color?: string; sortOrder?: number };
+
 interface NamedEntityTabProps {
-  entityLabel: string;            // "brand" / "audience"
-  entityPluralLabel: string;       // "brands" / "audiences"
+  entityLabel: string;
+  entityPluralLabel: string;
   queryKey: readonly unknown[];
-  /** Show a display-colour picker (brands only - colours the brand cell on client dashboards). */
   withColor?: boolean;
+  withSortOrder?: boolean;
   list: () => Promise<NamedRow[]>;
-  create: (body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
-  update: (id: string, body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
+  create: (body: WriteBody) => Promise<NamedRow>;
+  update: (id: string, body: WriteBody) => Promise<NamedRow>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -34,12 +37,11 @@ const schema = z.object({
   slug: z
     .string()
     .regex(/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/, 'Lowercase letters, numbers, hyphens only'),
-  // '' = no colour; the API clears the colour on empty string.
   color: z.string().optional(),
+  sortOrder: z.coerce.number().int().optional(),
 });
 type Values = z.infer<typeof schema>;
 
-// null = no form open; 'new' = create; a row = edit that row.
 type FormState = NamedRow | 'new' | null;
 
 export function NamedEntityTab({
@@ -47,6 +49,7 @@ export function NamedEntityTab({
   entityPluralLabel,
   queryKey,
   withColor = false,
+  withSortOrder = false,
   list,
   create,
   update,
@@ -74,6 +77,7 @@ export function NamedEntityTab({
           entityLabel={entityLabel}
           queryKey={queryKey}
           withColor={withColor}
+          withSortOrder={withSortOrder}
           editing={formState === 'new' ? null : formState}
           create={create}
           update={update}
@@ -95,6 +99,7 @@ export function NamedEntityTab({
               queryKey={queryKey}
               remove={remove}
               entityLabel={entityLabel}
+              withSortOrder={withSortOrder}
               onEdit={(row) => setFormState(row)}
             />
           )}
@@ -108,6 +113,7 @@ function EntityForm({
   entityLabel,
   queryKey,
   withColor,
+  withSortOrder,
   editing,
   create,
   update,
@@ -116,21 +122,22 @@ function EntityForm({
   entityLabel: string;
   queryKey: readonly unknown[];
   withColor: boolean;
+  withSortOrder: boolean;
   editing: NamedRow | null;
-  create: (body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
-  update: (id: string, body: { name: string; slug: string; color?: string }) => Promise<NamedRow>;
+  create: (body: WriteBody) => Promise<NamedRow>;
+  update: (id: string, body: WriteBody) => Promise<NamedRow>;
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
   const [savedId, setSavedId] = useState<string | null>(editing?.id ?? null);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '' },
+    defaultValues: { name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '', sortOrder: editing?.sortOrder ?? 0 },
   });
 
   useEffect(() => {
     setSavedId(editing?.id ?? null);
-    form.reset({ name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '' });
+    form.reset({ name: editing?.name ?? '', slug: editing?.slug ?? '', color: editing?.color ?? '', sortOrder: editing?.sortOrder ?? 0 });
   }, [editing, form]);
 
   const mutation = useMutation({
@@ -139,6 +146,7 @@ function EntityForm({
         name: values.name.trim(),
         slug: values.slug.trim(),
         ...(withColor ? { color: values.color ?? '' } : {}),
+        ...(withSortOrder ? { sortOrder: values.sortOrder ?? 0 } : {}),
       };
       if (savedId) await update(savedId, body);
       else {
@@ -183,6 +191,16 @@ function EntityForm({
               <p className="text-xs text-red-600">{form.formState.errors.slug.message}</p>
             )}
           </div>
+          {withSortOrder && (
+            <div className="flex w-full max-w-32 flex-col gap-1.5">
+              <Input
+                type="number"
+                placeholder="Tab order"
+                title="Order of this brand's tab on the client dashboard (lowest first)"
+                {...form.register('sortOrder')}
+              />
+            </div>
+          )}
           {withColor && (
             <div className="flex h-10 items-center gap-1.5">
               <input
@@ -219,12 +237,14 @@ function EntityTable({
   queryKey,
   remove,
   entityLabel,
+  withSortOrder,
   onEdit,
 }: {
   rows: NamedRow[];
   queryKey: readonly unknown[];
   remove: (id: string) => Promise<void>;
   entityLabel: string;
+  withSortOrder: boolean;
   onEdit: (row: NamedRow) => void;
 }) {
   const queryClient = useQueryClient();
@@ -244,6 +264,7 @@ function EntityTable({
           <tr>
             <th className="py-2 pr-4 font-medium">Name</th>
             <th className="py-2 pr-4 font-medium">Slug</th>
+            {withSortOrder && <th className="py-2 pr-4 text-right font-medium">Tab order</th>}
             <th className="py-2 pr-4 text-right font-medium">Placements</th>
             <th className="py-2 text-right font-medium" />
           </tr>
@@ -263,6 +284,9 @@ function EntityTable({
                 </span>
               </td>
               <td className="py-2 pr-4 font-mono text-xs text-ph-charcoal/60">{r.slug}</td>
+              {withSortOrder && (
+                <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">{r.sortOrder ?? 0}</td>
+              )}
               <td className="py-2 pr-4 text-right tabular-nums text-ph-charcoal/80">
                 {r.placementCount}
               </td>

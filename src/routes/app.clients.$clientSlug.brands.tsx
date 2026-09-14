@@ -13,6 +13,7 @@ function BrandsTab() {
       entityLabel="brand"
       entityPluralLabel="brands"
       withColor
+      withSortOrder
       queryKey={['manage', 'clients', clientSlug, 'brands']}
       list={() => listBrands(clientSlug)}
       create={(body) => createBrand(clientSlug, body)}
