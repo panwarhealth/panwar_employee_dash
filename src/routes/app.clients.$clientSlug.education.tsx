@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
 import { usePublishYears, useWorkspaceYear } from '@/lib/workspaceYear';
 import { blockNonNumericKey } from '@/lib/numberKeys';
-import { EducationBarChart, EducationLegend, PALETTE } from '@/components/education/EducationBarChart';
+import { EducationBarChart, EducationLegend, PALETTE, type ChartSeries } from '@/components/education/EducationBarChart';
 import {
   listEducationPages,
   getEducationPage,
@@ -18,10 +18,6 @@ import {
   createEducationChart,
   updateEducationChart,
   deleteEducationChart,
-  createEducationSeries,
-  updateEducationSeries,
-  deleteEducationSeries,
-  setEducationSeriesData,
   createEducationAnnotation,
   updateEducationAnnotation,
   deleteEducationAnnotation,
@@ -31,7 +27,6 @@ import {
   setEducationAssetValues,
   type EducationPageTree,
   type EducationChart as EduChart,
-  type EducationSeries as EduSeries,
   type EducationAsset as EduAsset,
 } from '@/api/education';
 
@@ -178,7 +173,7 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
   // One shared year for the whole page — drives every chart's entry grid.
   const yearsWithData = useMemo(() => {
     const set = new Set<number>();
-    tree?.charts.forEach((c) => c.series.forEach((s) => s.points.forEach((p) => set.add(p.year))));
+    tree?.assets.forEach((a) => a.statuses.forEach((st) => st.points.forEach((p) => set.add(p.year))));
     return [...set].sort((a, b) => a - b);
   }, [tree]);
 
@@ -249,6 +244,7 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
           key={chart.id}
           clientSlug={clientSlug}
           chart={chart}
+          groupOptions={[...new Set(tree.assets.map((a) => a.groupLabel))]}
           dataYear={dataYear}
           onChanged={invalidate}
         />
@@ -290,7 +286,7 @@ function AddChartButton({ onCreate, pending }: { onCreate: (title: string) => vo
 }
 
 interface AnnotationTarget {
-  seriesId: string;
+  brand: string;
   year: number;
   month: number;
   // present when editing an existing annotation
@@ -301,14 +297,29 @@ interface AnnotationTarget {
 function ChartEditor({
   clientSlug,
   chart,
+  groupOptions,
   dataYear,
   onChanged,
 }: {
   clientSlug: string;
   chart: EduChart;
+  groupOptions: string[];
   dataYear: number;
   onChanged: () => void;
 }) {
+  const series: ChartSeries[] = chart.brandSeries.map((b, i) => ({
+    id: b.id,
+    label: b.label,
+    color: b.color ?? PALETTE[i % PALETTE.length],
+    points: b.points,
+  }));
+  const annotations = chart.annotations.map((a) => ({ ...a, seriesId: a.brand }));
+  const toggleGroup = (g: string) => {
+    const next = chart.groupLabels.includes(g)
+      ? chart.groupLabels.filter((x) => x !== g)
+      : [...chart.groupLabels, g];
+    updateChart.mutate({ groupLabels: next });
+  };
   const mut = <T,>(fn: () => Promise<T>) => fn().then(() => onChanged());
 
   // Preview window follows the workspace year filter, like the entry grid.
@@ -318,7 +329,8 @@ function ChartEditor({
   const [annTarget, setAnnTarget] = useState<AnnotationTarget | null>(null);
 
   const updateChart = useMutation({
-    mutationFn: (body: { title?: string; subtitle?: string | null }) => updateEducationChart(clientSlug, chart.id, body),
+    mutationFn: (body: { title?: string; subtitle?: string | null; groupLabels?: string[] }) =>
+      updateEducationChart(clientSlug, chart.id, body),
     onSuccess: onChanged,
   });
   const removeChart = useMutation({
@@ -378,40 +390,50 @@ function ChartEditor({
           </Button>
         </div>
 
-        {/* Preview + legend */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
-          <div className="rounded-md border border-ph-charcoal/10 p-2">
-            {chart.series.length === 0 ? (
-              <p className="p-6 text-center text-sm text-ph-charcoal/50">Add a module below to start the chart.</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <span className="font-semibold text-ph-charcoal">Asset groups feeding this chart</span>
+          {groupOptions.length === 0 && <span className="text-ph-charcoal/50">Add assets below first.</span>}
+          {groupOptions.map((g) => (
+            <label key={g} className="flex cursor-pointer items-center gap-1.5 text-ph-charcoal/80">
+              <input
+                type="checkbox"
+                checked={chart.groupLabels.includes(g)}
+                onChange={() => toggleGroup(g)}
+                className="h-3.5 w-3.5 accent-ph-purple"
+              />
+              {g}
+            </label>
+          ))}
+          {chart.groupLabels.length === 0 && groupOptions.length > 0 && (
+            <span className="text-ph-charcoal/50">None ticked = all groups.</span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="min-w-0 rounded-md border border-ph-charcoal/10 p-2">
+            {series.length === 0 ? (
+              <p className="p-6 text-center text-sm text-ph-charcoal/50">No completions in the asset tables for this chart yet.</p>
             ) : (
               <EducationBarChart
-                series={chart.series}
-                annotations={chart.annotations}
+                series={series}
+                annotations={annotations}
                 from={from}
                 to={to}
-                onBarClick={(seriesId, year, month) => setAnnTarget({ seriesId, year, month })}
+                onBarClick={(brand, year, month) => setAnnTarget({ brand, year, month })}
                 onAnnotationClick={(id) => {
                   const a = chart.annotations.find((x) => x.id === id);
-                  if (a) setAnnTarget({ seriesId: a.seriesId, year: a.year, month: a.month, annotationId: a.id, text: a.text });
+                  if (a) setAnnTarget({ brand: a.brand, year: a.year, month: a.month, annotationId: a.id, text: a.text });
                 }}
               />
             )}
-            {chart.series.length > 0 && (
-              <p className="px-2 pb-1 text-xs text-ph-charcoal/40">Tip: click a bar to add or edit its note.</p>
+            {series.length > 0 && (
+              <p className="px-2 pb-1 text-xs text-ph-charcoal/40">Bars are completions by brand, summed from the asset tables. Click a bar to add or edit its note.</p>
             )}
           </div>
           <div className="lg:max-h-[360px] lg:overflow-y-auto">
-            <EducationLegend series={chart.series} />
+            <EducationLegend series={series} />
           </div>
         </div>
-
-        {/* Series + data grid */}
-        <SeriesDataEditor
-          clientSlug={clientSlug}
-          chart={chart}
-          dataYear={dataYear}
-          onChanged={onChanged}
-        />
 
         {/* Annotations list - scoped to the workspace year like the preview */}
         {chart.annotations.some((a) => a.year === dataYear) && (
@@ -419,12 +441,11 @@ function ChartEditor({
             <h4 className="text-sm font-semibold text-ph-charcoal">Notes</h4>
             <ul className="mt-2 flex flex-col gap-1">
               {chart.annotations.filter((a) => a.year === dataYear).map((a) => {
-                const s = chart.series.find((x) => x.id === a.seriesId);
                 return (
                   <li key={a.id} className="flex items-center justify-between gap-2 rounded border border-ph-charcoal/10 px-2 py-1 text-xs">
                     <span className="text-ph-charcoal/80">
                       <span className="font-medium">{MONTHS[a.month - 1]} {a.year}</span>
-                      {s && <span className="text-ph-charcoal/50"> · {s.label}</span>} - {a.text}
+                      <span className="text-ph-charcoal/50"> · {a.brand}</span> - {a.text}
                     </span>
                     <button
                       type="button"
@@ -446,7 +467,6 @@ function ChartEditor({
           clientSlug={clientSlug}
           chartId={chart.id}
           target={annTarget}
-          series={chart.series}
           onClose={() => setAnnTarget(null)}
           onSaved={() => {
             setAnnTarget(null);
@@ -495,218 +515,7 @@ function SubtitleField({ value, onSave }: { value: string | null; onSave: (v: st
   );
 }
 
-function SeriesDataEditor({
-  clientSlug,
-  chart,
-  dataYear,
-  onChanged,
-}: {
-  clientSlug: string;
-  chart: EduChart;
-  dataYear: number;
-  onChanged: () => void;
-}) {
-  // Grid inputs keyed `${seriesId}:${year}:${month}` — across ALL years, so
-  // stepping between years never wipes unsaved edits. Seeded from every point.
-  const [inputs, setInputs] = useState<Record<string, string>>({});
-  // Ref so the seeding effect can read the current year without depending on
-  // it (a dataYear dep would wipe unsaved edits on every year switch).
-  const dataYearRef = useRef(dataYear);
-  useEffect(() => {
-    dataYearRef.current = dataYear;
-  }, [dataYear]);
-  useEffect(() => {
-    const next: Record<string, string> = {};
-    chart.series.forEach((s) => {
-      s.points.forEach((p) => {
-        next[`${s.id}:${p.year}:${p.month}`] = String(p.value);
-      });
-      // Brand-new module with nothing saved yet: prefill the year with 0s so
-      // it persists on save even before real numbers are entered.
-      if (s.points.length === 0) {
-        for (let m = 1; m <= 12; m++) next[`${s.id}:${dataYearRef.current}:${m}`] = '0';
-      }
-    });
-    setInputs(next);
-  }, [chart]);
-
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const addSeries = useMutation({
-    mutationFn: () =>
-      createEducationSeries(clientSlug, chart.id, {
-        label: `Module ${chart.series.length + 1}`,
-        color: PALETTE[chart.series.length % PALETTE.length],
-      }),
-    onSuccess: onChanged,
-  });
-
-  async function saveData() {
-    setSaving(true);
-    setError(null);
-    try {
-      // Each series is a full replace of every non-empty cell across all years
-      // currently in the grid (keys are `${seriesId}:${year}:${month}`).
-      for (const s of chart.series) {
-        const points: { year: number; month: number; value: number }[] = [];
-        for (const [key, raw] of Object.entries(inputs)) {
-          if (!key.startsWith(`${s.id}:`)) continue;
-          if (raw === undefined || raw.trim() === '') continue;
-          const [, yearStr, monthStr] = key.split(':');
-          points.push({ year: Number(yearStr), month: Number(monthStr), value: Number(raw) });
-        }
-        await setEducationSeriesData(clientSlug, s.id, points);
-      }
-      onChanged();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Save failed');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="border-t border-ph-charcoal/10 pt-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold text-ph-charcoal">
-          Modules &amp; completions <span className="font-normal text-ph-charcoal/50">· {dataYear}</span>
-        </h4>
-      </div>
-
-      {chart.series.length === 0 ? (
-        <p className="mt-2 text-xs text-ph-charcoal/60">No modules yet.</p>
-      ) : (
-        <div className="mt-2 overflow-x-auto">
-          <table className="text-sm">
-            <thead className="text-xs uppercase tracking-wide text-ph-charcoal/60">
-              <tr>
-                <th className="py-1 pr-3 text-left font-medium">Module</th>
-                {MONTHS_FULL.map((m) => (
-                  <th key={m} className="px-1 py-1 text-center font-medium">{m}</th>
-                ))}
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {chart.series.map((s) => (
-                <SeriesRow
-                  key={s.id}
-                  clientSlug={clientSlug}
-                  series={s}
-                  dataYear={dataYear}
-                  inputs={inputs}
-                  onCell={(month, value) => setInputs((prev) => ({ ...prev, [`${s.id}:${dataYear}:${month}`]: value }))}
-                  onChanged={onChanged}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div className="mt-3 flex items-center gap-2">
-        <Button type="button" size="sm" variant="ghost" onClick={() => addSeries.mutate()} disabled={addSeries.isPending}>
-          <Plus className="h-4 w-4" />
-          Add module
-        </Button>
-        {chart.series.length > 0 && (
-          <Button type="button" size="sm" onClick={saveData} disabled={saving}>
-            {saving ? 'Saving…' : 'Save completions'}
-          </Button>
-        )}
-        {error && <span className="text-xs text-red-600">{error}</span>}
-      </div>
-    </div>
-  );
-}
-
-const MONTHS_FULL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function SeriesRow({
-  clientSlug,
-  series,
-  dataYear,
-  inputs,
-  onCell,
-  onChanged,
-}: {
-  clientSlug: string;
-  series: EduSeries;
-  dataYear: number;
-  inputs: Record<string, string>;
-  onCell: (month: number, value: string) => void;
-  onChanged: () => void;
-}) {
-  const updateSeries = useMutation({
-    mutationFn: (body: { label?: string; color?: string }) => updateEducationSeries(clientSlug, series.id, body),
-    onSuccess: onChanged,
-  });
-  const removeSeries = useMutation({
-    mutationFn: () => deleteEducationSeries(clientSlug, series.id),
-    onSuccess: onChanged,
-  });
-
-  const [label, setLabel] = useState(series.label);
-  useEffect(() => setLabel(series.label), [series.label]);
-
-  // The native colour picker fires onChange for every tick of a drag - saving
-  // each one floods the API (and trips its rate limit). Preview locally and
-  // save once on blur, like the label input.
-  const [color, setColor] = useState(series.color ?? '#888888');
-  useEffect(() => setColor(series.color ?? '#888888'), [series.color]);
-
-  return (
-    <tr>
-      <td className="py-1 pr-3">
-        <div className="flex items-center gap-1.5">
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            onBlur={() => color !== (series.color ?? '#888888') && updateSeries.mutate({ color })}
-            className="h-6 w-6 shrink-0 cursor-pointer rounded border border-ph-charcoal/20 bg-white p-0"
-            title="Bar colour"
-          />
-          <input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={() => label.trim() && label !== series.label && updateSeries.mutate({ label: label.trim() })}
-            className="h-7 w-56 rounded-md border border-ph-charcoal/20 bg-white px-2 text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none"
-          />
-        </div>
-      </td>
-      {MONTHS_FULL.map((_, i) => {
-        const m = i + 1;
-        return (
-          <td key={m} className="px-0.5 py-1">
-            <input
-              type="number"
-              step="any"
-              inputMode="numeric"
-              value={inputs[`${series.id}:${dataYear}:${m}`] ?? ''}
-              placeholder="0"
-              onKeyDown={blockNonNumericKey}
-              onChange={(e) => onCell(m, e.target.value.replace(/[^\d.]/g, ''))}
-              className="h-7 w-14 rounded-md border border-ph-charcoal/20 bg-white px-1 text-center text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none"
-            />
-          </td>
-        );
-      })}
-      <td className="pl-1">
-        <button
-          type="button"
-          className="text-ph-charcoal/40 hover:text-red-600"
-          onClick={() => {
-            if (confirm(`Delete module "${series.label}"?`)) removeSeries.mutate();
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </td>
-    </tr>
-  );
-}
+const MONTHS_FULL = MONTHS;
 
 const EDU_STATUSES = ['Completed', 'Enrolled', 'Views'];
 
@@ -1247,27 +1056,24 @@ function AnnotationModal({
   clientSlug,
   chartId,
   target,
-  series,
   onClose,
   onSaved,
 }: {
   clientSlug: string;
   chartId: string;
   target: AnnotationTarget;
-  series: EduSeries[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [text, setText] = useState(target.text ?? '');
   const [error, setError] = useState<string | null>(null);
-  const s = series.find((x) => x.id === target.seriesId);
 
   const save = useMutation({
     mutationFn: () =>
       target.annotationId
         ? updateEducationAnnotation(clientSlug, target.annotationId, { text })
         : createEducationAnnotation(clientSlug, chartId, {
-            seriesId: target.seriesId,
+            brand: target.brand,
             year: target.year,
             month: target.month,
             text,
@@ -1287,7 +1093,7 @@ function AnnotationModal({
           {target.annotationId ? 'Edit note' : 'Add note'}
         </h3>
         <p className="mt-1 text-xs text-ph-charcoal/60">
-          {s?.label} · {MONTHS[target.month - 1]} {target.year}
+          {target.brand} · {MONTHS[target.month - 1]} {target.year}
         </p>
         <textarea
           autoFocus

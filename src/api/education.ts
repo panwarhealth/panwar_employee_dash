@@ -1,12 +1,12 @@
 import { apiFetch } from './client';
 
-/** Mirror of the API's education DTOs (Panwar.Api.Models.DTOs). */
 export interface EducationPageSummary {
   id: string;
   name: string;
   slug: string;
   sortOrder: number;
   chartCount: number;
+  assetCount: number;
 }
 
 export interface EducationPoint {
@@ -19,13 +19,12 @@ export interface EducationSeries {
   id: string;
   label: string;
   color: string | null;
-  sortOrder: number;
   points: EducationPoint[];
 }
 
 export interface EducationAnnotation {
   id: string;
-  seriesId: string;
+  brand: string;
   year: number;
   month: number;
   text: string;
@@ -36,7 +35,9 @@ export interface EducationChart {
   title: string;
   subtitle: string | null;
   sortOrder: number;
-  series: EducationSeries[];
+  groupLabels: string[];
+  brandSeries: EducationSeries[];
+  activitySeries: EducationSeries[];
   annotations: EducationAnnotation[];
 }
 
@@ -53,7 +54,6 @@ export interface EducationAssetStatus {
   total: number;
 }
 
-/** One row of the page's detail table (the workbook's per-asset education table). */
 export interface EducationAsset {
   id: string;
   groupLabel: string;
@@ -66,7 +66,6 @@ export interface EducationAsset {
   statuses: EducationAssetStatus[];
 }
 
-/** Full page tree (unwindowed on admin reads). */
 export interface EducationPageTree {
   page: EducationPageSummary;
   period: EducationPeriod;
@@ -76,7 +75,6 @@ export interface EducationPageTree {
 
 const base = (clientSlug: string) => `/manage/clients/${encodeURIComponent(clientSlug)}/education`;
 
-// ── Pages ────────────────────────────────────────────────────────────────
 export const listEducationPages = (clientSlug: string): Promise<EducationPageSummary[]> =>
   apiFetch<{ pages: EducationPageSummary[] }>(base(clientSlug)).then((r) => r.pages);
 
@@ -96,50 +94,30 @@ export const updateEducationPage = (
 export const deleteEducationPage = (clientSlug: string, pageId: string): Promise<void> =>
   apiFetch<void>(`${base(clientSlug)}/${pageId}`, { method: 'DELETE' });
 
-// ── Charts ───────────────────────────────────────────────────────────────
+export interface EducationChartWriteBody {
+  title?: string;
+  subtitle?: string | null;
+  sortOrder?: number;
+  groupLabels?: string[];
+}
+
 export const createEducationChart = (
   clientSlug: string,
   pageId: string,
-  body: { title: string; subtitle?: string | null },
+  body: EducationChartWriteBody & { title: string },
 ): Promise<EducationPageTree> =>
   apiFetch<EducationPageTree>(`${base(clientSlug)}/${pageId}/charts`, { method: 'POST', body });
 
 export const updateEducationChart = (
   clientSlug: string,
   chartId: string,
-  body: { title?: string; subtitle?: string | null; sortOrder?: number },
+  body: EducationChartWriteBody,
 ): Promise<EducationPageTree> =>
   apiFetch<EducationPageTree>(`${base(clientSlug)}/charts/${chartId}`, { method: 'PATCH', body });
 
 export const deleteEducationChart = (clientSlug: string, chartId: string): Promise<void> =>
   apiFetch<void>(`${base(clientSlug)}/charts/${chartId}`, { method: 'DELETE' });
 
-// ── Series ───────────────────────────────────────────────────────────────
-export const createEducationSeries = (
-  clientSlug: string,
-  chartId: string,
-  body: { label: string; color?: string | null },
-): Promise<EducationPageTree> =>
-  apiFetch<EducationPageTree>(`${base(clientSlug)}/charts/${chartId}/series`, { method: 'POST', body });
-
-export const updateEducationSeries = (
-  clientSlug: string,
-  seriesId: string,
-  body: { label?: string; color?: string | null; sortOrder?: number },
-): Promise<EducationPageTree> =>
-  apiFetch<EducationPageTree>(`${base(clientSlug)}/series/${seriesId}`, { method: 'PATCH', body });
-
-export const deleteEducationSeries = (clientSlug: string, seriesId: string): Promise<void> =>
-  apiFetch<void>(`${base(clientSlug)}/series/${seriesId}`, { method: 'DELETE' });
-
-export const setEducationSeriesData = (
-  clientSlug: string,
-  seriesId: string,
-  points: EducationPoint[],
-): Promise<EducationPageTree> =>
-  apiFetch<EducationPageTree>(`${base(clientSlug)}/series/${seriesId}/data`, { method: 'PUT', body: { points } });
-
-// ── Assets (the page's detail table) ─────────────────────────────────────
 export interface EducationAssetWriteBody {
   groupLabel?: string;
   brand?: string | null;
@@ -175,18 +153,17 @@ export const setEducationAssetValues = (
 ): Promise<EducationPageTree> =>
   apiFetch<EducationPageTree>(`${base(clientSlug)}/assets/${assetId}/values`, { method: 'PUT', body: { values } });
 
-// ── Annotations ──────────────────────────────────────────────────────────
 export const createEducationAnnotation = (
   clientSlug: string,
   chartId: string,
-  body: { seriesId: string; year: number; month: number; text: string },
+  body: { brand: string; year: number; month: number; text: string },
 ): Promise<EducationPageTree> =>
   apiFetch<EducationPageTree>(`${base(clientSlug)}/charts/${chartId}/annotations`, { method: 'POST', body });
 
 export const updateEducationAnnotation = (
   clientSlug: string,
   annotationId: string,
-  body: { seriesId?: string; year?: number; month?: number; text?: string },
+  body: { brand?: string; year?: number; month?: number; text?: string },
 ): Promise<EducationPageTree> =>
   apiFetch<EducationPageTree>(`${base(clientSlug)}/annotations/${annotationId}`, { method: 'PATCH', body });
 
