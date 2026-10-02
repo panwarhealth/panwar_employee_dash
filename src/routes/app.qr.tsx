@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { ApiError } from '@/api/client';
 import { listQrCodes, saveQrCode, type QrCodeOptions, type SavedQrCode } from '@/api/links';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Modal } from '@/components/ui/modal';
 import {
   buildQrSvg,
   downloadPng,
@@ -23,11 +23,16 @@ export const Route = createFileRoute('/app/qr')({
   component: QrPage,
 });
 
-const SIZES = [
-  { label: 'Small', px: 512 },
-  { label: 'Medium', px: 1024 },
-  { label: 'Print', px: 2048 },
+const PNG_SIZES = [
+  { label: 'Small', px: 512, use: 'Emails, slides and web pages' },
+  { label: 'Medium', px: 1024, use: 'Most uses' },
+  { label: 'Large', px: 2048, use: 'Large screens and posters' },
 ] as const;
+
+interface PngTarget {
+  svg: string;
+  url: string;
+}
 
 const FOREGROUNDS = [
   { value: '#454646', label: 'Charcoal' },
@@ -59,6 +64,7 @@ function QrPage() {
   const [options, setOptions] = useState<QrCodeOptions>(DEFAULTS);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
+  const [pngTarget, setPngTarget] = useState<PngTarget | null>(null);
 
   const { data: logo = null } = useQuery({
     queryKey: ['qr-logo'],
@@ -77,16 +83,6 @@ function QrPage() {
     () => (parsed ? tryBuild(text, options, logo) : null),
     [parsed, text, options, logo],
   );
-
-  const download = useMutation({
-    mutationFn: async (format: 'png' | 'svg') => {
-      if (!svg) return;
-      await saveQrCode({ url: text, ...options });
-      if (format === 'svg') downloadSvg(svg, '${qrFilename(text)}.svg');
-      else await downloadPng(svg, options.size, `${qrFilename(text)}.png`);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['qr-codes'] }),
-  });
 
   const logoPending = options.hasLogo && logo === null;
 
@@ -107,11 +103,11 @@ function QrPage() {
       <Card className="p-8 sm:p-10">
       <h2 className="text-2xl font-bold leading-tight text-ph-charcoal">Make a QR code</h2>
       <p className="mb-6 mt-1.5 text-[15px] text-ph-charcoal/60">
-        Paste any link, or{' '}
+        Paste a link, or pick one from{' '}
         <Link to="/app/links/register" className="underline underline-offset-4 hover:text-ph-charcoal">
-          pick one from past links
+          Past links
         </Link>
-        . Links made here already have tracking on them.
+        . Use a tracked link so scans show up against the job.
       </p>
 
       <input
@@ -151,8 +147,8 @@ function QrPage() {
             <Button
               type="button"
               size="lg"
-              disabled={download.isPending || logoPending}
-              onClick={() => download.mutate('png')}
+              disabled={logoPending}
+              onClick={() => setPngTarget({ svg, url: text })}
             >
               Download PNG
             </Button>
@@ -160,8 +156,8 @@ function QrPage() {
               type="button"
               size="lg"
               variant="outline"
-              disabled={download.isPending || logoPending}
-              onClick={() => download.mutate('svg')}
+              disabled={logoPending}
+              onClick={() => downloadSvg(svg, `${qrFilename(text)}.svg`)}
             >
               Download SVG for print
             </Button>
@@ -172,33 +168,9 @@ function QrPage() {
           {autosaveFailed && (
             <p className="text-sm text-red-600">This code could not be saved to past codes.</p>
           )}
-          {download.error && (
-            <p className="text-sm text-red-600">
-              {download.error instanceof ApiError ? download.error.message : 'Download failed'}
-            </p>
-          )}
 
           {optionsOpen && (
             <div className="mt-4 flex flex-col gap-4 border-t border-ph-charcoal/20 pt-5 text-sm">
-              <Option label="Size">
-                <div className="flex gap-1.5">
-                  {SIZES.map((s) => (
-                    <button
-                      key={s.px}
-                      type="button"
-                      onClick={() => set({ size: s.px })}
-                      className={cn(
-                        'rounded-lg border-[1.5px] px-3 py-1.5',
-                        options.size === s.px
-                          ? 'border-ph-purple bg-ph-purple/10 text-ph-purple'
-                          : 'border-ph-charcoal/20 bg-white',
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </Option>
               <Option label="Colour">
                 <div className="flex items-center gap-2">
                   {FOREGROUNDS.map((c) => (
@@ -262,9 +234,10 @@ function QrPage() {
         <button type="button" className={grey} onClick={() => setPastOpen((o) => !o)}>
           {pastOpen ? 'Hide past codes' : 'Past codes'}
         </button>
-        {pastOpen && <PastCodes logo={logo} />}
+        {pastOpen && <PastCodes logo={logo} onPng={setPngTarget} />}
       </div>
       </Card>
+      <PngSizeModal target={pngTarget} onClose={() => setPngTarget(null)} />
     </div>
   );
 }
@@ -278,16 +251,56 @@ function Option({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-function PastCodes({ logo }: { logo: string | null }) {
+function PngSizeModal({ target, onClose }: { target: PngTarget | null; onClose: () => void }) {
+  const [failed, setFailed] = useState(false);
+
+  const pick = async (px: number) => {
+    if (!target) return;
+    setFailed(false);
+    try {
+      await downloadPng(target.svg, px, `${qrFilename(target.url)}.png`);
+      onClose();
+    } catch {
+      setFailed(true);
+    }
+  };
+
+  return (
+    <Modal open={target !== null} onClose={onClose} title="What size PNG?" className="max-w-sm">
+      <div className="flex flex-col gap-2 p-5">
+        {PNG_SIZES.map((s) => (
+          <button
+            key={s.px}
+            type="button"
+            onClick={() => pick(s.px)}
+            className="flex items-center justify-between gap-4 rounded-lg border-[1.5px] border-ph-charcoal/20 px-4 py-3 text-left transition-colors hover:border-ph-purple hover:bg-ph-purple/5"
+          >
+            <span>
+              <span className="block font-semibold text-ph-charcoal">{s.label}</span>
+              <span className="block text-xs text-ph-charcoal/60">{s.use}</span>
+            </span>
+            <span className="shrink-0 text-sm text-ph-charcoal/60">
+              {s.px} x {s.px} px
+            </span>
+          </button>
+        ))}
+        <p className="mt-1 text-xs text-ph-charcoal/60">For print, use the SVG instead.</p>
+        {failed && <p className="text-sm text-red-600">Download failed. Try again.</p>}
+      </div>
+    </Modal>
+  );
+}
+
+function PastCodes({ logo, onPng }: { logo: string | null; onPng: (target: PngTarget) => void }) {
   const { data: codes = [], isLoading } = useQuery({
     queryKey: ['qr-codes'],
     queryFn: listQrCodes,
   });
 
-  const redownload = async (code: SavedQrCode, format: 'png' | 'svg') => {
+  const redownload = (code: SavedQrCode, format: 'png' | 'svg') => {
     const svg = buildQrSvg(code.url, code, logo);
-    if (format === 'svg') downloadSvg(svg, '${qrFilename(code.url)}.svg');
-    else await downloadPng(svg, code.size, `${qrFilename(code.url)}.png`);
+    if (format === 'svg') downloadSvg(svg, `${qrFilename(code.url)}.svg`);
+    else onPng({ svg, url: code.url });
   };
 
   if (isLoading) return <p className="mt-4 text-sm text-ph-charcoal/60">Loading...</p>;
@@ -304,7 +317,8 @@ function PastCodes({ logo }: { logo: string | null }) {
           <div className="min-w-0 flex-1">
             <div className="break-all font-mono text-[13px] text-ph-charcoal">{code.url}</div>
             <div className="mt-0.5 text-xs text-ph-charcoal/60">
-              {code.size}px{code.hasLogo ? ', logo' : ''} · {code.createdByName},{' '}
+              {code.hasLogo ? 'Logo · ' : ''}
+              {code.createdByName},{' '}
               {formatDay(code.createdAt)}
             </div>
           </div>
