@@ -235,7 +235,7 @@ function BuilderPage() {
           onBack={() => setStep(3)}
           help={
             <>
-              The medium is the kind of placement, whoever the publisher is: an eDM is Email, a
+              The medium is the kind of placement: an eDM is Email, a
               printed or on-screen code is QR code, an organic or paid post is Social post. One
               link per placement. If the same page is promoted by email and by QR code, make two
               links.
