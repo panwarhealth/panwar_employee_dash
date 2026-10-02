@@ -193,7 +193,7 @@ function BuilderPage() {
                 : client
                   ? client
                   : prefix
-                    ? `No client found for ${prefix}, saved as a campaign id`
+                    ? ''
                     : `Saved as ${campaignSlug}`}
           </Status>
         </Step>
