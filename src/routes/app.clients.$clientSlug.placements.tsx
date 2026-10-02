@@ -143,14 +143,14 @@ function PlacementsTab() {
     queryFn: () => listPlacements(clientSlug, { year: selectedYear }),
   });
   const placements = data?.placements ?? [];
-  const years = data?.years ?? [];
   usePublishYears(data?.years);
 
   // Default the workspace year to the latest with placements - unless the
   // user (or another tab) already set one.
   useEffect(() => {
-    if (years.length) initYear(years[years.length - 1]);
-  }, [years, initYear]);
+    const ys = data?.years;
+    if (ys?.length) initYear(ys[ys.length - 1]);
+  }, [data?.years, initYear]);
 
   const { data: brands = [] } = useQuery({
     queryKey: ['manage', 'clients', clientSlug, 'brands'],

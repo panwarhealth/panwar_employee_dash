@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { PALETTE } from './palette';
 
 /**
  * Self-contained grouped bar chart for education completions (no chart lib).
@@ -30,11 +31,6 @@ interface Props {
   onAnnotationClick?: (annotationId: string) => void;
   height?: number;
 }
-
-export const PALETTE = [
-  '#d62728', '#ff7f0e', '#1f77b4', '#2ca02c', '#111111',
-  '#9467bd', '#8c564b', '#e377c2', '#17becf', '#bcbd22',
-];
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const ord = (y: number, m: number) => y * 12 + (m - 1);

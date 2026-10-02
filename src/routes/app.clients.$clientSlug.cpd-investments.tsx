@@ -55,7 +55,7 @@ function CpdInvestmentsTab() {
     queryKey: ['manage', 'clients', clientSlug, 'cpd-investments', year],
     queryFn: () => listCpdInvestments(clientSlug, year),
   });
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data]);
   usePublishYears(data?.years);
   useEffect(() => {
     if (data?.years?.length) initYear(data.years[data.years.length - 1]);

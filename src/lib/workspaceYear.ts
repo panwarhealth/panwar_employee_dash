@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 
 /**
  * The workspace-wide reporting year. One state shared by every client-tab's
@@ -10,38 +10,13 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
  * ("latest year with placements") that only applies until anything else has
  * set the year - so tab switches never stomp a chosen year.
  */
-const YearContext = createContext<{
+export const YearContext = createContext<{
   year: number;
   setYear: (year: number) => void;
   initYear: (year: number) => void;
   yearsWithData: number[];
   publishYears: (years: number[]) => void;
 } | null>(null);
-
-export function WorkspaceYearProvider({ children }: { children: React.ReactNode }) {
-  const [year, setYearState] = useState(() => new Date().getFullYear());
-  const [yearsWithData, setYearsWithData] = useState<number[]>([]);
-  const initialised = useRef(false);
-  const setYear = useCallback((y: number) => {
-    initialised.current = true;
-    setYearState(y);
-  }, []);
-  const initYear = useCallback((y: number) => {
-    if (initialised.current) return;
-    initialised.current = true;
-    setYearState(y);
-  }, []);
-  const publishYears = useCallback((years: number[]) => {
-    setYearsWithData((prev) =>
-      prev.length === years.length && prev.every((y, i) => y === years[i]) ? prev : years,
-    );
-  }, []);
-  return (
-    <YearContext.Provider value={{ year, setYear, initYear, yearsWithData, publishYears }}>
-      {children}
-    </YearContext.Provider>
-  );
-}
 
 export function useWorkspaceYear() {
   const ctx = useContext(YearContext);

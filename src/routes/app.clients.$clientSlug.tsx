@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { listClients } from '@/api/clients';
 import { YearPicker } from '@/components/YearPicker';
-import { WorkspaceYearProvider, useWorkspaceYear } from '@/lib/workspaceYear';
+import { WorkspaceYearProvider } from '@/components/WorkspaceYearProvider';
+import { useWorkspaceYear } from '@/lib/workspaceYear';
 
 /**
  * Client workspace layout. Everything under /app/clients/{slug}/... renders

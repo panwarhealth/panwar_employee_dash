@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { ApiError } from '@/api/client';
 import { usePublishYears, useWorkspaceYear } from '@/lib/workspaceYear';
 import { blockNonNumericKey } from '@/lib/numberKeys';
-import { EducationBarChart, EducationLegend, PALETTE, type ChartSeries } from '@/components/education/EducationBarChart';
+import { EducationBarChart, EducationLegend, type ChartSeries } from '@/components/education/EducationBarChart';
+import { PALETTE } from '@/components/education/palette';
 import {
   listEducationPages,
   getEducationPage,
