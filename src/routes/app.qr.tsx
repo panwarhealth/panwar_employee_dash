@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -89,6 +89,16 @@ function QrPage() {
   });
 
   const logoPending = options.hasLogo && logo === null;
+
+  const { mutate: autosave, isError: autosaveFailed } = useMutation({
+    mutationFn: saveQrCode,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['qr-codes'] }),
+  });
+  useEffect(() => {
+    if (!svg || logoPending) return;
+    const timer = setTimeout(() => autosave({ url: text, ...options }), 2000);
+    return () => clearTimeout(timer);
+  }, [svg, logoPending, text, options, autosave]);
   const set = (patch: Partial<QrCodeOptions>) => setOptions((o) => ({ ...o, ...patch }));
 
   return (
@@ -159,6 +169,9 @@ function QrPage() {
               Options
             </button>
           </div>
+          {autosaveFailed && (
+            <p className="text-sm text-red-600">This code could not be saved to past codes.</p>
+          )}
           {download.error && (
             <p className="text-sm text-red-600">
               {download.error instanceof ApiError ? download.error.message : 'Download failed'}
@@ -279,7 +292,7 @@ function PastCodes({ logo }: { logo: string | null }) {
 
   if (isLoading) return <p className="mt-4 text-sm text-ph-charcoal/60">Loading...</p>;
   if (codes.length === 0)
-    return <p className="mt-4 text-sm text-ph-charcoal/60">No codes downloaded yet.</p>;
+    return <p className="mt-4 text-sm text-ph-charcoal/60">No codes yet.</p>;
 
   return (
     <div className="mt-2 flex flex-col">

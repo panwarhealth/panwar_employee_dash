@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { ApiError } from '@/api/client';
 import {
+  checkUrl,
   createLink,
   listJobClients,
   listLinks,
@@ -68,6 +69,21 @@ function BuilderPage() {
   });
 
   const destUrl = parseWebAddress(dest);
+  const destHref = destUrl?.href ?? '';
+  const [settledDest, setSettledDest] = useState(destHref);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettledDest(destHref), 600);
+    return () => clearTimeout(timer);
+  }, [destHref]);
+  const pageCheck = useQuery({
+    queryKey: ['url-check', settledDest],
+    queryFn: () => checkUrl(settledDest),
+    enabled: settledDest !== '',
+    staleTime: Infinity,
+    retry: false,
+  });
+  const checking = destHref !== '' && (destHref !== settledDest || pageCheck.isPending);
+  const pageMissing = !checking && pageCheck.data?.found === false;
   const campaignSlug = slugify(campaign);
   const campaignOk = campaignSlug.length >= 3;
   const prefix = jobPrefix(campaignSlug);
@@ -124,14 +140,22 @@ function BuilderPage() {
             onChange={(e) => setDest(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && destUrl && setStep(2)}
           />
-          <Status tone={!dest.trim() ? 'idle' : destUrl ? 'ok' : 'bad'}>
+          <Status
+            tone={!dest.trim() || checking ? 'idle' : !destUrl ? 'bad' : pageMissing ? 'warn' : 'ok'}
+          >
             {!dest.trim()
               ? ''
               : !destUrl
                 ? "That doesn't look like a web address"
-                : hasUtmParams(destUrl)
-                  ? 'This link already has tracking on it. It will be replaced.'
-                  : 'Looks good'}
+                : checking
+                  ? 'Checking the page...'
+                  : pageMissing
+                    ? `We couldn't open that page${pageCheck.data?.statusCode ? ` (error ${pageCheck.data.statusCode})` : ''}. Check the address, or carry on if you're sure it's right.`
+                    : pageCheck.isError
+                      ? 'Looks like a web address. The page check is unavailable right now.'
+                      : hasUtmParams(destUrl)
+                        ? 'Page found. It already has tracking on it, which will be replaced.'
+                        : 'Page found'}
           </Status>
         </Step>
       )}
@@ -143,6 +167,13 @@ function BuilderPage() {
           canNext={campaignOk}
           onNext={() => setStep(3)}
           onBack={() => setStep(1)}
+          help={
+            <>
+              The campaign id is how Google Analytics groups every link for one job. Use the Trello
+              job number so all of a job's links report together. Type it the same way every time.
+              It is saved in lower case with hyphens instead of spaces.
+            </>
+          }
         >
           <input
             autoFocus
@@ -175,6 +206,14 @@ function BuilderPage() {
           canNext={source !== ''}
           onNext={() => setStep(4)}
           onBack={() => setStep(2)}
+          help={
+            <>
+              The source is who is sending the traffic: the publisher or platform, not the kind of
+              placement. An eDM sent by a publisher uses that publisher as the source. Something we
+              send or post ourselves uses Panwar Health or the social platform. Pick from the list
+              where you can so the same publisher is always spelt the same way.
+            </>
+          }
         >
           <Choices
             choices={withChoicesUsed(SOURCES, links.map((l) => l.source))}
@@ -194,6 +233,14 @@ function BuilderPage() {
             create.mutate({ destinationUrl: dest.trim(), campaignId: campaignSlug, source, medium })
           }
           onBack={() => setStep(3)}
+          help={
+            <>
+              The medium is the kind of placement, whoever the publisher is: an eDM is Email, a
+              printed or on-screen code is QR code, an organic or paid post is Social post. One
+              link per placement. If the same page is promoted by email and by QR code, make two
+              links.
+            </>
+          }
         >
           <Choices
             choices={withChoicesUsed(MEDIUMS, links.map((l) => l.medium))}
@@ -218,6 +265,7 @@ function Step({
   nextLabel = 'Next',
   onNext,
   onBack,
+  help,
   children,
 }: {
   question: string;
@@ -226,8 +274,10 @@ function Step({
   nextLabel?: string;
   onNext: () => void;
   onBack?: () => void;
+  help?: ReactNode;
   children: ReactNode;
 }) {
+  const [helpOpen, setHelpOpen] = useState(false);
   return (
     <div>
       <h2 className="text-2xl font-bold leading-tight text-ph-charcoal">{question}</h2>
@@ -246,17 +296,38 @@ function Step({
             Back
           </button>
         )}
+        {help && (
+          <button
+            type="button"
+            onClick={() => setHelpOpen((o) => !o)}
+            className="text-sm text-ph-charcoal/60 underline underline-offset-4 hover:text-ph-charcoal"
+          >
+            How we name these
+          </button>
+        )}
       </div>
+      {help && helpOpen && (
+        <p className="mt-5 rounded-lg bg-ph-charcoal/5 px-4 py-3 text-sm leading-relaxed text-ph-charcoal/80">
+          {help}
+        </p>
+      )}
     </div>
   );
 }
 
-function Status({ tone, children }: { tone: 'idle' | 'ok' | 'bad'; children: ReactNode }) {
+function Status({
+  tone,
+  children,
+}: {
+  tone: 'idle' | 'ok' | 'warn' | 'bad';
+  children: ReactNode;
+}) {
   return (
     <div
       className={cn(
         'mb-6 mt-2 min-h-6 text-sm',
         tone === 'ok' && 'text-green-700',
+        tone === 'warn' && 'text-orange-800',
         tone === 'bad' && 'text-red-600',
         tone === 'idle' && 'text-ph-charcoal/60',
       )}

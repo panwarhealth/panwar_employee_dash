@@ -43,6 +43,14 @@ export const createLink = (body: CreateLinkBody): Promise<TrackedLink> =>
 export const setLinkContent = (id: string, content: string): Promise<TrackedLink> =>
   apiFetch(`/links/${id}`, { method: 'PATCH', body: { content } });
 
+export interface UrlCheck {
+  found: boolean;
+  statusCode: number | null;
+}
+
+export const checkUrl = (url: string): Promise<UrlCheck> =>
+  apiFetch('/url-check', { method: 'POST', body: { url } });
+
 export interface JobClient {
   prefix: string;
   name: string;

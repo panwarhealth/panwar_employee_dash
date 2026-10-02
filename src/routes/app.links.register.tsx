@@ -11,18 +11,31 @@ export const Route = createFileRoute('/app/links/register')({
   component: RegisterPage,
 });
 
+const select =
+  'h-9 min-w-44 rounded-md border border-ph-charcoal/20 bg-white px-3 text-sm text-ph-charcoal shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ph-purple/40';
+
 function RegisterPage() {
   const [query, setQuery] = useState('');
   const { data: links = [], isLoading } = useQuery({ queryKey: ['links'], queryFn: listLinks });
 
+  const [client, setClient] = useState('');
+  const [job, setJob] = useState('');
+
+  const clients = [...new Set(links.flatMap((l) => (l.clientName ? [l.clientName] : [])))].sort();
+  const jobs = [
+    ...new Set(links.filter((l) => !client || l.clientName === client).map((l) => l.campaignId)),
+  ].sort();
+
   const needle = query.trim().toLowerCase();
   const rows = links.filter(
     (l) =>
-      !needle ||
+      (!client || l.clientName === client) &&
+      (!job || l.campaignId === job) &&
+      (!needle ||
       [l.campaignId, l.clientName ?? '', l.url, l.source, l.medium, l.content ?? '', l.createdByName]
         .join(' ')
         .toLowerCase()
-        .includes(needle),
+        .includes(needle)),
   );
 
   return (
@@ -33,11 +46,42 @@ function RegisterPage() {
       </p>
 
       <Input
-        className="mb-4 h-11 text-base"
+        className="mb-3 h-11 text-base"
         placeholder="Search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      <div className="mb-4 flex flex-wrap gap-3">
+        <select
+          aria-label="Filter by client"
+          className={select}
+          value={client}
+          onChange={(e) => {
+            setClient(e.target.value);
+            setJob('');
+          }}
+        >
+          <option value="">All clients</option>
+          {clients.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Filter by job number"
+          className={select}
+          value={job}
+          onChange={(e) => setJob(e.target.value)}
+        >
+          <option value="">All job numbers</option>
+          {jobs.map((j) => (
+            <option key={j} value={j}>
+              {j}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {isLoading && <p className="text-sm text-ph-charcoal/60">Loading...</p>}
       {!isLoading && rows.length === 0 && (
