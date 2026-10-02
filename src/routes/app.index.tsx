@@ -1,53 +1,40 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Building2, Users } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { appsForRoles } from '@/components/AppIcons';
 
 export const Route = createFileRoute('/app/')({
-  component: OverviewPage,
+  component: HomePage,
 });
 
-const SHORTCUTS = [
-  {
-    to: '/app/clients',
-    title: 'Clients',
-    description: 'Pick a client to manage its brands, placements, baselines, and access.',
-    icon: Users,
-  },
-  {
-    to: '/app/publishers',
-    title: 'Publishers',
-    description: 'The shared publisher registry and their metric templates.',
-    icon: Building2,
-  },
-] as const;
+function HomePage() {
+  const { user } = useAuth();
+  const apps = appsForRoles(user?.roles ?? []).sort((a, b) => a.name.localeCompare(b.name));
+  const groups = [...new Set(apps.map((a) => a.group))].sort();
 
-function OverviewPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ph-charcoal">Overview</h1>
-        <p className="mt-1 text-sm text-ph-charcoal/70">
-          Pick a section to get started.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {SHORTCUTS.map((s) => {
-          const Icon = s.icon;
-          return (
-            <Link
-              key={s.to}
-              to={s.to}
-              className="group block rounded-lg border border-ph-charcoal/10 bg-white p-5 shadow-sm transition-colors hover:border-ph-purple"
-            >
-              <Icon className="h-6 w-6 text-ph-purple" />
-              <div className="mt-3 text-base font-semibold text-ph-charcoal group-hover:text-ph-purple">
-                {s.title}
-              </div>
-              <p className="mt-1 text-sm text-ph-charcoal/70">{s.description}</p>
-            </Link>
-          );
-        })}
-      </div>
+    <div className="flex flex-col gap-7">
+      {groups.map((group) => (
+        <section key={group}>
+          <h2 className="mb-2 border-b border-ph-charcoal/10 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
+            {group}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {apps
+              .filter((a) => a.group === group)
+              .map((app) => (
+                <Link
+                  key={app.to}
+                  to={app.to}
+                  style={{ backgroundColor: app.colour }}
+                  className="flex h-28 w-28 flex-col justify-between rounded p-3 text-white transition-[filter] hover:brightness-110 [&>svg]:h-8 [&>svg]:w-8"
+                >
+                  {app.glyph}
+                  <span className="text-[13px] font-bold leading-tight">{app.name}</span>
+                </Link>
+              ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

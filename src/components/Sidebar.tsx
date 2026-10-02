@@ -1,9 +1,10 @@
 import { Link } from '@tanstack/react-router';
 import {
-  Building2,
-  LayoutDashboard,
+  BarChart3,
+  LayoutGrid,
+  Link2,
+  QrCode,
   Shield,
-  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasRole } from '@/hooks/useAuth';
@@ -11,7 +12,7 @@ import { useHasRole } from '@/hooks/useAuth';
 interface NavItem {
   to: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof LayoutGrid;
   exact?: boolean;
 }
 
@@ -40,38 +41,14 @@ export function Sidebar() {
           <span className={cn(label, 'text-base font-semibold text-ph-purple')}>Panwar Health</span>
         </div>
 
-        <NavLink item={{ to: '/app', label: 'Overview', icon: LayoutDashboard, exact: true }} />
-
-        {isAdmin && (
-          <>
-            <GroupHeading title="Admin" />
-            <NavLink item={{ to: '/app/admin', label: 'Users & Roles', icon: Shield }} />
-          </>
-        )}
-
+        <NavLink item={{ to: '/app', label: 'Home', icon: LayoutGrid, exact: true }} />
         {canEdit && (
-          <>
-            <GroupHeading title="Client Dashboards" />
-            <NavLink item={{ to: '/app/clients', label: 'Clients', icon: Users }} />
-            <NavLink item={{ to: '/app/publishers', label: 'Publishers', icon: Building2 }} />
-          </>
+          <NavLink item={{ to: '/app/clients', label: 'Client Dashboards', icon: BarChart3 }} />
         )}
+        <NavLink item={{ to: '/app/qr', label: 'QR Codes', icon: QrCode }} />
+        <NavLink item={{ to: '/app/links', label: 'UTM Links', icon: Link2 }} />
+        {isAdmin && <NavLink item={{ to: '/app/admin', label: 'Users & Roles', icon: Shield }} />}
       </nav>
-    </div>
-  );
-}
-
-// A divider that's always present, plus the title text revealed by max-height
-// (a definite value, so it collapses to zero height with no gap on the rail).
-function GroupHeading({ title }: { title: string }) {
-  return (
-    <div className="mx-1 mt-2">
-      <hr className="border-ph-charcoal/10" />
-      <div className="max-h-0 overflow-hidden transition-[max-height] duration-200 ease-in-out group-hover:max-h-6">
-        <span className="block whitespace-nowrap pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-ph-charcoal/40">
-          {title}
-        </span>
-      </div>
     </div>
   );
 }

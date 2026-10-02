@@ -1,5 +1,5 @@
-import { Outlet } from '@tanstack/react-router';
-import { LogOut } from 'lucide-react';
+import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import { useAuth, useLogout } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
 
@@ -11,13 +11,33 @@ import { Sidebar } from '@/components/Sidebar';
 export function EmployeeShell() {
   const { user } = useAuth();
   const logout = useLogout();
+  const router = useRouter();
+  const onHome = useRouterState({ select: (state) => state.location.pathname === '/app' });
 
   return (
     <div className="flex h-full">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-ph-charcoal/10 bg-white px-6">
-          <div className="text-sm text-ph-charcoal/60">Internal tools</div>
+          <div className="flex items-center gap-3">
+            {!onHome && (
+              <button
+                type="button"
+                onClick={() => router.history.back()}
+                className="flex items-center gap-1.5 rounded-md border border-ph-charcoal/20 px-3 py-1.5 text-xs font-medium text-ph-charcoal transition-colors hover:border-ph-purple hover:text-ph-purple"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
+            )}
+            <Link
+              to="/app"
+              title="Home"
+              className="rounded-md px-2 py-1.5 text-sm text-ph-charcoal/60 transition-colors hover:bg-ph-charcoal/5 hover:text-ph-purple"
+            >
+              Internal tools
+            </Link>
+          </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="text-sm font-medium text-ph-charcoal">

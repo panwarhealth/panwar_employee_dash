@@ -8,6 +8,7 @@ import { Plus, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ClientDashboardsTabs } from '@/components/manage/ClientDashboardsTabs';
 import { ApiError } from '@/api/client';
 import {
   createClient,
@@ -30,6 +31,7 @@ function ClientsPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <ClientDashboardsTabs />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-ph-charcoal">Clients</h1>
