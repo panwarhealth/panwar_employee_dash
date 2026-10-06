@@ -45,7 +45,6 @@ export interface EdmList {
 export interface EdmListBody {
   name: string;
   senderId: string;
-  syncSource?: EdmSyncSource | null;
 }
 
 export type EdmContactStatus = 'Subscribed' | 'Unsubscribed' | 'Bounced';

@@ -1,22 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createList, listSenders, updateList, type EdmList, type EdmSyncSource } from '@/api/edm';
+import { createList, listSenders, updateList, type EdmList } from '@/api/edm';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Notice } from './Notice';
 import { labelClass, selectClass } from '@/lib/edm';
 
-const SOURCES: { value: EdmSyncSource | ''; label: string }[] = [
-  { value: '', label: 'A CSV I upload (custom list)' },
-  { value: 'PharmaChat', label: 'PharmaChat users who opted in (synced)' },
-  {
-    value: 'ClinicalStudio',
-    label: 'Clinical Studio users who opted in (synced)',
-  },
-];
-
-/** Create a list, or rename / re-sender an existing one (list given). */
+/** Create a custom (CSV) list, or rename / re-sender an existing one (list given). The synced lists are built in. */
 export function ListFormModal({
   open,
   onClose,
@@ -36,13 +27,10 @@ export function ListFormModal({
   });
   const [name, setName] = useState(list?.name ?? '');
   const [senderId, setSenderId] = useState(list?.sender.id ?? '');
-  const [source, setSource] = useState<EdmSyncSource | ''>('');
 
   const save = useMutation({
     mutationFn: () =>
-      list
-        ? updateList(list.id, { name, senderId })
-        : createList({ name, senderId, syncSource: source || null }),
+      list ? updateList(list.id, { name, senderId }) : createList({ name, senderId }),
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['edm-lists'] });
       queryClient.invalidateQueries({ queryKey: ['edm-list', saved.id] });
@@ -102,29 +90,10 @@ export function ListFormModal({
           )}
         </div>
         {!list && (
-          <div>
-            <label htmlFor="list-source" className={labelClass}>
-              Who's on it
-            </label>
-            <select
-              id="list-source"
-              className={selectClass}
-              value={source}
-              onChange={(e) => setSource(e.target.value as EdmSyncSource | '')}
-            >
-              {SOURCES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            {source && (
-              <p className="mt-1.5 text-xs text-ph-charcoal/60">
-                Synced lists refresh every 15 minutes. Unsubscribes flow back to{' '}
-                {source === 'PharmaChat' ? 'PharmaChat' : 'Clinical Studio'}.
-              </p>
-            )}
-          </div>
+          <p className="text-xs text-ph-charcoal/60">
+            Fill it by importing a CSV. The PharmaChat and Clinical Studio lists are already set up
+            and sync on their own.
+          </p>
         )}
         {save.isError && <Notice tone="error">{save.error.message}</Notice>}
         <div className="flex justify-end gap-3">
