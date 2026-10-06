@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { listSenders, saveSender, type EdmSender, type EdmSenderBody } from '@/api/edm';
+import {
+  listSenders,
+  updateSenderBranding,
+  type EdmSender,
+  type EdmSenderBranding,
+} from '@/api/edm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
@@ -17,20 +22,24 @@ function SendersPage() {
     queryKey: ['edm-senders'],
     queryFn: listSenders,
   });
-  const [editing, setEditing] = useState<EdmSender | 'new' | null>(null);
+  const [editing, setEditing] = useState<EdmSender | null>(null);
 
   return (
     <div>
       <h2 className="text-2xl font-bold leading-tight text-ph-charcoal">Senders</h2>
       <p className="mb-6 mt-1.5 text-[15px] text-ph-charcoal/60">
-        Who an email comes from. The colour and footer brand the unsubscribe link and page.
-        Unsubscribing from one sender's email stops every list that sends as them.
+        Who an email comes from. Each one is a verified address in Azure, so the name and address
+        are fixed here; you can change the footer, colour, logo and reply address. Unsubscribing
+        from one sender's email stops every list that sends as them. Adding a new brand needs its
+        domain set up in Azure first, so ask the dev team.
       </p>
 
       {isLoading ? (
         <p className="py-8 text-sm text-ph-charcoal/60">Loading…</p>
       ) : senders.length === 0 ? (
-        <p className="py-8 text-sm text-ph-charcoal/60">No senders yet.</p>
+        <p className="py-8 text-sm text-ph-charcoal/60">
+          No senders yet. They're added when a domain is set up in Azure.
+        </p>
       ) : (
         <ul className="divide-y divide-ph-charcoal/10">
           {senders.map((s) => (
@@ -55,32 +64,23 @@ function SendersPage() {
         </ul>
       )}
 
-      <Button variant="outline" size="lg" className="mt-6" onClick={() => setEditing('new')}>
-        New sender
-      </Button>
-      {editing && (
-        <SenderModal sender={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />
-      )}
+      {editing && <SenderModal sender={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }
 
-const EMPTY: EdmSenderBody = {
-  name: '',
-  fromAddress: '',
-  replyTo: null,
-  brandColour: '#702f8f',
-  logoUrl: null,
-  footerText: '',
-};
-
-function SenderModal({ sender, onClose }: { sender: EdmSender | null; onClose: () => void }) {
+function SenderModal({ sender, onClose }: { sender: EdmSender; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<EdmSenderBody>(sender ?? EMPTY);
-  const set = (patch: Partial<EdmSenderBody>) => setForm({ ...form, ...patch });
+  const [form, setForm] = useState<EdmSenderBranding>({
+    replyTo: sender.replyTo,
+    brandColour: sender.brandColour,
+    logoUrl: sender.logoUrl,
+    footerText: sender.footerText,
+  });
+  const set = (patch: Partial<EdmSenderBranding>) => setForm({ ...form, ...patch });
 
   const save = useMutation({
-    mutationFn: () => saveSender(sender?.id ?? null, form),
+    mutationFn: () => updateSenderBranding(sender.id, form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['edm-senders'] });
       queryClient.invalidateQueries({ queryKey: ['edm-lists'] });
@@ -94,39 +94,14 @@ function SenderModal({ sender, onClose }: { sender: EdmSender | null; onClose: (
   };
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={sender ? `Edit ${sender.name}` : 'New sender'}
-      className="max-w-lg"
-    >
+    <Modal open onClose={onClose} title={`Edit ${sender.name}`} className="max-w-lg">
       <form onSubmit={submit} className="flex flex-col gap-5 p-6">
-        <div>
-          <label htmlFor="s-name" className={labelClass}>
-            Name people see
-          </label>
-          <Input
-            id="s-name"
-            value={form.name}
-            onChange={(e) => set({ name: e.target.value })}
-            placeholder="PharmaChat"
-            autoFocus
-          />
-        </div>
-        <div>
-          <label htmlFor="s-from" className={labelClass}>
-            From address
-          </label>
-          <Input
-            id="s-from"
-            type="email"
-            value={form.fromAddress}
-            onChange={(e) => set({ fromAddress: e.target.value })}
-            placeholder="updates@pharmachat.com.au"
-          />
-          <p className="mt-1.5 text-xs text-ph-charcoal/60">
-            Its domain has to be verified in Azure Communication Services, with this address added
-            as a sender and the same display name.
+        <div className="rounded-md bg-ph-charcoal/5 px-4 py-3 text-sm">
+          <p className="font-semibold text-ph-charcoal">
+            {sender.name} &lt;{sender.fromAddress}&gt;
+          </p>
+          <p className="mt-0.5 text-xs text-ph-charcoal/60">
+            Set up and verified in Azure Communication Services, so it can't be changed here.
           </p>
         </div>
         <div>

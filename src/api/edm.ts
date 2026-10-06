@@ -12,15 +12,17 @@ export interface EdmSender {
   footerText: string;
 }
 
-export type EdmSenderBody = Omit<EdmSender, 'id'>;
+/** Only branding is editable: the name and address mirror the sender set up in Azure. */
+export type EdmSenderBranding = Pick<
+  EdmSender,
+  'replyTo' | 'brandColour' | 'logoUrl' | 'footerText'
+>;
 
 export const listSenders = (): Promise<EdmSender[]> =>
   apiFetch<{ senders: EdmSender[] }>('/edm/senders').then((r) => r.senders);
 
-export const saveSender = (id: string | null, body: EdmSenderBody): Promise<EdmSender> =>
-  id
-    ? apiFetch(`/edm/senders/${id}`, { method: 'PUT', body })
-    : apiFetch('/edm/senders', { method: 'POST', body });
+export const updateSenderBranding = (id: string, body: EdmSenderBranding): Promise<EdmSender> =>
+  apiFetch(`/edm/senders/${id}`, { method: 'PUT', body });
 
 // ---- lists ----
 

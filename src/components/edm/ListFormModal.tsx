@@ -97,7 +97,7 @@ export function ListFormModal({
           </select>
           {senders.length === 0 && (
             <p className="mt-1.5 text-xs text-ph-charcoal/60">
-              Add a sender on the Senders tab first.
+              No senders are set up yet. They're added when a domain is set up in Azure.
             </p>
           )}
         </div>
