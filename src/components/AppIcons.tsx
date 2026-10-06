@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { MAILER_ROLES } from '@/lib/roles';
 
 export interface AppDefinition {
   to: string;
@@ -69,6 +70,21 @@ export const APPS: readonly AppDefinition[] = [
           <rect x="25" y="25" width="6.5" height="6.5" rx="1.2" />
           <rect x="25" y="16.5" width="6.5" height="6.5" rx="1.2" opacity="0.5" />
           <rect x="16.5" y="25" width="6.5" height="6.5" rx="1.2" opacity="0.5" />
+        </g>
+      </svg>
+    ),
+  },
+  {
+    to: '/app/edm',
+    name: 'eDM Mailer',
+    group: 'Marketing',
+    colour: '#702f8f',
+    roles: MAILER_ROLES,
+    glyph: (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <g {...stroke} strokeWidth="4">
+          <rect x="6" y="11" width="36" height="26" rx="3" />
+          <path d="M7 13l17 13 17-13" />
         </g>
       </svg>
     ),

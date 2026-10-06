@@ -3,11 +3,13 @@ import {
   BarChart3,
   LayoutGrid,
   Link2,
+  Mail,
   QrCode,
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasRole } from '@/hooks/useAuth';
+import { MAILER_ROLES } from '@/lib/roles';
 
 interface NavItem {
   to: string;
@@ -30,6 +32,7 @@ const label =
 export function Sidebar() {
   const isAdmin = useHasRole('panwar-admin');
   const canEdit = useHasRole('panwar-admin', 'dashboard-editor', 'medical-writer');
+  const canMail = useHasRole(...MAILER_ROLES);
 
   return (
     <div className="relative w-14 shrink-0">
@@ -45,6 +48,7 @@ export function Sidebar() {
         {canEdit && (
           <NavLink item={{ to: '/app/clients', label: 'Client Dashboards', icon: BarChart3 }} />
         )}
+        {canMail && <NavLink item={{ to: '/app/edm', label: 'eDM Mailer', icon: Mail }} />}
         <NavLink item={{ to: '/app/qr', label: 'QR Codes', icon: QrCode }} />
         <NavLink item={{ to: '/app/links', label: 'UTM Links', icon: Link2 }} />
         {isAdmin && <NavLink item={{ to: '/app/admin', label: 'Users & Roles', icon: Shield }} />}

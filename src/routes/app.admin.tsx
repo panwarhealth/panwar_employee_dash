@@ -21,6 +21,7 @@ const AVAILABLE_ROLES = [
   { value: 'panwar-admin', label: 'Admin' },
   { value: 'dashboard-editor', label: 'Dashboard Editor' },
   { value: 'medical-writer', label: 'Medical Writer' },
+  { value: 'mailer', label: 'Mailer' },
 ];
 
 function AdminPage() {

@@ -34,7 +34,10 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   const headers: Record<string, string> = {};
   let serializedBody: BodyInit | undefined;
-  if (body !== undefined) {
+  if (body instanceof Blob) {
+    // Files go up raw; the browser sets the content type.
+    serializedBody = body;
+  } else if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
     serializedBody = JSON.stringify(body);
   }
@@ -47,6 +50,27 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     signal,
   });
 
+  await throwIfFailed(response);
+
+  // 204 No Content
+  if (response.status === 204) return undefined as T;
+
+  return (await response.json()) as T;
+}
+
+/** Fetches a file from the API and hands it to the browser as a download. */
+export async function apiDownload(path: string, fileName: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}${path}`, { credentials: 'include' });
+  await throwIfFailed(response);
+  const url = URL.createObjectURL(await response.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function throwIfFailed(response: Response): Promise<void> {
   if (!response.ok) {
     let parsed: unknown = null;
     try {
@@ -60,9 +84,4 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
         : `Request failed with status ${response.status}`;
     throw new ApiError(response.status, parsed, message);
   }
-
-  // 204 No Content
-  if (response.status === 204) return undefined as T;
-
-  return (await response.json()) as T;
 }
