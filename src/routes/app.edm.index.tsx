@@ -43,10 +43,7 @@ function CampaignsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold leading-tight text-ph-charcoal">Campaigns</h2>
-      <p className="mb-6 mt-1.5 text-[15px] text-ph-charcoal/60">
-        Every send, with who it went to and how it did.
-      </p>
+      <h2 className="mb-6 text-2xl font-bold leading-tight text-ph-charcoal">Campaigns</h2>
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <Button size="lg" onClick={() => create.mutate()} disabled={create.isPending}>
