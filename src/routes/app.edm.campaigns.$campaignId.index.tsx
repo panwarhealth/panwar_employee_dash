@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BackLink } from '@/components/edm/BackLink';
+import { MergeTagsHelp } from '@/components/edm/MergeTagsHelp';
 import { Notice } from '@/components/edm/Notice';
 import { SummaryBox } from '@/components/edm/SummaryBox';
 import {
@@ -399,7 +400,7 @@ function ContentStep({ campaign, go }: StepProps) {
             onBlur={() => save('subject')}
           />
           <p className="mt-1.5 flex justify-between text-xs text-ph-charcoal/50">
-            <span>Personalise with {'{{first_name|there}}'}</span>
+            <MergeTagsHelp />
             <span className={cn(fields.subject.length > 60 && 'text-amber-700')}>
               {fields.subject.length} characters
               {fields.subject.length > 60 && ', may be cut off on phones'}
