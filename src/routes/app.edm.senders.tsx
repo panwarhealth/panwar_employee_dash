@@ -100,9 +100,6 @@ function SenderModal({ sender, onClose }: { sender: EdmSender; onClose: () => vo
           <p className="font-semibold text-ph-charcoal">
             {sender.name} &lt;{sender.fromAddress}&gt;
           </p>
-          <p className="mt-0.5 text-xs text-ph-charcoal/60">
-            Set up and verified in Azure Communication Services, so it can't be changed here.
-          </p>
         </div>
         <div>
           <label htmlFor="s-reply" className={labelClass}>

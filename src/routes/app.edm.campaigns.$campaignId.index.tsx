@@ -37,6 +37,8 @@ import { cn } from '@/lib/utils';
 
 type Step = 1 | 2 | 3 | 4;
 
+const STEP_NAMES: Record<Step, string> = { 1: 'List', 2: 'Content', 3: 'Preview', 4: 'Send' };
+
 export const Route = createFileRoute('/app/edm/campaigns/$campaignId/')({
   // No step means "wherever this draft is up to".
   validateSearch: (search: Record<string, unknown>): { step?: Step } => {
@@ -114,16 +116,30 @@ function WizardPage() {
           <li key={s}>
             <button
               type="button"
-              aria-label={`Step ${s}`}
               aria-current={s === current ? 'step' : undefined}
               disabled={!reachable[s]}
               onClick={() => go(s)}
-              className={cn(
-                'block h-1.5 w-14 rounded-full transition-colors',
-                s <= current ? 'bg-ph-purple' : 'bg-ph-charcoal/15',
-                reachable[s] && s !== current && 'hover:bg-ph-purple/60',
-              )}
-            />
+              className="group flex w-20 flex-col gap-1.5 text-left text-xs disabled:cursor-not-allowed"
+            >
+              <span
+                className={cn(
+                  'block h-1.5 rounded-full transition-colors',
+                  s <= current ? 'bg-ph-purple' : 'bg-ph-charcoal/15',
+                  reachable[s] && s !== current && 'group-hover:bg-ph-purple/60',
+                )}
+              />
+              <span
+                className={cn(
+                  s === current
+                    ? 'font-semibold text-ph-charcoal'
+                    : reachable[s]
+                      ? 'text-ph-charcoal/60 group-hover:text-ph-charcoal'
+                      : 'text-ph-charcoal/30',
+                )}
+              >
+                {STEP_NAMES[s]}
+              </span>
+            </button>
           </li>
         ))}
       </ol>
@@ -561,14 +577,23 @@ function PreviewStep({ campaign, go }: StepProps) {
       {error && <Notice tone="error">{error.message}</Notice>}
       {preview && (
         <div className="overflow-hidden rounded-md border border-ph-charcoal/15">
-          <div className="border-b border-ph-charcoal/10 bg-white px-5 py-3 text-sm">
-            <p className="font-semibold text-ph-charcoal">{campaign.sender?.name}</p>
-            <p className="truncate text-ph-charcoal">
-              {preview.subject}
-              {campaign.previewText && (
-                <span className="text-ph-charcoal/50"> — {campaign.previewText}</span>
-              )}
-            </p>
+          <div className="flex items-start justify-between gap-4 border-b border-ph-charcoal/10 bg-white px-5 py-3 text-sm">
+            <div className="min-w-0">
+              <p className="font-semibold text-ph-charcoal">{campaign.sender?.name}</p>
+              <p className="truncate text-ph-charcoal">
+                {preview.subject}
+                {campaign.previewText && (
+                  <span className="text-ph-charcoal/50"> — {campaign.previewText}</span>
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 text-ph-purple underline underline-offset-4"
+              onClick={() => go(2)}
+            >
+              Edit
+            </button>
           </div>
           <div className="flex justify-center bg-ph-purple/5 p-4 sm:p-6">
             <EmailFrame html={preview.html} width={device === 'mobile' ? 375 : 680} />
