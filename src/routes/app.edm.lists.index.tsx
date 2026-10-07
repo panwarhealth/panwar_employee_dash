@@ -29,10 +29,7 @@ function ListsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold leading-tight text-ph-charcoal">Lists</h2>
-      <p className="mb-6 mt-1.5 text-[15px] text-ph-charcoal/60">
-        Each list belongs to a sender. People who unsubscribe or bounce drop out on their own.
-      </p>
+      <h2 className="mb-6 text-2xl font-bold leading-tight text-ph-charcoal">Lists</h2>
 
       <Input
         className="mb-2 h-11 text-base"
