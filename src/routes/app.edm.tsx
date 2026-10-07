@@ -18,7 +18,7 @@ function EdmLayout() {
       <div>
         <h1 className="text-2xl font-semibold text-ph-charcoal">eDM Mailer</h1>
         <p className="mt-1 text-sm text-ph-charcoal/70">
-          Send eDMs to our platform users and client lists, and see how they did.
+          Send eDMs to our platform users and client lists.
         </p>
       </div>
 
