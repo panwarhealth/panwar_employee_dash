@@ -26,13 +26,7 @@ function SendersPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold leading-tight text-ph-charcoal">Senders</h2>
-      <p className="mb-6 mt-1.5 text-[15px] text-ph-charcoal/60">
-        Who an email comes from. Each one is a verified address in Azure, so the name and address
-        are fixed here; you can change the footer, colour, logo and reply address. Unsubscribing
-        from one sender's email stops every list that sends as them. Adding a new brand needs its
-        domain set up in Azure first, so ask the dev team.
-      </p>
+      <h2 className="mb-6 text-2xl font-bold leading-tight text-ph-charcoal">Senders</h2>
 
       {isLoading ? (
         <p className="py-8 text-sm text-ph-charcoal/60">Loading…</p>
