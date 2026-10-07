@@ -49,7 +49,7 @@ function ReportPage() {
     },
   });
   const csv = useMutation({
-    mutationFn: (c: EdmCampaign) => downloadReportCsv(c.id, c.campaignCode ?? c.name),
+    mutationFn: (c: EdmCampaign) => downloadReportCsv(c.id, c.name),
   });
 
   if (error) return <Notice tone="error">{error.message}</Notice>;
@@ -107,7 +107,6 @@ function ReportPage() {
               value: c.sender ? `${c.sender.name} <${c.sender.fromAddress}>` : '—',
             },
             { label: 'Sent by', value: c.sentByName ?? c.createdByName },
-            { label: 'Campaign id', value: c.campaignCode ?? '—' },
           ]}
         />
       </div>
@@ -134,15 +133,7 @@ function ReportPage() {
 
       <Notice className="mt-8">
         Opens are estimated. Apple Mail and Gmail load the tracking image whether the email is read
-        or not.
-        {c.campaignCode ? (
-          <>
-            {' '}
-            Clicks are in Google Analytics under campaign <strong>{c.campaignCode}</strong>.
-          </>
-        ) : (
-          ' Clicks are in Google Analytics under the utm_campaign in the eDM links.'
-        )}
+        or not. Clicks are in Google Analytics under the utm_campaign in the eDM links.
       </Notice>
 
       <div className="mt-8 flex flex-wrap items-center gap-6">

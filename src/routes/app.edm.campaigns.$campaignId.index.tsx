@@ -435,30 +435,16 @@ function ContentStep({ campaign, go }: StepProps) {
             ))}
           </select>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="name" className={labelClass}>
-              Campaign name (just for us)
-            </label>
-            <Input
-              id="name"
-              value={fields.name}
-              onChange={(e) => setFields({ ...fields, name: e.target.value })}
-              onBlur={() => save('name')}
-            />
-          </div>
-          <div>
-            <label htmlFor="code" className={labelClass}>
-              Campaign id in Google Analytics
-            </label>
-            <Input
-              id="code"
-              value={fields.campaignCode}
-              placeholder="utm_campaign, e.g. nb0016"
-              onChange={(e) => setFields({ ...fields, campaignCode: e.target.value })}
-              onBlur={() => save('campaignCode')}
-            />
-          </div>
+        <div>
+          <label htmlFor="name" className={labelClass}>
+            Campaign name (just for us)
+          </label>
+          <Input
+            id="name"
+            value={fields.name}
+            onChange={(e) => setFields({ ...fields, name: e.target.value })}
+            onBlur={() => save('name')}
+          />
         </div>
       </div>
 
@@ -491,7 +477,6 @@ const fieldsOf = (c: EdmCampaign) => ({
   subject: c.subject ?? '',
   previewText: c.previewText ?? '',
   name: c.name,
-  campaignCode: c.campaignCode ?? '',
 });
 
 const nonEmpty = <T extends Record<string, string>>(o: T): Partial<T> =>

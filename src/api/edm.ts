@@ -157,7 +157,6 @@ export interface EdmCampaignStats {
 export interface EdmCampaignSummary {
   id: string;
   name: string;
-  campaignCode: string | null;
   status: EdmCampaignStatus;
   listName: string | null;
   listSize: number | null;
@@ -183,7 +182,6 @@ export interface EdmContentAnalysis {
 export interface EdmCampaign {
   id: string;
   name: string;
-  campaignCode: string | null;
   status: EdmCampaignStatus;
   listId: string | null;
   listName: string | null;
@@ -206,7 +204,6 @@ export interface EdmCampaign {
 
 export interface EdmCampaignPatch {
   name?: string;
-  campaignCode?: string;
   listId?: string;
   senderId?: string;
   subject?: string;

@@ -35,7 +35,7 @@ function CampaignsPage() {
   const rows = campaigns.filter(
     (c) =>
       !needle ||
-      [c.name, c.campaignCode ?? '', c.listName ?? '', c.status, c.createdByName]
+      [c.name, c.listName ?? '', c.status, c.createdByName]
         .join(' ')
         .toLowerCase()
         .includes(needle),
