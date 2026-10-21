@@ -2,6 +2,8 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { useAuth } from '@/hooks/useAuth';
 import { appsForRoles } from '@/components/AppIcons';
 
+const GROUP_ORDER = ['Team', 'Clients', 'Marketing'];
+
 export const Route = createFileRoute('/app/')({
   component: HomePage,
 });
@@ -9,7 +11,7 @@ export const Route = createFileRoute('/app/')({
 function HomePage() {
   const { user } = useAuth();
   const apps = appsForRoles(user?.roles ?? []).sort((a, b) => a.name.localeCompare(b.name));
-  const groups = [...new Set(apps.map((a) => a.group))].sort();
+  const groups = GROUP_ORDER.filter((g) => apps.some((a) => a.group === g));
 
   return (
     <div className="flex flex-col gap-7">
