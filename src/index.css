@@ -24,3 +24,11 @@
     appearance: textfield;
   }
 }
+
+@media (max-width: 600px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

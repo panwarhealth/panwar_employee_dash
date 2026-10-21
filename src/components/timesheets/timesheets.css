@@ -173,6 +173,12 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+.ts .weeknav .primary.track {
+  margin-right: 10px;
+}
+.ts .weeknav .primary + .sel {
+  margin-left: 10px;
+}
 .ts .weeknav .btn {
   padding: 7px 11px;
 }
@@ -1689,5 +1695,103 @@
   .ts-page {
     margin: -16px;
     min-height: calc(100% + 32px);
+  }
+}
+@media (max-width: 600px) {
+  .ts .weeknav .primary,
+  .ts .weeknav .primary.track {
+    flex-basis: 100%;
+    margin: 0 0 4px;
+  }
+  .ts .weeknav .primary + .sel {
+    margin-left: 0;
+  }
+  .ts .weeknav b {
+    flex: 1;
+    text-align: center;
+  }
+  .ts .dtabs {
+    min-width: 0;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    column-gap: 0;
+    padding: 4px 8px 0;
+  }
+  .ts .dtabs button {
+    padding: 8px 0 10px;
+    text-align: center;
+  }
+  .ts .dtabs span {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .ts .fc .fc-bar {
+    min-width: 0;
+    flex-wrap: wrap;
+    position: sticky;
+    left: 0;
+  }
+  .ts .fc-lt {
+    width: 100%;
+    height: 40px;
+    padding-left: 12px;
+  }
+  .ts .fc-tools {
+    padding: 8px 12px;
+  }
+  .ts .fc-tools .sel {
+    flex-basis: 100%;
+  }
+  .ts .fc-l {
+    width: 140px;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+    gap: 8px;
+    padding: 0 8px 0 12px;
+  }
+  .ts .fc-p.open .fc-l {
+    background: #f8f5f9;
+  }
+  .ts .fc-l .av {
+    display: none;
+  }
+  .ts .fc-p .fc-l b,
+  .ts .fc-p .fc-l small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ts .fc-p .fc-l b {
+    font-size: 14px;
+  }
+  .ts .fc-p .fc-l small {
+    font-size: 12px;
+  }
+  .ts .fc-k .fc-l {
+    padding-right: 12px;
+  }
+}
+@media (max-width: 600px) {
+  .ts .rt table {
+    min-width: 0;
+  }
+  .ts .rt th,
+  .ts .rt td {
+    font-size: 14px;
+  }
+  .ts .inp,
+  .ts .sel {
+    max-width: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .ts .tabs {
+    flex-wrap: wrap;
+    gap: 0;
+  }
+  .ts .tabs a {
+    padding: 9px 10px;
   }
 }

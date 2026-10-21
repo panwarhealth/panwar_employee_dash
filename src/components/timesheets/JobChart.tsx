@@ -1,10 +1,10 @@
+import { useEffect, useRef, useState } from 'react';
 import { addDays, fmtDate, todayIso, weekStart } from '@/lib/timesheets';
 
 const LEFT = 40;
-const RIGHT = 980;
 const TOP = 20;
 const BOTTOM = 200;
-const MAX_LABELS = 8;
+const LABEL_SPACING = 110;
 const MAX_DOTS = 30;
 
 export function JobChart({
@@ -16,7 +16,21 @@ export function JobChart({
   budget: number | null;
   cumulative: boolean;
 }) {
-  if (weeks.length === 0) return <p className="hint">No time tracked yet</p>;
+  const ref = useRef<SVGSVGElement>(null);
+  const [width, setWidth] = useState(1000);
+  const empty = weeks.length === 0;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([e]) => setWidth(Math.round(e!.contentRect.width)));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [empty]);
+
+  if (empty) return <p className="hint">No time tracked yet</p>;
+
+  const RIGHT = width - 20;
 
   const last =
     weekStart(todayIso()) > weeks[weeks.length - 1]!.weekStart
@@ -35,11 +49,11 @@ export function JobChart({
   const step = series.length > 1 ? (RIGHT - LEFT) / (series.length - 1) : 0;
   const x = (i: number) => (series.length > 1 ? LEFT + i * step : (LEFT + RIGHT) / 2);
   const ticks = [0.25, 0.5, 0.75].map((f) => Math.round(peak * f));
-  const every = Math.ceil(series.length / MAX_LABELS);
+  const every = Math.ceil(series.length / Math.max(2, Math.floor(width / LABEL_SPACING)));
   const barWidth = Math.max(4, Math.min(40, ((RIGHT - LEFT) / series.length) * 0.6));
 
   return (
-    <svg viewBox="0 0 1000 230" className="jc" preserveAspectRatio="none">
+    <svg ref={ref} viewBox={`0 0 ${width} 230`} className="jc">
       {ticks.map((t) => (
         <g key={t}>
           <line x1={LEFT} x2={RIGHT} y1={y(t)} y2={y(t)} className="gl" />

@@ -55,7 +55,6 @@ function JobsPage() {
           )}
           <select
             className="sel"
-            style={{ marginLeft: 10 }}
             value={status}
             onChange={(e) => setStatus(e.target.value as Status)}
           >

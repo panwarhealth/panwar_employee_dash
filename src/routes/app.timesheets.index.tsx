@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ts, type TsEntry } from '@/api/timesheets';
 import { errorText } from '@/hooks/useTimesheets';
 import { useNow } from '@/hooks/useNow';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { addDays, fmtDate, fmtWeek, todayIso, weekDays, weekStart } from '@/lib/timesheets';
 import { DayView } from '@/components/timesheets/DayView';
 import { WeekView } from '@/components/timesheets/WeekView';
@@ -27,13 +28,16 @@ export const Route = createFileRoute('/app/timesheets/')({
   component: TimesheetPage,
 });
 
+const PHONE = '(max-width: 600px)';
+
 function TimesheetPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const today = todayIso();
   const date = search.date ?? today;
-  const view = search.view ?? 'day';
+  const phone = useMediaQuery(PHONE);
+  const view = phone ? 'day' : (search.view ?? 'day');
   const start = weekStart(date);
   const days = weekDays(start);
 
@@ -69,12 +73,7 @@ function TimesheetPage() {
     <>
       <div className="head">
         <div className="weeknav">
-          <button
-            type="button"
-            className="primary"
-            style={{ marginRight: 10 }}
-            onClick={() => setTracking(true)}
-          >
+          <button type="button" className="primary track" onClick={() => setTracking(true)}>
             + Track time
           </button>
           <button
@@ -100,22 +99,24 @@ function TimesheetPage() {
             </button>
           )}
         </div>
-        <div className="seg">
-          <button
-            type="button"
-            className={view === 'day' ? 'on' : ''}
-            onClick={() => go({ view: undefined })}
-          >
-            Day
-          </button>
-          <button
-            type="button"
-            className={view === 'week' ? 'on' : ''}
-            onClick={() => go({ view: 'week' })}
-          >
-            Week
-          </button>
-        </div>
+        {!phone && (
+          <div className="seg">
+            <button
+              type="button"
+              className={view === 'day' ? 'on' : ''}
+              onClick={() => go({ view: undefined })}
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              className={view === 'week' ? 'on' : ''}
+              onClick={() => go({ view: 'week' })}
+            >
+              Week
+            </button>
+          </div>
+        )}
       </div>
 
       {time.isError && <p className="err">{errorText(time.error)}</p>}
