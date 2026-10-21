@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet } from '@tanstack/react-router';
 import type { TsLevel } from '@/api/timesheets';
 import { useTsViewer } from '@/hooks/useTimesheets';
 import '@/components/timesheets/timesheets.css';
+import { FontDebugPanel } from '@/components/timesheets/FontDebugPanel';
 
 export const Route = createFileRoute('/app/timesheets')({
   component: TimesheetsLayout,
@@ -70,6 +71,7 @@ function TimesheetsLayout() {
         </nav>
         {viewer.isError && <p className="err">Timesheets couldn't load. Refresh to try again.</p>}
         {level && <Outlet />}
+        {import.meta.env.DEV && <FontDebugPanel />}
       </div>
     </div>
   );

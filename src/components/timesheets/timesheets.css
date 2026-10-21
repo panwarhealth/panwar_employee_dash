@@ -38,7 +38,7 @@
 .ts .wrap {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 40px 28px 90px;
+  padding: 40px 20px 90px;
 }
 .ts .tool {
   font-size: 13px;
@@ -57,7 +57,7 @@
   scrollbar-width: none;
 }
 .ts .tabs a {
-  padding: 9px 14px;
+  padding: 9px 15px;
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
@@ -76,6 +76,7 @@
   align-items: center;
   gap: 16px;
   margin-bottom: 18px;
+  padding-bottom: 10px;
   flex-wrap: wrap;
 }
 .ts .q {
@@ -206,7 +207,7 @@
   background: #fff;
   border: 1px solid rgba(43, 44, 44, 0.12);
   overflow: hidden;
-  padding: 2px 0 4px;
+  padding: 10px 0 4px;
 }
 .ts .ck2 {
   display: flex;
@@ -495,7 +496,7 @@
 .ts .dtabs button,
 .ts .dtabs span {
   margin: 0 0 -1px;
-  padding: 8px 4px;
+  padding: 8px 10px 10px;
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
@@ -543,12 +544,13 @@
   background: #f6f2f9;
 }
 .ts .de > div:first-child {
-  padding: 16px 16px 16px var(--ex);
+  padding: 20px 16px 20px var(--ex);
   line-height: 21px;
   font-size: 15px;
 }
 .ts .de b {
   font-weight: 700;
+  line-height: 24px;
 }
 .ts .de .cl {
   color: var(--ink-2);
