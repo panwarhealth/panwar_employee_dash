@@ -50,3 +50,18 @@ export function parseCsv(text: string): string[][] {
   }
   return rows.filter((r) => r.some((f) => f.trim() !== ''));
 }
+
+const csvCell = (value: string | number) => {
+  const text = String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+export function downloadCsv(filename: string, rows: (string | number)[][]) {
+  const body = '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([body], { type: 'text/csv;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}

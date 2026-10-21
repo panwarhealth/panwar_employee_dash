@@ -1,0 +1,1685 @@
+.ts {
+  --purple: #702f8f;
+  --ink: #454646;
+  --ink-2: rgba(69, 70, 70, 0.6);
+  --ink-3: rgba(69, 70, 70, 0.4);
+  --line: rgba(43, 44, 44, 0.14);
+  --hair: rgba(69, 70, 70, 0.1);
+  --tint: rgba(112, 47, 143, 0.07);
+  --ex: 20px;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.ts *,
+.ts *::before,
+.ts *::after {
+  box-sizing: border-box;
+}
+.ts button,
+.ts input,
+.ts select,
+.ts textarea {
+  font: inherit;
+  color: inherit;
+}
+.ts button {
+  cursor: pointer;
+}
+.ts a {
+  color: var(--purple);
+  cursor: pointer;
+}
+.ts-page {
+  background: #eeedf1;
+  margin: -24px;
+  min-height: calc(100% + 48px);
+}
+.ts .wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 28px 90px;
+}
+.ts .tool {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--purple);
+  margin: 0 0 10px;
+}
+.ts .tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 26px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ts .tabs a {
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.ts .tabs a.on {
+  color: var(--ink);
+  border-color: var(--purple);
+}
+.ts .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.ts .q {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.ts .primary {
+  border: 0;
+  background: var(--purple);
+  color: #fff;
+  border-radius: 999px;
+  padding: 11px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ts .primary:disabled,
+.ts .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ts .btn {
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(43, 44, 44, 0.06);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ts .btn:hover {
+  box-shadow: 0 2px 6px rgba(43, 44, 44, 0.12);
+}
+.ts .link {
+  font-size: 14px;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+}
+.ts .back {
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--ink-2);
+  display: inline-block;
+  margin-bottom: 14px;
+}
+.ts .hint {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0;
+}
+.ts .err {
+  font-size: 14px;
+  color: #b42318;
+  margin: 10px 0 0;
+}
+.ts .empty {
+  padding: 22px var(--ex);
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.ts .sel,
+.ts .inp {
+  border: 1px solid rgba(43, 44, 44, 0.1);
+  box-shadow: 0 1px 2px rgba(43, 44, 44, 0.06);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  background: #fff;
+}
+.ts textarea.inp {
+  min-height: 84px;
+  resize: vertical;
+}
+.ts .weeknav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ts .weeknav .btn {
+  padding: 7px 11px;
+}
+.ts .weeknav b {
+  font-size: 15px;
+  padding: 0 6px;
+}
+.ts .seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: #fff;
+}
+.ts .seg button {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: none;
+}
+.ts .seg button:first-child {
+  border-left: 0;
+}
+.ts .seg button.on {
+  background: var(--tint);
+  color: var(--purple);
+}
+.ts .card {
+  background: #fff;
+  border: 1px solid rgba(43, 44, 44, 0.12);
+  overflow: hidden;
+  padding: 2px 0 4px;
+}
+.ts .ck2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.ts .badge {
+  font-size: 12px;
+  border: 1px solid rgba(43, 44, 44, 0.2);
+  border-radius: 999px;
+  padding: 1px 8px;
+  color: var(--ink-2);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.ts .tflag {
+  font-size: 12px;
+  background: var(--purple);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ts .av {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #3b3940;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.ts .av.sm {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+.ts .av.lg {
+  width: 60px;
+  height: 60px;
+  font-size: 20px;
+}
+.ts .av.ph {
+  background: #b7b5bd;
+}
+.ts .tb {
+  display: inline-block;
+  position: relative;
+  width: 115px;
+  height: 14px;
+  background: #e9e7ee;
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+.ts .tb.wide {
+  display: block;
+  width: 100%;
+}
+.ts .tb i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--purple);
+}
+.ts .tb em {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: #3f1a52;
+}
+
+/* modal */
+.ts.ov {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 28, 36, 0.38);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 70px 16px;
+  z-index: 60;
+  overflow: auto;
+}
+.ts .modal {
+  width: 100%;
+  max-width: 520px;
+  padding: 32px 36px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+.ts .modal .why {
+  color: var(--ink-2);
+  font-size: 14px;
+  margin: 4px 0 20px;
+}
+.ts .field {
+  margin-bottom: 16px;
+}
+.ts .field > label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.ts .field > label span {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+.ts .field .inp,
+.ts .field .sel {
+  width: 100%;
+}
+.ts .req {
+  font-size: 12px;
+  color: var(--purple);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.ts .row {
+  display: flex;
+  gap: 12px;
+}
+.ts .row .field {
+  flex: 1;
+}
+.ts .mfoot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+.ts .mfoot .link {
+  margin-left: auto;
+}
+.ts .modal.te {
+  padding: 0;
+  max-width: 600px;
+  overflow: hidden;
+}
+.ts .te-h {
+  background: #f3f2f6;
+  text-align: center;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.ts .te-b {
+  padding: 24px 30px 28px;
+}
+.ts .te-l {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.ts .te-row {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 22px;
+}
+.ts .te-n {
+  flex: 1;
+  min-height: 76px;
+  font-size: 15px;
+  resize: vertical;
+}
+.ts .te-t {
+  width: 150px;
+  font-size: 30px;
+  text-align: right;
+  padding: 10px 16px;
+  font-variant-numeric: tabular-nums;
+}
+.ts .te-f {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ts .te-s {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--ink-2);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* job picker */
+.ts .pick {
+  position: relative;
+  margin-bottom: 12px;
+}
+.ts .pick-btn {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  background: #fff;
+  border: 1px solid rgba(43, 44, 44, 0.18);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.ts .pick-btn small {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.3;
+}
+.ts .pick-btn b {
+  font-size: 16px;
+  font-weight: 600;
+}
+.ts .pick-btn i {
+  width: 8px;
+  height: 8px;
+  border: solid var(--ink-2);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  margin: -4px 4px 0 12px;
+  flex: none;
+}
+.ts .pick-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 5;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+}
+.ts .pick-list .inp {
+  width: 100%;
+  margin-bottom: 6px;
+}
+.ts .pick-list h6 {
+  margin: 8px 8px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ts .pick-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+.ts .pick-list button:hover,
+.ts .pick-list button.on {
+  background: var(--tint);
+}
+
+/* day view */
+.ts .dtabs {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.05fr);
+  column-gap: 4px;
+  padding: 4px var(--ex) 0;
+  border-bottom: 1px solid rgba(43, 44, 44, 0.12);
+}
+.ts .dtabs button,
+.ts .dtabs span {
+  margin: 0 0 -1px;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: left;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.ts .dtabs button:hover {
+  color: var(--ink);
+  border-color: rgba(112, 47, 143, 0.25);
+}
+.ts .dtabs b {
+  display: block;
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 400;
+}
+.ts .dtabs button.on {
+  color: var(--ink);
+  border-color: var(--purple);
+}
+.ts .dtabs button.on b {
+  font-weight: 600;
+}
+.ts .dtabs button.we {
+  color: var(--ink-3);
+}
+.ts .dtabs span {
+  text-align: right;
+  color: var(--ink);
+}
+.ts .de,
+.ts .dfoot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 166px;
+  align-items: center;
+}
+.ts .de {
+  border-bottom: 1px solid rgba(43, 44, 44, 0.12);
+}
+.ts .de.run {
+  background: #f6f2f9;
+}
+.ts .de > div:first-child {
+  padding: 16px 16px 16px var(--ex);
+  line-height: 21px;
+  font-size: 15px;
+}
+.ts .de b {
+  font-weight: 700;
+}
+.ts .de .cl {
+  color: var(--ink-2);
+}
+.ts .de .nt {
+  font-size: 13px;
+  line-height: 16px;
+  margin-top: 4px;
+  color: rgba(69, 70, 70, 0.7);
+  white-space: pre-wrap;
+}
+.ts .de .hh,
+.ts .dfoot b {
+  padding: 16px 38px 16px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 25px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ts .de.run .hh {
+  color: var(--purple);
+}
+.ts .da {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 16px var(--ex) 16px 0;
+}
+.ts .da .primary,
+.ts .da .st {
+  width: 84px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+  box-shadow: none;
+}
+.ts .da .st {
+  border: 1px solid rgba(43, 44, 44, 0.25);
+  justify-content: center;
+}
+.ts .da .btn:not(.st) {
+  height: 29px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.ts .ck {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  position: relative;
+  flex: none;
+}
+.ts .ck::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 3px;
+  height: 4px;
+  border: solid currentColor;
+  border-width: 0 0 1.5px 1.5px;
+}
+.ts .dfoot {
+  border-top: 1px solid rgba(43, 44, 44, 0.12);
+}
+.ts .de + .dfoot {
+  border-top: 0;
+}
+.ts .dfoot .fl {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 16px 16px var(--ex);
+}
+.ts .dfoot .fl button {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--purple);
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.ts .dfoot .fl span {
+  font-size: 15px;
+}
+
+/* week view */
+.ts .wv {
+  overflow-x: auto;
+}
+.ts .wv table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+.ts .wv th {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
+  color: rgba(69, 70, 70, 0.7);
+  height: 58px;
+  border-bottom: 1px solid rgba(43, 44, 44, 0.12);
+  vertical-align: middle;
+}
+.ts .wv th.dy {
+  text-align: right;
+  padding: 0 8px 0 0;
+  width: 68px;
+}
+.ts .wv th.dy span {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 18px;
+}
+.ts .wv th.td,
+.ts .wv th.td span {
+  color: var(--purple);
+}
+.ts .wv td {
+  border-bottom: 1px solid rgba(43, 44, 44, 0.12);
+  vertical-align: middle;
+  font-size: 15px;
+  line-height: 21px;
+}
+.ts .wv td.nm {
+  padding: 16px 4px 16px var(--ex);
+}
+.ts .wv td.nm b {
+  font-weight: 700;
+}
+.ts .wv td.nb {
+  padding: 16px 10px 16px 4px;
+  width: 76px;
+  white-space: nowrap;
+}
+.ts .wv td.dy {
+  padding: 16px 3px;
+  width: 68px;
+  text-align: right;
+  position: relative;
+}
+.ts .wv td.tt {
+  padding: 16px 4px;
+  width: 72px;
+  text-align: right;
+  font-weight: 600;
+}
+.ts .wv td.dl {
+  padding: 16px var(--ex) 16px 4px;
+  width: 44px;
+  text-align: right;
+}
+.ts .wv tfoot td {
+  border-bottom: 0;
+  font-weight: 600;
+  text-align: right;
+  padding: 16px 9px 16px 0;
+}
+.ts .wv tfoot td.tt {
+  padding: 16px 4px;
+}
+.ts .wi {
+  width: 62px;
+  height: 34px;
+  border: 1px solid rgba(43, 44, 44, 0.3);
+  border-radius: 8px;
+  padding: 0 6px;
+  text-align: right;
+  font-size: 15px;
+  background: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.ts .wi.run {
+  border-color: var(--purple);
+  color: var(--purple);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--purple);
+}
+.ts .wi.need {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px rgba(112, 47, 143, 0.25);
+}
+.ts .wi:disabled {
+  background: #f7f7f9;
+  cursor: pointer;
+}
+.ts .ib {
+  width: 29px;
+  height: 29px;
+  border: 1px solid rgba(43, 44, 44, 0.25);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+  color: var(--ink-2);
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+}
+.ts .ib + .ib {
+  margin-left: 4px;
+}
+.ts .ib.on {
+  color: var(--purple);
+}
+.ts .npop {
+  position: absolute;
+  z-index: 15;
+  right: 0;
+  top: calc(100% - 8px);
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  padding: 12px;
+  text-align: left;
+}
+.ts .npop b {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.ts .npop textarea {
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid rgba(43, 44, 44, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 14px;
+  resize: vertical;
+}
+.ts .npop .r {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ts .npop .r small {
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: auto;
+}
+.ts .npop .primary {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+/* generic tables */
+.ts .rt table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ts .rt th,
+.ts .rt td {
+  padding: 9px 8px;
+  border-bottom: 1px solid rgba(43, 44, 44, 0.1);
+  font-size: 15px;
+  text-align: left;
+  vertical-align: middle;
+}
+.ts .rt th {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(69, 70, 70, 0.7);
+}
+.ts .rt th:first-child,
+.ts .rt td:first-child {
+  padding-left: var(--ex);
+}
+.ts .rt th:last-child,
+.ts .rt td:last-child {
+  padding-right: var(--ex);
+}
+.ts .rt tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ts .rt .rh {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ts .rt tr.cg th {
+  background: #faf9fb;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.ts .rt tr.tot td {
+  font-weight: 700;
+}
+.ts .rt tr.click {
+  cursor: pointer;
+}
+.ts .rt tr.click:hover td {
+  background: #faf8fc;
+}
+.ts .rt .btn {
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.ts .rt td.ja {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+.ts .hb {
+  display: block;
+  height: 14px;
+  background: var(--purple);
+  border-radius: 3px;
+  min-width: 4px;
+}
+.ts .scroll {
+  overflow-x: auto;
+}
+.ts .rx table {
+  min-width: 2400px;
+}
+.ts .rx th,
+.ts .rx td {
+  white-space: nowrap;
+  font-size: 14px;
+  border-right: 1px solid rgba(43, 44, 44, 0.06);
+}
+
+/* actions menu */
+.ts .menu {
+  position: relative;
+  display: inline-block;
+}
+.ts .menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  min-width: 170px;
+  text-align: left;
+}
+.ts .menu-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.ts .menu-list button:hover {
+  background: var(--tint);
+}
+
+/* job page */
+.ts .jh {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin: 4px 0 18px;
+  flex-wrap: wrap;
+}
+.ts .jcl {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.ts .jt1 {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 2px 0 0;
+  letter-spacing: -0.01em;
+}
+.ts .card.pad {
+  padding: 16px var(--ex) 10px;
+}
+.ts .jc {
+  width: 100%;
+  height: 230px;
+  display: block;
+}
+.ts .jc .gl {
+  stroke: rgba(43, 44, 44, 0.08);
+}
+.ts .jc .ax {
+  font-size: 11px;
+  fill: #8d8e8d;
+}
+.ts .jc .bl {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+.ts .jc .blt {
+  fill: #5b5a60;
+}
+.ts .jc .bltx {
+  font-size: 10px;
+  fill: #fff;
+}
+.ts .jc .ln {
+  fill: none;
+  stroke: var(--purple);
+  stroke-width: 2;
+}
+.ts .jc .pt {
+  fill: var(--purple);
+}
+.ts .jc .bar {
+  fill: var(--purple);
+}
+.ts .jst {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0 26px;
+  max-width: 540px;
+}
+.ts .jst .card {
+  padding: 14px var(--ex);
+}
+.ts .jst span {
+  display: block;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.ts .jst b {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 2px 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.ts .jtb {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.ts .jtb span:last-child {
+  color: var(--ink);
+  font-weight: 600;
+}
+.ts .jtabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.ts .jtabs button {
+  padding: 8px 2px;
+  font-size: 15px;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.ts .jtabs button.on {
+  color: var(--ink);
+  border-color: var(--purple);
+}
+.ts .rt td.neg {
+  font-weight: 700;
+  color: #3f1a52;
+}
+
+/* form */
+.ts .nf {
+  padding: 6px var(--ex);
+}
+.ts .nf .nfr {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(43, 44, 44, 0.08);
+}
+.ts .nf .nfr.top {
+  align-items: start;
+}
+.ts .nf .nfr:last-child {
+  border-bottom: 0;
+}
+.ts .nf .nfr > label {
+  font-weight: 700;
+  font-size: 15px;
+}
+.ts .nf .nfr.top > label {
+  padding-top: 8px;
+}
+.ts .nf small {
+  display: block;
+  color: var(--ink-2);
+  font-size: 13px;
+  margin-top: 6px;
+}
+.ts .nft {
+  width: 100%;
+  max-width: 520px;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+.ts .nft th {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(69, 70, 70, 0.7);
+  text-align: left;
+  padding: 4px 0 8px;
+}
+.ts .nft td {
+  padding: 6px 0;
+  border-top: 1px solid rgba(43, 44, 44, 0.08);
+  font-size: 15px;
+}
+.ts .nft .rh {
+  text-align: right;
+}
+.ts .nft .inp {
+  width: 80px;
+  text-align: right;
+  padding: 5px 10px;
+}
+.ts .nft tr.tot td {
+  font-weight: 700;
+}
+.ts .wfoot {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+/* schedule */
+.ts .card.fc {
+  padding: 6px 0 10px;
+}
+.ts .fc-bar {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--hair);
+  padding-bottom: 4px;
+}
+.ts .fc-lt {
+  width: 260px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 var(--ex);
+}
+.ts .fc-lt a {
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  height: 100%;
+  border-bottom: 2px solid transparent;
+  padding-top: 2px;
+}
+.ts .fc-lt a.on {
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--purple);
+}
+.ts .fc-tools {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px var(--ex) 8px 16px;
+  flex-wrap: wrap;
+}
+.ts .fc-tools .sp {
+  flex: 1;
+}
+.ts .fc-tools .btn {
+  padding: 6px 12px;
+}
+.ts .fc-row {
+  display: flex;
+  border-bottom: 1px solid rgba(43, 44, 44, 0.12);
+}
+.ts .fc-row:last-child {
+  border-bottom: 0;
+}
+.ts .fc-l {
+  width: 260px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 0 var(--ex);
+  position: relative;
+  border-right: 1px solid var(--hair);
+  min-width: 0;
+}
+.ts .fc-t {
+  flex: 1;
+  position: relative;
+  margin: 0 var(--ex) 0 16px;
+}
+.ts .fc-head .fc-t {
+  height: 50px;
+}
+.ts .fc-search {
+  border: 0;
+  background: none;
+  font-size: 14px;
+  width: 100%;
+  padding: 0 4px;
+  outline: 0;
+}
+.ts .fc-wk span {
+  position: absolute;
+  top: 0;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  border-left: 1px solid var(--line);
+  padding-left: 4px;
+}
+.ts .fc-wk i {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--ink-2);
+  background: #efeef2;
+  padding: 1px 4px;
+}
+.ts .fc-dd span {
+  position: absolute;
+  top: 26px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  font-size: 11px;
+  color: #8d8e8d;
+}
+.ts .fc-dd span.today {
+  color: var(--purple);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--purple);
+}
+.ts .fc-grid {
+  background-image: linear-gradient(90deg, rgba(43, 44, 44, 0.06) 1px, transparent 1px);
+}
+.ts .fc-p {
+  height: 60px;
+}
+.ts .fc-p.open {
+  background: rgba(112, 47, 143, 0.05);
+}
+.ts .fc-p .fc-l b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 19px;
+}
+.ts .fc-p .fc-l small {
+  display: block;
+  font-size: 13px;
+  color: #737472;
+  line-height: 18px;
+}
+.ts .fc-x {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font-size: 12px;
+  padding: 4px;
+}
+.ts .hm {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  color: #fff;
+  padding: 7px 10px;
+  border-radius: 4px;
+  line-height: 1;
+  box-shadow: inset -2px 0 0 #fff;
+  overflow: hidden;
+}
+.ts .hm b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+.ts .hm small {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  padding-top: 3px;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+.ts .hm.none {
+  background: #f3f2f6;
+  color: var(--ink-3);
+}
+.ts .hm.lo {
+  background: #c3abd6;
+}
+.ts .hm.mid {
+  background: #a27cc0;
+}
+.ts .hm.hi {
+  background: #83569f;
+}
+.ts .hm.over {
+  background: #4b1f63;
+}
+.ts .fc-k {
+  min-height: 44px;
+}
+.ts .fc-k .fc-l {
+  justify-content: flex-end;
+  text-align: right;
+  padding-right: 24px;
+}
+.ts .fc-k .fc-l > div {
+  min-width: 0;
+}
+.ts .fc-k .fc-l small {
+  display: block;
+  font-size: 12px;
+  color: #737472;
+  line-height: 15px;
+}
+.ts .fc-k .fc-l b {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.ts .stripe {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 2px;
+}
+.ts .fbar {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  box-shadow: inset -2px 0 0 #fff;
+  border: 0;
+  text-align: left;
+}
+.ts .fbar.leave {
+  background: repeating-linear-gradient(135deg, #6f7278 0 5px, #878a90 5px 10px);
+}
+.ts .fc-act {
+  height: 56px;
+}
+.ts .fc-act .fc-l {
+  justify-content: flex-start;
+}
+.ts .fc-act .btn {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+.ts .fc-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+/* team + person */
+.ts .rsum {
+  margin: 16px 0 22px;
+  padding: 16px var(--ex);
+}
+.ts .rsum span,
+.ts .rsum small {
+  display: block;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.ts .rsum b {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ts .tsum {
+  display: flex;
+  gap: 80px;
+}
+.ts .rsum2 {
+  display: flex;
+  gap: 60px;
+  align-items: flex-start;
+}
+.ts .rsum2 dl {
+  display: grid;
+  grid-template-columns: 110px auto;
+  gap: 4px 20px;
+  margin: 0 0 0 auto;
+  font-size: 14px;
+  min-width: 300px;
+}
+.ts .rsum2 dt {
+  color: var(--ink-2);
+}
+.ts .rsum2 dd {
+  margin: 0;
+  font-weight: 700;
+}
+.ts .rtools {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.ts .tnm > * {
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.ts .tnm a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+.ts .cap b {
+  display: block;
+  font-weight: 700;
+}
+.ts .cap small {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.ts .days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ts .days label {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ink-2);
+}
+.ts .days .inp {
+  width: 100%;
+  text-align: center;
+  padding: 8px 2px;
+}
+.ts .ovr {
+  display: grid;
+  grid-template-columns: 1fr 80px 1.4fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--hair);
+  font-size: 14px;
+}
+.ts h2.sub {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+.ts .ph {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.ts .pg {
+  display: grid;
+  grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.ts .pbx,
+.ts .pday {
+  margin-bottom: 14px;
+  padding: 14px var(--ex);
+}
+.ts .pbx h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.ts .pr2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 8px;
+}
+.ts .pr2 span,
+.ts .pdays span {
+  display: block;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.ts .pr2 b {
+  font-size: 26px;
+  font-weight: 700;
+}
+.ts .pdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.ts .pdays b {
+  font-weight: 600;
+}
+.ts .stk {
+  display: flex;
+  height: 14px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.ts .lg2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  padding: 3px 0;
+}
+.ts .lg2 span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ts .lg2 i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex: none;
+}
+.ts .pdh {
+  font-size: 13px;
+  color: var(--ink-2);
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(43, 44, 44, 0.1);
+}
+.ts .pe {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(43, 44, 44, 0.08);
+  font-size: 14px;
+}
+.ts .pe b {
+  font-weight: 700;
+}
+.ts .pe > span {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ts .pe .btn {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.ts .pt {
+  text-align: right;
+  padding-top: 10px;
+  font-size: 14px;
+}
+.ts .pnone {
+  padding-top: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* reports */
+.ts .rflt {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 16px var(--ex);
+}
+.ts .rflt label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: var(--ink-2);
+}
+.ts .rflt .sel,
+.ts .rflt .inp {
+  width: 100%;
+}
+.ts .saved td a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .ts .wrap {
+    padding: 24px 16px 70px;
+  }
+  .ts .head,
+  .ts .jh {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .ts .dv,
+  .ts .rt,
+  .ts .nf {
+    overflow-x: auto;
+  }
+  .ts .dtabs {
+    min-width: 560px;
+  }
+  .ts .de {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 8px;
+  }
+  .ts .de .da {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-left: var(--ex);
+    padding-top: 0;
+  }
+  .ts .de .hh {
+    padding-right: var(--ex);
+  }
+  .ts .dfoot {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ts .dfoot > span:last-child {
+    display: none;
+  }
+  .ts .dfoot b {
+    padding-right: var(--ex);
+  }
+  .ts .fc {
+    overflow-x: auto;
+  }
+  .ts .fc .fc-bar,
+  .ts .fc .fc-row {
+    min-width: 820px;
+  }
+  .ts .fc-l,
+  .ts .fc-lt {
+    width: 200px;
+  }
+  .ts .jst,
+  .ts .pg,
+  .ts .tsum {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .ts .rsum2 {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ts .rsum2 dl {
+    margin: 0;
+  }
+  .ts .nf .nfr {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .ts .rflt {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ts .rt table {
+    min-width: 560px;
+  }
+  .ts .pdays {
+    grid-template-columns: repeat(4, 1fr);
+    row-gap: 8px;
+  }
+  .ts .modal {
+    padding: 24px 20px;
+  }
+  .ts .row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .ts .te-row {
+    flex-direction: column;
+  }
+  .ts .te-t {
+    width: 100%;
+  }
+}
+.ts select.pick-btn {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}

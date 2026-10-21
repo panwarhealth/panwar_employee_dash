@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import {
   BarChart3,
+  Clock,
   LayoutGrid,
   Link2,
   Mail,
@@ -49,6 +50,7 @@ export function Sidebar() {
           <NavLink item={{ to: '/app/clients', label: 'Client Dashboards', icon: BarChart3 }} />
         )}
         {canMail && <NavLink item={{ to: '/app/edm', label: 'eDM Mailer', icon: Mail }} />}
+        <NavLink item={{ to: '/app/timesheets', label: 'Timesheets', icon: Clock }} />
         <NavLink item={{ to: '/app/qr', label: 'QR Codes', icon: QrCode }} />
         <NavLink item={{ to: '/app/links', label: 'UTM Links', icon: Link2 }} />
         {isAdmin && <NavLink item={{ to: '/app/admin', label: 'Users & Roles', icon: Shield }} />}

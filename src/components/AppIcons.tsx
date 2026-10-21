@@ -90,9 +90,25 @@ export const APPS: readonly AppDefinition[] = [
     ),
   },
   {
+    to: '/app/timesheets',
+    name: 'Timesheets',
+    group: 'Team',
+    colour: '#b41e8c',
+    roles: null,
+    glyph: (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <g {...stroke} strokeWidth="4">
+          <circle cx="24" cy="25" r="15" />
+          <path d="M24 17v8l6 4" />
+          <path d="M19 6h10" />
+        </g>
+      </svg>
+    ),
+  },
+  {
     to: '/app/admin',
     name: 'Users & Roles',
-    group: 'Admin',
+    group: 'Team',
     colour: '#3d1a52',
     roles: ['panwar-admin'],
     glyph: (
