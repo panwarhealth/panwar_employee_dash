@@ -1685,3 +1685,9 @@
   font-weight: 600;
   margin-bottom: 12px;
 }
+@media (max-width: 767px) {
+  .ts-page {
+    margin: -16px;
+    min-height: calc(100% + 32px);
+  }
+}
