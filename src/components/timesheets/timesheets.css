@@ -210,6 +210,7 @@
   color: var(--purple);
 }
 .ts .card {
+  border-radius: 12px;
   background: #fff;
   border: 1px solid rgba(43, 44, 44, 0.12);
   overflow: hidden;
@@ -362,9 +363,9 @@
 .ts .modal.te {
   padding: 0;
   max-width: 600px;
-  overflow: hidden;
 }
 .ts .te-h {
+  border-radius: 20px 20px 0 0;
   background: #f3f2f6;
   text-align: center;
   font-weight: 600;
@@ -439,7 +440,7 @@
 }
 .ts .pick-btn b {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
 }
 .ts .pick-btn i {
   width: 8px;
@@ -1688,7 +1689,7 @@
 }
 .ts select.pick-btn {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   margin-bottom: 12px;
 }
 @media (max-width: 767px) {
