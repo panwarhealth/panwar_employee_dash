@@ -362,6 +362,28 @@
 .ts .row .field {
   flex: 1;
 }
+.ts .bk-hours {
+  background: rgba(43, 44, 44, 0.04);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: grid;
+  gap: 10px;
+}
+.ts .bk-line {
+  display: grid;
+  grid-template-columns: 96px 90px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.ts .bk-line label {
+  font-size: 13px;
+  font-weight: 700;
+}
+.ts .bk-line span {
+  color: var(--ink-2);
+}
 .ts .mfoot {
   display: flex;
   align-items: center;

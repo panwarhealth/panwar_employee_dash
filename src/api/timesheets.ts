@@ -221,6 +221,9 @@ export interface Booking {
   endDate: string;
   hoursPerDay: number;
   note: string | null;
+  repeatWeeks: number;
+  updatedAt: string;
+  updatedByName: string | null;
 }
 
 export interface Schedule {
@@ -229,7 +232,10 @@ export interface Schedule {
   bookings: Booking[];
 }
 
-export type BookingBody = Omit<Booking, 'id' | 'jobCode' | 'jobTitle' | 'clientName' | 'isLeave'>;
+export type BookingBody = Omit<
+  Booking,
+  'id' | 'jobCode' | 'jobTitle' | 'clientName' | 'isLeave' | 'updatedAt' | 'updatedByName'
+>;
 
 export interface Summary {
   total: number;
@@ -367,7 +373,8 @@ export const ts = {
   createBooking: (body: BookingBody) => apiFetch<Booking>('/ts/bookings', { method: 'POST', body }),
   updateBooking: (id: string, body: BookingBody) =>
     apiFetch<Booking>(`/ts/bookings/${id}`, { method: 'PUT', body }),
-  deleteBooking: (id: string) => apiFetch<void>(`/ts/bookings/${id}`, { method: 'DELETE' }),
+  deleteBooking: (id: string, following: boolean) =>
+    apiFetch<void>(`/ts/bookings/${id}${following ? '?following=true' : ''}`, { method: 'DELETE' }),
 
   summary: (f: ReportFilter, groupBy: GroupBy) =>
     apiFetch<Summary>(`/ts/reports/summary?${filterQuery(f)}&groupBy=${groupBy}`),
