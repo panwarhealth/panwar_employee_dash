@@ -253,7 +253,7 @@ function SchedulePage() {
               <Fragment key={p.id}>
                 <div className={expanded ? 'fc-row fc-p open' : 'fc-row fc-p'}>
                   <div className="fc-l">
-                    <span className={p.isPlaceholder ? 'av ph' : 'av'}>{initials(p.name)}</span>
+                    <span className={p.isPlaceholder ? 'av pl' : 'av'}>{initials(p.name)}</span>
                     <div style={{ minWidth: 0 }}>
                       <b>{p.name}</b>
                       {p.title && <small>{p.title}</small>}

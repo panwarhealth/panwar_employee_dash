@@ -263,7 +263,7 @@
   height: 60px;
   font-size: 20px;
 }
-.ts .av.ph {
+.ts .av.pl {
   background: #b7b5bd;
 }
 .ts .tb {
@@ -347,7 +347,7 @@
   margin-bottom: 10px;
 }
 .ts .modal.sx .ck2 {
-  padding: 6px 0;
+  padding: 2px 0;
 }
 .ts .req {
   font-size: 12px;
