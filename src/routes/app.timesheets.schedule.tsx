@@ -13,6 +13,7 @@ import {
 import {
   ts,
   type Booking,
+  type Person,
   type JobRow,
   type ScheduleDay,
   type ScheduleWeek,
@@ -37,6 +38,7 @@ import { TsModal } from '@/components/timesheets/TsModal';
 import { PersonModal } from '@/components/timesheets/PersonModals';
 import { ScheduleExportModal } from '@/components/timesheets/ScheduleExportModal';
 import { ActionsMenu } from '@/components/timesheets/ActionsMenu';
+import { CalendarFeedModal } from '@/components/timesheets/CalendarFeedModal';
 
 const SCALES = {
   day: { label: 'Day', weeks: 3, step: 1 },
@@ -121,7 +123,8 @@ function SchedulePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const goTo = useNavigate();
-  const admin = isAdmin(useTsViewer().data!.level);
+  const viewer = useTsViewer().data!;
+  const admin = isAdmin(viewer.level);
   const thisWeek = weekStart(todayIso());
   const start = search.week ?? thisWeek;
   const scale: Scale = search.scale ?? 'day';
@@ -148,6 +151,9 @@ function SchedulePage() {
     enabled: search.view === 'jobs',
   });
   const [filter, setFilter] = useState('');
+  const [role, setRole] = useState('');
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [showFeed, setShowFeed] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Editing | null>(null);
   const [addingPlaceholder, setAddingPlaceholder] = useState(false);
@@ -183,7 +189,11 @@ function SchedulePage() {
   const today = todayIso();
   const term = filter.trim().toLowerCase();
   const bookings = schedule.data?.bookings ?? [];
-  const people = (schedule.data?.people ?? []).filter((p) => p.name.toLowerCase().includes(term));
+  const rolesOf = (title: string | null) => (title ? title.split(', ') : []);
+  const roles = [...new Set((schedule.data?.people ?? []).flatMap((p) => rolesOf(p.title)))].sort();
+  const people = (schedule.data?.people ?? []).filter(
+    (p) => p.name.toLowerCase().includes(term) && (!role || rolesOf(p.title).includes(role)),
+  );
   const scheduledJobs = schedule.data?.jobs ?? [];
   const jobs = [
     ...scheduledJobs,
@@ -388,6 +398,16 @@ function SchedulePage() {
               >
                 <Clock />
               </button>
+            )}
+            {!search.view && (
+              <select className="sel" value={role} onChange={(e) => setRole(e.target.value)}>
+                <option value="">All roles</option>
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
             )}
             {!search.view && scale === 'day' && (
               <select
@@ -597,6 +617,26 @@ function SchedulePage() {
                         >
                           Assign to job...
                         </button>
+                        {(admin || p.id === viewer.personId) && (
+                          <ActionsMenu
+                            actions={[
+                              ...(admin
+                                ? [
+                                    {
+                                      label: 'Edit',
+                                      onSelect: () =>
+                                        setEditingPerson(
+                                          staff.data?.find((x) => x.id === p.id) ?? null,
+                                        ),
+                                    },
+                                  ]
+                                : []),
+                              ...(p.id === viewer.personId
+                                ? [{ label: 'My calendar feed', onSelect: () => setShowFeed(true) }]
+                                : []),
+                            ]}
+                          />
+                        )}
                       </div>
                       <div className="fc-t fc-grid" style={grid}>
                         {dayCells(p.id, null)}
@@ -783,6 +823,10 @@ function SchedulePage() {
         />
       )}
       {exporting && <ScheduleExportModal onClose={() => setExporting(false)} />}
+      {editingPerson && (
+        <PersonModal person={editingPerson} onClose={() => setEditingPerson(null)} />
+      )}
+      {showFeed && <CalendarFeedModal onClose={() => setShowFeed(false)} />}
       {shifting && (
         <TsModal onClose={() => setShifting(null)}>
           <div className="tool">Shift timeline</div>

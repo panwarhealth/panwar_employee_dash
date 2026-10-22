@@ -375,6 +375,7 @@ export const ts = {
   createBooking: (body: BookingBody) => apiFetch<Booking>('/ts/bookings', { method: 'POST', body }),
   updateBooking: (id: string, body: BookingBody) =>
     apiFetch<Booking>(`/ts/bookings/${id}`, { method: 'PUT', body }),
+  calendarFeed: () => apiFetch<{ url: string }>('/ts/me/calendar-feed').then((r) => r.url),
   futureHours: () =>
     apiFetch<{ jobs: { jobId: string; hours: number; personIds: string[] }[] }>(
       '/ts/schedule/future-hours',
