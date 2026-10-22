@@ -80,6 +80,7 @@ type Editing = {
   booking: Booking | null;
   personId: string | null;
   job: Pick<JobRow, 'id' | 'code' | 'title' | 'clientName'> | null;
+  date?: string;
 };
 
 function SchedulePage() {
@@ -140,6 +141,20 @@ function SchedulePage() {
         </button>
       );
     });
+
+  const dayCells = (personId: string | null, job: Editing['job']) =>
+    days.map((d, i) => (
+      <button
+        type="button"
+        key={d}
+        className="fc-day"
+        aria-label={`Schedule ${fmtDate(d, { day: 'numeric', month: 'short' })}`}
+        style={{ left: pct(i), width: pct(1) }}
+        onClick={() => setEditing({ booking: null, personId, job, date: d })}
+      >
+        +
+      </button>
+    ));
 
   const weekBlock = (w: ScheduleWeek, i: number) =>
     w.booked === 0 && w.off === 0 ? null : (
@@ -290,6 +305,12 @@ function SchedulePage() {
                           />
                         </div>
                         <div className="fc-t fc-grid" style={grid}>
+                          {dayCells(p.id, {
+                            id: j.jobId,
+                            code: j.jobCode,
+                            title: j.jobTitle,
+                            clientName: j.clientName,
+                          })}
                           {bars(mine.filter((b) => b.jobId === j.jobId))}
                         </div>
                       </div>
@@ -310,7 +331,9 @@ function SchedulePage() {
                           Assign to job...
                         </button>
                       </div>
-                      <div className="fc-t" />
+                      <div className="fc-t fc-grid" style={grid}>
+                        {dayCells(p.id, null)}
+                      </div>
                     </div>
                   </>
                 )}
@@ -384,6 +407,12 @@ function SchedulePage() {
                           </div>
                         </div>
                         <div className="fc-t fc-grid" style={grid}>
+                          {dayCells(id, {
+                            id: j.jobId,
+                            code: j.jobCode,
+                            title: j.jobTitle,
+                            clientName: j.clientName,
+                          })}
                           {bars(mine.filter((b) => b.personId === id))}
                         </div>
                       </div>
@@ -409,7 +438,14 @@ function SchedulePage() {
                           Assign person...
                         </button>
                       </div>
-                      <div className="fc-t" />
+                      <div className="fc-t fc-grid" style={grid}>
+                        {dayCells(null, {
+                          id: j.jobId,
+                          code: j.jobCode,
+                          title: j.jobTitle,
+                          clientName: j.clientName,
+                        })}
+                      </div>
                     </div>
                   </>
                 )}
@@ -442,6 +478,7 @@ function SchedulePage() {
           booking={editing.booking}
           personId={editing.personId}
           job={editing.job}
+          date={editing.date}
           onClose={() => setEditing(null)}
         />
       )}

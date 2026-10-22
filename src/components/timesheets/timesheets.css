@@ -1354,6 +1354,21 @@
   border: 0;
   text-align: left;
 }
+.ts .fc-day {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: transparent;
+  font-size: 18px;
+  cursor: pointer;
+}
+.ts .fc-day:hover {
+  background: rgba(112, 47, 143, 0.08);
+  color: var(--purple);
+}
 .ts .fbar.leave {
   background: repeating-linear-gradient(135deg, #6f7278 0 5px, #878a90 5px 10px);
 }

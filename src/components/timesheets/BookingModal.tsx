@@ -12,11 +12,13 @@ export function BookingModal({
   booking,
   personId,
   job: presetJob,
+  date,
   onClose,
 }: {
   booking: Booking | null;
   personId: string | null;
   job: JobChoice | null;
+  date?: string;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -42,8 +44,8 @@ export function BookingModal({
     queryFn: () => ts.job(job!.id),
     enabled: !!job,
   });
-  const [from, setFrom] = useState(booking?.startDate ?? todayIso());
-  const [to, setTo] = useState(booking?.endDate ?? addDays(todayIso(), 4));
+  const [from, setFrom] = useState(booking?.startDate ?? date ?? todayIso());
+  const [to, setTo] = useState(booking?.endDate ?? date ?? addDays(todayIso(), 4));
   const [hoursText, setHoursText] = useState(booking ? String(booking.hoursPerDay) : '');
   const [note, setNote] = useState(booking?.note ?? '');
 
