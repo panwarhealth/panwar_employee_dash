@@ -1396,6 +1396,18 @@
   touch-action: none;
   user-select: none;
 }
+.ts .fbar small {
+  font-weight: 400;
+  opacity: 0.85;
+  margin-left: 6px;
+}
+.ts .fbar .fn {
+  width: 13px;
+  height: 13px;
+  margin-left: 6px;
+  flex: none;
+  opacity: 0.9;
+}
 .ts .fbar.dragging {
   cursor: grabbing;
   opacity: 0.85;

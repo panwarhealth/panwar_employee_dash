@@ -1,6 +1,7 @@
 import { Fragment, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FileText } from 'lucide-react';
 import {
   ts,
   type Booking,
@@ -20,6 +21,7 @@ import {
   jobLabel,
   todayIso,
   weekStart,
+  workingDays,
 } from '@/lib/timesheets';
 import { BookingModal } from '@/components/timesheets/BookingModal';
 import { PersonModal } from '@/components/timesheets/PersonModals';
@@ -112,6 +114,7 @@ function SchedulePage() {
   const [addingPlaceholder, setAddingPlaceholder] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const staff = useQuery({ queryKey: ['ts', 'people'], queryFn: ts.people });
   const dragged = useRef(false);
   const queryClient = useQueryClient();
   const move = useMutation({
@@ -171,6 +174,19 @@ function SchedulePage() {
     window.addEventListener('pointerup', onUp);
   };
 
+  const barLabel = (b: Booking, at: { startDate: string; endDate: string }) => {
+    const person = staff.data?.find((p) => p.id === b.personId);
+    const days = person ? workingDays(person, at.startDate, at.endDate) : 0;
+    const perDay = Math.round(b.hoursPerDay * 100) / 100;
+    const total = Math.round(b.hoursPerDay * days * 100) / 100;
+    if (days <= 1) return `${perDay}h`;
+    return (
+      <>
+        {perDay} h/d <small>{total}h</small>
+      </>
+    );
+  };
+
   const bars = (list: Booking[]) =>
     list.map((b) => {
       const at = shifted(b, drag);
@@ -197,7 +213,8 @@ function SchedulePage() {
           }}
         >
           <span className="fh l" onPointerDown={(e) => startDrag(e, b, 'start')} />
-          {b.isLeave ? b.jobTitle : `${Math.round(b.hoursPerDay * 100) / 100} h/d`}
+          {b.isLeave ? b.jobTitle : barLabel(b, at)}
+          {b.note && <FileText className="fn" aria-label="Has a note" />}
           <span className="fh r" onPointerDown={(e) => startDrag(e, b, 'end')} />
         </button>
       );

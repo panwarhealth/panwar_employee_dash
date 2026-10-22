@@ -19,6 +19,18 @@ export const addDays = (iso: string, days: number) => {
 
 export const weekdayIndex = (iso: string) => (fromIso(iso).getDay() + 6) % 7;
 
+export const workingDays = (
+  person: { dayHours: number[]; capacityChanges: { date: string; hours: number }[] },
+  from: string,
+  to: string,
+) =>
+  dateRange(from, to).filter(
+    (d) =>
+      (person.capacityChanges.find((c) => c.date === d)?.hours ??
+        person.dayHours[weekdayIndex(d)] ??
+        0) > 0,
+  ).length;
+
 export const weekStart = (iso: string) => addDays(iso, -weekdayIndex(iso));
 
 export const daysApart = (from: string, to: string) =>

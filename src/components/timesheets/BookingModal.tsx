@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ts, type Booking, type JobRow } from '@/api/timesheets';
 import { errorText } from '@/hooks/useTimesheets';
 import { fmtAgo } from '@/lib/edm';
-import { addDays, dateRange, parseHours, todayIso, weekdayIndex } from '@/lib/timesheets';
+import {
+  addDays,
+  parseHours,
+  todayIso,
+  weekdayIndex,
+  workingDays as countWorkingDays,
+} from '@/lib/timesheets';
 import { TsModal } from './TsModal';
 import { JobPicker } from './JobPicker';
 
@@ -58,9 +64,7 @@ export function BookingModal({
   const [weeksText, setWeeksText] = useState(String(Math.max(2, booking?.repeatWeeks ?? 2)));
 
   const person = people.data?.find((p) => p.id === who);
-  const workingDays = person
-    ? dateRange(from, to).filter((d) => (person.dayHours[weekdayIndex(d)] ?? 0) > 0).length
-    : 0;
+  const workingDays = person ? countWorkingDays(person, from, to) : 0;
   const fullDay = person
     ? (person.dayHours[weekdayIndex(from)] ?? 0) || Math.max(0, ...person.dayHours)
     : 0;
