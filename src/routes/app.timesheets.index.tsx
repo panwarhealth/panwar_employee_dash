@@ -112,41 +112,43 @@ function TimesheetPage() {
             </button>
           )}
         </div>
-        {(teammates.data?.length ?? 0) > 1 && (
-          <select
-            className="sel"
-            style={{ width: 'auto' }}
-            aria-label="Teammates"
-            value={personId ?? viewer.personId}
-            onChange={(e) =>
-              go({ person: e.target.value === viewer.personId ? undefined : e.target.value })
-            }
-          >
-            {teammates.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.id === viewer.personId ? `${p.name} (me)` : p.name}
-              </option>
-            ))}
-          </select>
-        )}
-        {!phone && (
-          <div className="seg">
-            <button
-              type="button"
-              className={view === 'day' ? 'on' : ''}
-              onClick={() => go({ view: undefined })}
+        <div className="weeknav">
+          {(teammates.data?.length ?? 0) > 1 && (
+            <select
+              className="sel"
+              style={{ width: 'auto' }}
+              aria-label="Teammates"
+              value={personId ?? viewer.personId}
+              onChange={(e) =>
+                go({ person: e.target.value === viewer.personId ? undefined : e.target.value })
+              }
             >
-              Day
-            </button>
-            <button
-              type="button"
-              className={view === 'week' ? 'on' : ''}
-              onClick={() => go({ view: 'week' })}
-            >
-              Week
-            </button>
-          </div>
-        )}
+              {teammates.data?.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.id === viewer.personId ? `${p.name} (me)` : p.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {!phone && (
+            <div className="seg">
+              <button
+                type="button"
+                className={view === 'day' ? 'on' : ''}
+                onClick={() => go({ view: undefined })}
+              >
+                Day
+              </button>
+              <button
+                type="button"
+                className={view === 'week' ? 'on' : ''}
+                onClick={() => go({ view: 'week' })}
+              >
+                Week
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {other && (

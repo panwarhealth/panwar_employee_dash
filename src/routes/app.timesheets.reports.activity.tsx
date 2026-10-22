@@ -131,7 +131,7 @@ function ActivityPage() {
         {pick('Performed by', 'performedByIds', live(options.data?.people), 'Everyone')}
       </div>
       {log.error && <p className="err">{errorText(log.error)}</p>}
-      <div className="card rt rd">
+      <div className="card rt rd ra">
         <table>
           <thead>
             <tr>

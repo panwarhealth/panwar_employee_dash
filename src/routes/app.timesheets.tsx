@@ -50,7 +50,11 @@ const TABS: { to: string; label: string; exact: boolean; min: TsLevel[] }[] = [
 function TimesheetsLayout() {
   const viewer = useTsViewer();
   const level = viewer.data?.level;
-  const wide = !!useMatchRoute()({ to: '/app/timesheets/schedule' });
+  const match = useMatchRoute();
+  const wide =
+    !!match({ to: '/app/timesheets/schedule' }) ||
+    !!match({ to: '/app/timesheets/reports/detailed' }) ||
+    !!match({ to: '/app/timesheets/reports/activity' });
 
   return (
     <div className="ts ts-page">

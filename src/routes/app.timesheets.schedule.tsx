@@ -602,6 +602,7 @@ function SchedulePage() {
                           />
                         </div>
                         <div className="fc-t fc-grid" style={grid}>
+                          {daysOff(p.id)}
                           {dayCells(p.id, {
                             id: j.jobId,
                             code: j.jobCode,
@@ -649,6 +650,7 @@ function SchedulePage() {
                         )}
                       </div>
                       <div className="fc-t fc-grid" style={grid}>
+                        {daysOff(p.id)}
                         {dayCells(p.id, null)}
                       </div>
                     </div>

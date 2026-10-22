@@ -19,6 +19,7 @@ export function CalendarFeedModal({ onClose }: { onClose: () => void }) {
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           className="inp"
+          style={{ flex: 1, minWidth: 0 }}
           readOnly
           value={feed.data ?? 'Loading...'}
           onFocus={(e) => e.target.select()}
