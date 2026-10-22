@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ts, type TsEntry } from '@/api/timesheets';
-import { errorText } from '@/hooks/useTimesheets';
+import { errorText, useTsViewer } from '@/hooks/useTimesheets';
 import { useNow } from '@/hooks/useNow';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { addDays, fmtDate, fmtWeek, todayIso, weekDays, weekStart } from '@/lib/timesheets';
@@ -15,6 +15,7 @@ import { StopTimerModal } from '@/components/timesheets/StopTimerModal';
 interface TimesheetSearch {
   date?: string;
   view?: 'day' | 'week';
+  person?: string;
 }
 
 export const Route = createFileRoute('/app/timesheets/')({
@@ -24,6 +25,10 @@ export const Route = createFileRoute('/app/timesheets/')({
         ? search.date
         : undefined,
     view: search.view === 'week' ? 'week' : undefined,
+    person:
+      typeof search.person === 'string' && /^[0-9a-f-]{36}$/i.test(search.person)
+        ? search.person
+        : undefined,
   }),
   component: TimesheetPage,
 });
@@ -41,13 +46,21 @@ function TimesheetPage() {
   const start = weekStart(date);
   const days = weekDays(start);
 
+  const viewer = useTsViewer().data!;
+  const teammates = useQuery({
+    queryKey: ['ts', 'teammates'],
+    queryFn: ts.teammates,
+    enabled: viewer.level !== 'Member',
+  });
+  const personId = search.person && search.person !== viewer.personId ? search.person : undefined;
+  const other = personId ? teammates.data?.find((p) => p.id === personId) : undefined;
   const [tracking, setTracking] = useState(false);
   const [editing, setEditing] = useState<TsEntry | null>(null);
   const [stopping, setStopping] = useState<TsEntry | null>(null);
 
   const time = useQuery({
-    queryKey: ['ts', 'time', start],
-    queryFn: () => ts.time(start, days[6]!),
+    queryKey: ['ts', 'time', start, personId],
+    queryFn: () => ts.time(start, days[6]!, personId),
   });
   const entries = time.data?.entries ?? [];
   const now = useNow(entries.some((e) => e.timerStartedAt !== null));
@@ -99,6 +112,23 @@ function TimesheetPage() {
             </button>
           )}
         </div>
+        {(teammates.data?.length ?? 0) > 1 && (
+          <select
+            className="sel"
+            style={{ width: 'auto' }}
+            aria-label="Teammates"
+            value={personId ?? viewer.personId}
+            onChange={(e) =>
+              go({ person: e.target.value === viewer.personId ? undefined : e.target.value })
+            }
+          >
+            {teammates.data?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.id === viewer.personId ? `${p.name} (me)` : p.name}
+              </option>
+            ))}
+          </select>
+        )}
         {!phone && (
           <div className="seg">
             <button
@@ -119,6 +149,11 @@ function TimesheetPage() {
         )}
       </div>
 
+      {other && (
+        <p className="note">
+          You're looking at {other.name}'s timesheet. Time you add or change here is saved for them.
+        </p>
+      )}
       {time.isError && <p className="err">{errorText(time.error)}</p>}
       {(startTimer.error || stopTimer.error) && (
         <p className="err">{errorText(startTimer.error ?? stopTimer.error)}</p>
@@ -133,8 +168,10 @@ function TimesheetPage() {
           onSelect={(d) => go({ date: d })}
           onTrack={() => setTracking(true)}
           onEdit={setEditing}
-          onStart={(e) => startTimer.mutate(e)}
-          onStop={(e) => (e.notes.trim() ? stopTimer.mutate(e) : setStopping(e))}
+          onStart={personId ? undefined : (e) => startTimer.mutate(e)}
+          onStop={
+            personId ? undefined : (e) => (e.notes.trim() ? stopTimer.mutate(e) : setStopping(e))
+          }
         />
       ) : (
         <WeekView
@@ -142,6 +179,7 @@ function TimesheetPage() {
           days={days}
           entries={entries}
           stars={time.data?.stars ?? []}
+          personId={personId}
           now={now}
           onEdit={setEditing}
           onOpenDay={(d) => go({ date: d, view: undefined })}
@@ -149,7 +187,9 @@ function TimesheetPage() {
         />
       )}
 
-      {tracking && <TrackTimeModal date={date} onClose={() => setTracking(false)} />}
+      {tracking && (
+        <TrackTimeModal date={date} personId={personId} onClose={() => setTracking(false)} />
+      )}
       {editing && <EntryModal entry={editing} onClose={() => setEditing(null)} />}
       {stopping && <StopTimerModal entry={stopping} onClose={() => setStopping(null)} />}
     </>

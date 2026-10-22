@@ -147,6 +147,14 @@
   color: var(--ink-2);
   margin: 0;
 }
+.ts .note {
+  font-size: 14px;
+  background: rgba(112, 47, 143, 0.08);
+  color: var(--purple);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+}
 .ts .err {
   font-size: 14px;
   color: #b42318;

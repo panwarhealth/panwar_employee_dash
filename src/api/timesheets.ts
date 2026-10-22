@@ -315,6 +315,7 @@ export const ts = {
 
   time: (from: string, to: string, personId?: string) =>
     apiFetch<TsTime>(`/ts/time?${qs({ from, to, personId })}`),
+  teammates: () => apiFetch<{ people: Named[] }>('/ts/teammates').then((r) => r.people),
   pickableJobs: (personId?: string) =>
     apiFetch<{ jobs: PickJob[] }>(`/ts/pickable-jobs?${qs({ personId })}`).then((r) => r.jobs),
   createEntry: (body: EntryBody) => apiFetch<TsEntry>('/ts/entries', { method: 'POST', body }),

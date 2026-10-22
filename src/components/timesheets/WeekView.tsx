@@ -28,6 +28,7 @@ export function WeekView({
   days,
   entries,
   stars,
+  personId,
   now,
   onEdit,
   onOpenDay,
@@ -37,6 +38,7 @@ export function WeekView({
   days: string[];
   entries: TsEntry[];
   stars: TsStar[];
+  personId?: string;
   now: number;
   onEdit: (entry: TsEntry) => void;
   onOpenDay: (day: string) => void;
@@ -112,14 +114,16 @@ export function WeekView({
                     <div>{r.taskName}</div>
                   </td>
                   <td className="nb">
-                    <button
-                      type="button"
-                      className={r.starred ? 'ib on' : 'ib'}
-                      title="Star"
-                      onClick={() => star.mutate(r)}
-                    >
-                      {r.starred ? '★' : '☆'}
-                    </button>
+                    {!personId && (
+                      <button
+                        type="button"
+                        className={r.starred ? 'ib on' : 'ib'}
+                        title="Star"
+                        onClick={() => star.mutate(r)}
+                      >
+                        {r.starred ? '★' : '☆'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="ib"
@@ -140,6 +144,7 @@ export function WeekView({
                         dayName={DAY_NAMES[i]!}
                         entries={cellEntries(r, day)}
                         hoursOf={hoursOf}
+                        personId={personId}
                         onOpenDay={onOpenDay}
                         onSaved={refresh}
                       />
@@ -147,18 +152,20 @@ export function WeekView({
                   ))}
                   <td className="tt">{fmtHm(rowEntries.reduce((s, e) => s + hoursOf(e), 0))}</td>
                   <td className="dl">
-                    <button
-                      type="button"
-                      className="ib"
-                      title="Delete row"
-                      onClick={() =>
-                        (rowEntries.length === 0 ||
-                          window.confirm('Delete this row and its time for the week?')) &&
-                        removeRow.mutate(r)
-                      }
-                    >
-                      &times;
-                    </button>
+                    {!personId && (
+                      <button
+                        type="button"
+                        className="ib"
+                        title="Delete row"
+                        onClick={() =>
+                          (rowEntries.length === 0 ||
+                            window.confirm('Delete this row and its time for the week?')) &&
+                          removeRow.mutate(r)
+                        }
+                      >
+                        &times;
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -197,6 +204,7 @@ function WeekCell({
   dayName,
   entries,
   hoursOf,
+  personId,
   onOpenDay,
   onSaved,
 }: {
@@ -205,6 +213,7 @@ function WeekCell({
   dayName: string;
   entries: TsEntry[];
   hoursOf: (e: TsEntry) => number;
+  personId?: string;
   onOpenDay: (day: string) => void;
   onSaved: () => void;
 }) {
@@ -234,6 +243,7 @@ function WeekCell({
           .then(() => undefined);
       return ts
         .createEntry({
+          personId,
           date: day,
           jobId: row.jobId,
           taskId: row.taskId,

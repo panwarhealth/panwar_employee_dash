@@ -19,8 +19,8 @@ export function DayView({
   onSelect: (day: string) => void;
   onTrack: () => void;
   onEdit: (entry: TsEntry) => void;
-  onStart: (entry: TsEntry) => void;
-  onStop: (entry: TsEntry) => void;
+  onStart?: (entry: TsEntry) => void;
+  onStop?: (entry: TsEntry) => void;
 }) {
   const hoursOf = (e: TsEntry) => runningHours(e.hours, e.timerStartedAt, now);
   const dayTotal = (day: string) =>
@@ -57,12 +57,13 @@ export function DayView({
             </div>
             <div className="hh">{fmtHm(hoursOf(e))}</div>
             <div className="da">
-              {running ? (
+              {running && onStop && (
                 <button type="button" className="primary" onClick={() => onStop(e)}>
                   <i className="ck" />
                   Stop
                 </button>
-              ) : (
+              )}
+              {!running && onStart && (
                 <button type="button" className="btn st" onClick={() => onStart(e)}>
                   <i className="ck" />
                   Start

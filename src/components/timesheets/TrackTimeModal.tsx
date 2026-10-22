@@ -6,11 +6,19 @@ import { fmtDate, parseHours, todayIso } from '@/lib/timesheets';
 import { TsModal } from './TsModal';
 import { JobPicker } from './JobPicker';
 
-export function TrackTimeModal({ date, onClose }: { date: string; onClose: () => void }) {
+export function TrackTimeModal({
+  date,
+  personId,
+  onClose,
+}: {
+  date: string;
+  personId?: string;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
   const jobs = useQuery({
-    queryKey: ['ts', 'pickable'],
-    queryFn: () => ts.pickableJobs(),
+    queryKey: ['ts', 'pickable', personId],
+    queryFn: () => ts.pickableJobs(personId),
   });
   const [job, setJob] = useState<PickJob | null>(null);
   const [taskId, setTaskId] = useState('');
@@ -19,12 +27,13 @@ export function TrackTimeModal({ date, onClose }: { date: string; onClose: () =>
   const [star, setStar] = useState(true);
 
   const hours = parseHours(hoursText);
-  const startTimer = hoursText.trim() === '' && date === todayIso();
+  const startTimer = !personId && hoursText.trim() === '' && date === todayIso();
 
   const save = useMutation({
     mutationFn: async () => {
       if (!job || !taskId) throw new Error('Pick a job and task');
       await ts.createEntry({
+        personId,
         date,
         jobId: job.id,
         taskId,
@@ -32,7 +41,7 @@ export function TrackTimeModal({ date, onClose }: { date: string; onClose: () =>
         notes,
         startTimer,
       });
-      if (star) await ts.setStar(job.id, taskId, true);
+      if (star && !personId) await ts.setStar(job.id, taskId, true);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ts', 'time'] });
@@ -95,10 +104,12 @@ export function TrackTimeModal({ date, onClose }: { date: string; onClose: () =>
           <button type="button" className="btn" onClick={onClose}>
             Cancel
           </button>
-          <label className="te-s">
-            <input type="checkbox" checked={star} onChange={(e) => setStar(e.target.checked)} />{' '}
-            Star this job
-          </label>
+          {!personId && (
+            <label className="te-s">
+              <input type="checkbox" checked={star} onChange={(e) => setStar(e.target.checked)} />{' '}
+              Star this job
+            </label>
+          )}
         </div>
         {hours === null && <p className="err">Type hours like 1:30 or 1.5</p>}
         {save.error && <p className="err">{errorText(save.error)}</p>}
