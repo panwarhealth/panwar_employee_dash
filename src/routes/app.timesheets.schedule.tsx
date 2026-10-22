@@ -1,4 +1,10 @@
-import { Fragment, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  Fragment,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -225,18 +231,23 @@ function SchedulePage() {
     );
   const futureOf = (jobId: string) =>
     hrs(futureHours.data?.find((f) => f.jobId === jobId)?.hours ?? 0);
-  const daysOff = (personId: string) =>
-    schedule.data?.people
-      .find((p) => p.id === personId)
-      ?.days.map((d, i) =>
-        d.off > 0 || d.capacity === 0 ? (
-          <span
-            key={d.date}
-            className={d.off > 0 ? 'dayoff leave' : 'dayoff'}
-            style={{ left: pct(i), width: pct(1) }}
-          />
-        ) : null,
-      );
+  const daysOff = (personId: string) => {
+    const list = schedule.data?.people.find((p) => p.id === personId)?.days ?? [];
+    const kindOf = (d: ScheduleDay) =>
+      d.off > 0 ? 'dayoff leave' : d.capacity === 0 ? 'dayoff' : null;
+    const runs = [];
+    for (let i = 0; i < list.length; ) {
+      const kind = kindOf(list[i]!);
+      let end = i;
+      while (end + 1 < list.length && kindOf(list[end + 1]!) === kind) end++;
+      if (kind)
+        runs.push(
+          <span key={i} className={kind} style={{ left: pct(i), width: pct(end - i + 1) }} />,
+        );
+      i = end + 1;
+    }
+    return runs;
+  };
   const personName = (id: string) => schedule.data?.people.find((p) => p.id === id)?.name ?? '';
   const zoom = (by: number) => {
     const next = SCALE_ORDER[SCALE_ORDER.indexOf(scale) + by];
@@ -328,24 +339,38 @@ function SchedulePage() {
       );
     });
 
-  const dayCells = (personId: string | null, job: Editing['job']) =>
-    days.map((d, i) => (
-      <button
-        type="button"
-        key={d}
-        className="fc-day"
-        aria-label={`Schedule ${fmtDate(d, { day: 'numeric', month: 'short' })}`}
-        style={{ left: pct(i), width: pct(1) }}
-        onClick={() => {
-          const person = staff.data?.find((p) => p.id === personId);
-          const next = { booking: null, personId, job, date: d };
-          if (person && dayCapacity(person, d) === 0) setOffDay(next);
-          else setEditing(next);
-        }}
-      >
+  const dayAt = (e: ReactMouseEvent<HTMLElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    return Math.min(DAYS - 1, Math.max(0, Math.floor(((e.clientX - box.left) / box.width) * DAYS)));
+  };
+
+  const dayCells = (personId: string | null, job: Editing['job']) => (
+    <div
+      className="fc-hit"
+      aria-hidden="true"
+      onMouseMove={(e) => {
+        const hover = e.currentTarget.firstElementChild as HTMLElement;
+        const i = dayAt(e);
+        hover.style.left = pct(i);
+        hover.style.width = pct(1);
+        hover.hidden = false;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget.firstElementChild as HTMLElement).hidden = true;
+      }}
+      onClick={(e) => {
+        const d = days[dayAt(e)]!;
+        const person = staff.data?.find((p) => p.id === personId);
+        const next = { booking: null, personId, job, date: d };
+        if (person && dayCapacity(person, d) === 0) setOffDay(next);
+        else setEditing(next);
+      }}
+    >
+      <span className="fc-hov" hidden>
         +
-      </button>
-    ));
+      </span>
+    </div>
+  );
 
   const weekBlock = (w: ScheduleWeek, i: number) =>
     w.booked === 0 && w.off === 0 ? null : (
