@@ -89,6 +89,8 @@ const heatOf = (percent: number | null) =>
           ? 'mid'
           : 'lo';
 
+const hrs = (n: number) => Math.round(n * 100) / 100;
+
 const dayPercent = (d: ScheduleDay) =>
   d.capacity - d.off > 0 ? Math.round((d.booked / (d.capacity - d.off)) * 100) : null;
 
@@ -277,7 +279,7 @@ function SchedulePage() {
       >
         <b>{w.percent === null ? '–' : `${w.percent}%`}</b>
         <small>
-          {w.booked} hrs{w.off > 0 ? ` + ${w.off} off` : ''}
+          {hrs(w.booked)} hrs{w.off > 0 ? ` + ${hrs(w.off)} off` : ''}
         </small>
       </div>
     );
@@ -289,7 +291,7 @@ function SchedulePage() {
         className={`hm ${heatOf(dayPercent(d))}`}
         style={{ left: pct(i), width: pct(1), padding: '7px 4px' }}
       >
-        <b>{d.booked}h</b>
+        <b>{hrs(d.booked)}h</b>
         {d.off > 0 && <small>off</small>}
       </div>
     );
@@ -586,7 +588,7 @@ function SchedulePage() {
                             background: j.isLeave ? LEAVE_COLOUR : colourFor(j.clientName),
                           }}
                         >
-                          <b>{hours} hrs</b>
+                          <b>{hrs(hours)} hrs</b>
                         </div>
                       ),
                     )}
