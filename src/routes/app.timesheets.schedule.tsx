@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ChevronsDownUp,
   ChevronsUpDown,
+  Clock,
   FileText,
   ZoomIn,
   ZoomOut,
@@ -35,6 +36,7 @@ import { BookingModal } from '@/components/timesheets/BookingModal';
 import { TsModal } from '@/components/timesheets/TsModal';
 import { PersonModal } from '@/components/timesheets/PersonModals';
 import { ScheduleExportModal } from '@/components/timesheets/ScheduleExportModal';
+import { ActionsMenu } from '@/components/timesheets/ActionsMenu';
 
 const SCALES = {
   day: { label: 'Day', weeks: 3, step: 1 },
@@ -118,6 +120,7 @@ type Editing = {
 function SchedulePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const goTo = useNavigate();
   const admin = isAdmin(useTsViewer().data!.level);
   const thisWeek = weekStart(todayIso());
   const start = search.week ?? thisWeek;
@@ -131,6 +134,19 @@ function SchedulePage() {
     queryFn: () => ts.schedule(start, WEEKS),
   });
   const jump = useRef<HTMLInputElement>(null);
+  const [showHours, setShowHours] = useState(false);
+  const [shifting, setShifting] = useState<{ id: string; label: string } | null>(null);
+  const [shiftText, setShiftText] = useState('7');
+  const openJobs = useQuery({
+    queryKey: ['ts', 'jobs', 'open'],
+    queryFn: () => ts.jobs('open'),
+    enabled: search.view === 'jobs',
+  });
+  const futureHours = useQuery({
+    queryKey: ['ts', 'schedule', 'future-hours'],
+    queryFn: ts.futureHours,
+    enabled: search.view === 'jobs' && showHours,
+  });
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -149,6 +165,17 @@ function SchedulePage() {
       setDrag(null);
     },
   });
+  const archive = useMutation({
+    mutationFn: (id: string) => ts.setJobArchived(id, true),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ts'] }),
+  });
+  const shift = useMutation({
+    mutationFn: (v: { id: string; days: number }) => ts.shiftJob(v.id, v.days),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ts', 'schedule'] });
+      setShifting(null);
+    },
+  });
   const set = (next: ScheduleSearch) => navigate({ search: (prev) => ({ ...prev, ...next }) });
   const go = (week: string) => set({ week: week === thisWeek ? undefined : week });
 
@@ -157,9 +184,41 @@ function SchedulePage() {
   const term = filter.trim().toLowerCase();
   const bookings = schedule.data?.bookings ?? [];
   const people = (schedule.data?.people ?? []).filter((p) => p.name.toLowerCase().includes(term));
-  const jobs = (schedule.data?.jobs ?? []).filter((j) =>
-    `${j.jobCode} ${j.jobTitle} ${j.clientName}`.toLowerCase().includes(term),
-  );
+  const scheduledJobs = schedule.data?.jobs ?? [];
+  const jobs = [
+    ...scheduledJobs,
+    ...(openJobs.data ?? [])
+      .filter((o) => !scheduledJobs.some((s) => s.jobId === o.id))
+      .map((o) => ({
+        jobId: o.id,
+        jobCode: o.code,
+        jobTitle: o.title,
+        clientName: o.clientName,
+        isLeave: o.isLeave,
+        weeks: [] as number[],
+      })),
+  ]
+    .filter((j) => `${j.jobCode} ${j.jobTitle} ${j.clientName}`.toLowerCase().includes(term))
+    .sort(
+      (a, b) =>
+        Number(b.isLeave) - Number(a.isLeave) ||
+        a.clientName.localeCompare(b.clientName) ||
+        a.jobCode.localeCompare(b.jobCode),
+    );
+  const futureOf = (jobId: string) =>
+    hrs(futureHours.data?.find((f) => f.jobId === jobId)?.hours ?? 0);
+  const daysOff = (personId: string) =>
+    schedule.data?.people
+      .find((p) => p.id === personId)
+      ?.days.map((d, i) =>
+        d.off > 0 || d.capacity === 0 ? (
+          <span
+            key={d.date}
+            className={d.off > 0 ? 'dayoff leave' : 'dayoff'}
+            style={{ left: pct(i), width: pct(1) }}
+          />
+        ) : null,
+      );
   const personName = (id: string) => schedule.data?.people.find((p) => p.id === id)?.name ?? '';
   const zoom = (by: number) => {
     const next = SCALE_ORDER[SCALE_ORDER.indexOf(scale) + by];
@@ -319,6 +378,17 @@ function SchedulePage() {
             >
               {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
             </button>
+            {search.view === 'jobs' && (
+              <button
+                type="button"
+                className={showHours ? 'btn ico on' : 'btn ico'}
+                title="Future scheduled hours from today"
+                aria-label="Future scheduled hours from today"
+                onClick={() => setShowHours((v) => !v)}
+              >
+                <Clock />
+              </button>
+            )}
             {!search.view && scale === 'day' && (
               <select
                 className="sel"
@@ -560,6 +630,11 @@ function SchedulePage() {
                         {jobLabel(j.jobCode, j.jobTitle)}
                       </b>
                     </div>
+                    {showHours && (
+                      <span className="fc-hrs" title="Future scheduled hours from today">
+                        {futureOf(j.jobId)} hrs
+                      </span>
+                    )}
                     <button
                       type="button"
                       className="fc-x"
@@ -604,6 +679,7 @@ function SchedulePage() {
                           </div>
                         </div>
                         <div className="fc-t fc-grid" style={grid}>
+                          {daysOff(id)}
                           {dayCells(id, {
                             id: j.jobId,
                             code: j.jobCode,
@@ -634,6 +710,27 @@ function SchedulePage() {
                         >
                           Assign person...
                         </button>
+                        <ActionsMenu
+                          actions={[
+                            {
+                              label: 'Edit job',
+                              onSelect: () =>
+                                goTo({
+                                  to: '/app/timesheets/jobs/$jobId/edit',
+                                  params: { jobId: j.jobId },
+                                }),
+                            },
+                            {
+                              label: 'Shift timeline',
+                              onSelect: () =>
+                                setShifting({
+                                  id: j.jobId,
+                                  label: jobLabel(j.jobCode, j.jobTitle),
+                                }),
+                            },
+                            { label: 'Archive job', onSelect: () => archive.mutate(j.jobId) },
+                          ]}
+                        />
                       </div>
                       <div className="fc-t fc-grid" style={grid}>
                         {dayCells(null, {
@@ -650,7 +747,7 @@ function SchedulePage() {
             );
           })}
         {search.view === 'jobs' && schedule.isSuccess && jobs.length === 0 && (
-          <div className="empty">Nothing booked in these weeks</div>
+          <div className="empty">No open jobs match</div>
         )}
       </div>
       <div className="fc-foot">
@@ -681,6 +778,40 @@ function SchedulePage() {
         />
       )}
       {exporting && <ScheduleExportModal onClose={() => setExporting(false)} />}
+      {shifting && (
+        <TsModal onClose={() => setShifting(null)}>
+          <div className="tool">Shift timeline</div>
+          <p className="hint" style={{ margin: '8px 0 16px' }}>
+            Moves every booking on {shifting.label} from today onwards. Use a minus number to move
+            them earlier.
+          </p>
+          <div className="field">
+            <label>Days</label>
+            <input
+              className="inp"
+              style={{ width: 100 }}
+              value={shiftText}
+              onChange={(e) => setShiftText(e.target.value)}
+            />
+          </div>
+          {shift.error && <p className="err">{errorText(shift.error)}</p>}
+          <div className="mfoot">
+            <button
+              type="button"
+              className="primary"
+              disabled={
+                shift.isPending || !/^-?\d+$/.test(shiftText.trim()) || Number(shiftText) === 0
+              }
+              onClick={() => shift.mutate({ id: shifting.id, days: Number(shiftText) })}
+            >
+              Shift
+            </button>
+            <button type="button" className="link" onClick={() => setShifting(null)}>
+              Cancel
+            </button>
+          </div>
+        </TsModal>
+      )}
       {offDay && (
         <TsModal onClose={() => setOffDay(null)}>
           <div className="tool">Schedule on a non-work day?</div>

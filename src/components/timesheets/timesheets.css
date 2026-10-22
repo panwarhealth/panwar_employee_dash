@@ -1409,6 +1409,30 @@
   width: 16px;
   height: 16px;
 }
+.ts .btn.ico.on {
+  background: rgba(112, 47, 143, 0.1);
+  color: var(--purple);
+}
+.ts .dayoff {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(43, 44, 44, 0.07) 0 4px,
+    transparent 4px 8px
+  );
+}
+.ts .dayoff.leave {
+  background: rgba(43, 44, 44, 0.16);
+}
+.ts .fc-hrs {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
 .ts .fc-jump {
   position: absolute;
   width: 1px;

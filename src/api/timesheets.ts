@@ -77,6 +77,7 @@ export interface JobRow {
   clientName: string;
   spent: number;
   archived: boolean;
+  isLeave: boolean;
 }
 
 export interface JobDetail {
@@ -374,6 +375,15 @@ export const ts = {
   createBooking: (body: BookingBody) => apiFetch<Booking>('/ts/bookings', { method: 'POST', body }),
   updateBooking: (id: string, body: BookingBody) =>
     apiFetch<Booking>(`/ts/bookings/${id}`, { method: 'PUT', body }),
+  futureHours: () =>
+    apiFetch<{ jobs: { jobId: string; hours: number }[] }>('/ts/schedule/future-hours').then(
+      (r) => r.jobs,
+    ),
+  shiftJob: (id: string, days: number) =>
+    apiFetch<{ moved: number }>(`/ts/schedule/jobs/${id}/shift`, {
+      method: 'POST',
+      body: { days },
+    }),
   moveBooking: (id: string, startDate: string, endDate: string) =>
     apiFetch<Booking>(`/ts/bookings/${id}/dates`, { method: 'PUT', body: { startDate, endDate } }),
   deleteBooking: (id: string, following: boolean) =>
