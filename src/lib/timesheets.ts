@@ -17,6 +17,18 @@ export const addDays = (iso: string, days: number) => {
   return toIso(d);
 };
 
+export const JOB_COLOURS: Record<string, string> = {
+  red: '#d92f2f',
+  orange: '#fa5d00',
+  magenta: '#db2777',
+  purple: '#7d3c91',
+  blue: '#376bdd',
+  aqua: '#1496c8',
+  green: '#188433',
+  gray: '#8d8e8d',
+  black: '#3b3940',
+};
+
 export const weekdayIndex = (iso: string) => (fromIso(iso).getDay() + 6) % 7;
 
 export const dayCapacity = (

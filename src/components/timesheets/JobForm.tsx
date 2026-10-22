@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ts, type JobDetail } from '@/api/timesheets';
 import { errorText, useTsViewer } from '@/hooks/useTimesheets';
-import { fmtDec } from '@/lib/timesheets';
+import { fmtDec, JOB_COLOURS } from '@/lib/timesheets';
 import { ClientModal } from './ClientModal';
 
 const DEFAULT_ALERT = 80;
@@ -30,6 +30,8 @@ export function JobForm({
   const [title, setTitle] = useState(job?.title ?? '');
   const [code, setCode] = useState(job?.code ?? '');
   const [isLeave, setIsLeave] = useState(job?.isLeave ?? false);
+  const [color, setColor] = useState(job?.color ?? '');
+  const colorLabels = useQuery({ queryKey: ['ts', 'color-labels'], queryFn: ts.colorLabels });
   const [trello, setTrello] = useState(true);
   const [byTask, setByTask] = useState(job ? job.budget !== null : true);
   const [alertOn, setAlertOn] = useState(job ? job.alertPercent !== null : true);
@@ -70,7 +72,10 @@ export function JobForm({
     enabled: !!clientId,
   });
   useEffect(() => {
-    if (!job && next.data) setCode(next.data.code ?? '');
+    if (!job && next.data) {
+      setCode(next.data.code ?? '');
+      setColor(next.data.lastColor ?? '');
+    }
   }, [job, next.data]);
 
   const save = useMutation({
@@ -80,6 +85,7 @@ export function JobForm({
         code,
         title,
         isLeave,
+        color: color || null,
         alertPercent: alertOn ? Number(alertPercent) : null,
         tasks: Object.entries(budgets).map(([taskId, b]) => ({
           taskId,
@@ -196,6 +202,28 @@ export function JobForm({
               Create a Trello card in TO BE BRIEFED from the job card template
             </label>
           )}
+        </div>
+        <div className="nfr">
+          <label>Colour</label>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <i
+              className="swatch"
+              style={{ background: color ? JOB_COLOURS[color] : 'transparent' }}
+            />
+            <select
+              className="sel"
+              style={{ width: 200 }}
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+            >
+              <option value="">No colour</option>
+              {colorLabels.data?.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.name.charAt(0).toUpperCase() + c.name.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="nfr">
           <label>Leave</label>

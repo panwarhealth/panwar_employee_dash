@@ -78,6 +78,12 @@ export interface JobRow {
   spent: number;
   archived: boolean;
   isLeave: boolean;
+  color: string | null;
+}
+
+export interface ColorLabel {
+  key: string;
+  name: string;
 }
 
 export interface JobDetail {
@@ -88,6 +94,7 @@ export interface JobDetail {
   clientName: string;
   archived: boolean;
   isLeave: boolean;
+  color: string | null;
   everyone: boolean;
   alertPercent: number | null;
   trelloCardUrl: string | null;
@@ -206,6 +213,7 @@ export interface ScheduleJob {
   jobTitle: string;
   clientName: string;
   isLeave: boolean;
+  color: string | null;
   weeks: number[];
 }
 
@@ -226,6 +234,7 @@ export interface Booking {
   repeatWeeks: number;
   updatedAt: string;
   updatedByName: string | null;
+  jobColor: string | null;
 }
 
 export interface Schedule {
@@ -236,7 +245,14 @@ export interface Schedule {
 
 export type BookingBody = Omit<
   Booking,
-  'id' | 'jobCode' | 'jobTitle' | 'clientName' | 'isLeave' | 'updatedAt' | 'updatedByName'
+  | 'id'
+  | 'jobCode'
+  | 'jobTitle'
+  | 'clientName'
+  | 'isLeave'
+  | 'updatedAt'
+  | 'updatedByName'
+  | 'jobColor'
 >;
 
 export interface Summary {
@@ -326,7 +342,10 @@ export const ts = {
   job: (id: string, from?: string, to?: string) =>
     apiFetch<JobDetail>(`/ts/jobs/${id}?${qs({ from, to })}`),
   nextCode: (clientId: string) =>
-    apiFetch<{ code: string | null; lastJob: string | null }>(`/ts/clients/${clientId}/next-code`),
+    apiFetch<{ code: string | null; lastJob: string | null; lastColor: string | null }>(
+      `/ts/clients/${clientId}/next-code`,
+    ),
+  colorLabels: () => apiFetch<{ labels: ColorLabel[] }>('/ts/color-labels').then((r) => r.labels),
   createJob: (body: JobBody) => apiFetch<JobDetail>('/ts/jobs', { method: 'POST', body }),
   updateJob: (id: string, body: JobBody) =>
     apiFetch<JobDetail>(`/ts/jobs/${id}`, { method: 'PUT', body }),

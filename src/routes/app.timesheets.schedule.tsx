@@ -32,6 +32,7 @@ import {
   weekStart,
   workingDays,
   dayCapacity,
+  JOB_COLOURS,
 } from '@/lib/timesheets';
 import { BookingModal } from '@/components/timesheets/BookingModal';
 import { TsModal } from '@/components/timesheets/TsModal';
@@ -81,6 +82,12 @@ export const Route = createFileRoute('/app/timesheets/schedule')({
 
 const colourFor = (clientName: string) =>
   COLOURS[[...clientName].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % COLOURS.length]!;
+
+const jobBg = (color: string | null, clientName: string) =>
+  (color && JOB_COLOURS[color]) || colourFor(clientName);
+
+const colorOf = (j: { color?: string | null; jobColor?: string | null }) =>
+  j.color ?? j.jobColor ?? null;
 
 const heatOf = (percent: number | null) =>
   percent === null
@@ -205,6 +212,7 @@ function SchedulePage() {
         jobTitle: o.title,
         clientName: o.clientName,
         isLeave: o.isLeave,
+        color: o.color,
         weeks: [] as number[],
       })),
   ]
@@ -304,7 +312,7 @@ function SchedulePage() {
           style={{
             left: pct(first),
             width: pct(last - first + 1),
-            background: b.isLeave ? undefined : colourFor(b.clientName),
+            background: b.isLeave ? undefined : jobBg(b.jobColor, b.clientName),
           }}
           onPointerDown={(e) => startDrag(e, b, 'move')}
           onClick={() => {
@@ -587,7 +595,9 @@ function SchedulePage() {
                           <i
                             className="stripe"
                             style={{
-                              background: j.isLeave ? LEAVE_COLOUR : colourFor(j.clientName),
+                              background: j.isLeave
+                                ? LEAVE_COLOUR
+                                : jobBg(colorOf(j), j.clientName),
                             }}
                           />
                         </div>
@@ -691,7 +701,7 @@ function SchedulePage() {
                     <i
                       className="stripe"
                       style={{
-                        background: j.isLeave ? LEAVE_COLOUR : colourFor(j.clientName),
+                        background: j.isLeave ? LEAVE_COLOUR : jobBg(colorOf(j), j.clientName),
                         right: 2,
                       }}
                     />
@@ -705,7 +715,7 @@ function SchedulePage() {
                           style={{
                             left: pct(i * 7),
                             width: pct(7),
-                            background: j.isLeave ? LEAVE_COLOUR : colourFor(j.clientName),
+                            background: j.isLeave ? LEAVE_COLOUR : jobBg(colorOf(j), j.clientName),
                           }}
                         >
                           <b>{hrs(hours)} hrs</b>
