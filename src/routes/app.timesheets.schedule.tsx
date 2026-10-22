@@ -145,7 +145,7 @@ function SchedulePage() {
   const futureHours = useQuery({
     queryKey: ['ts', 'schedule', 'future-hours'],
     queryFn: ts.futureHours,
-    enabled: search.view === 'jobs' && showHours,
+    enabled: search.view === 'jobs',
   });
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -612,7 +612,12 @@ function SchedulePage() {
           jobs.map((j) => {
             const expanded = open.has(j.jobId);
             const mine = bookings.filter((b) => b.jobId === j.jobId);
-            const personIds = [...new Set(mine.map((b) => b.personId))];
+            const personIds = [
+              ...new Set([
+                ...mine.map((b) => b.personId),
+                ...(futureHours.data?.find((f) => f.jobId === j.jobId)?.personIds ?? []),
+              ]),
+            ];
             return (
               <Fragment key={j.jobId}>
                 <div className={expanded ? 'fc-row fc-p open' : 'fc-row fc-p'}>

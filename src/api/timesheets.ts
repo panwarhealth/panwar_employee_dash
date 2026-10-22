@@ -376,9 +376,9 @@ export const ts = {
   updateBooking: (id: string, body: BookingBody) =>
     apiFetch<Booking>(`/ts/bookings/${id}`, { method: 'PUT', body }),
   futureHours: () =>
-    apiFetch<{ jobs: { jobId: string; hours: number }[] }>('/ts/schedule/future-hours').then(
-      (r) => r.jobs,
-    ),
+    apiFetch<{ jobs: { jobId: string; hours: number; personIds: string[] }[] }>(
+      '/ts/schedule/future-hours',
+    ).then((r) => r.jobs),
   shiftJob: (id: string, days: number) =>
     apiFetch<{ moved: number }>(`/ts/schedule/jobs/${id}/shift`, {
       method: 'POST',
