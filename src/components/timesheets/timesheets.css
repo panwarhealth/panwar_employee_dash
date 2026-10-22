@@ -1230,6 +1230,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  white-space: nowrap;
   color: var(--ink);
   border-left: 1px solid var(--line);
   padding-left: 4px;

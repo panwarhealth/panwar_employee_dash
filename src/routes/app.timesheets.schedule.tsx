@@ -421,6 +421,8 @@ function SchedulePage() {
                 return scale === 'day' || newMonth ? (
                   <span key={w} style={{ left: pct(w * 7), width: pct(7) }}>
                     {fmtDate(monday, { month: 'short' })}
+                    {(w === 0 || (newMonth && fromIso(monday).getMonth() === 0)) &&
+                      ` ${fromIso(monday).getFullYear()}`}
                   </span>
                 ) : null;
               })}
