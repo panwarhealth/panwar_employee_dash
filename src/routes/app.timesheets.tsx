@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router';
+import { createFileRoute, Link, Outlet, useMatchRoute } from '@tanstack/react-router';
 import type { TsLevel } from '@/api/timesheets';
 import { useTsViewer } from '@/hooks/useTimesheets';
 import '@/components/timesheets/timesheets.css';
@@ -50,10 +50,11 @@ const TABS: { to: string; label: string; exact: boolean; min: TsLevel[] }[] = [
 function TimesheetsLayout() {
   const viewer = useTsViewer();
   const level = viewer.data?.level;
+  const wide = !!useMatchRoute()({ to: '/app/timesheets/schedule' });
 
   return (
     <div className="ts ts-page">
-      <div className="wrap">
+      <div className={wide ? 'wrap wide' : 'wrap'}>
         <div className="tool">Timesheets</div>
         <nav className="tabs">
           {level &&

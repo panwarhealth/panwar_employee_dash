@@ -40,6 +40,9 @@
   margin: 0 auto;
   padding: 40px 20px 90px;
 }
+.ts .wrap.wide {
+  max-width: none;
+}
 .ts .tool {
   font-size: 13px;
   font-weight: 700;
