@@ -23,6 +23,7 @@ import {
 } from '@/lib/timesheets';
 import { BookingModal } from '@/components/timesheets/BookingModal';
 import { PersonModal } from '@/components/timesheets/PersonModals';
+import { ScheduleExportModal } from '@/components/timesheets/ScheduleExportModal';
 
 const WEEKS = 3;
 const DAYS = WEEKS * 7;
@@ -95,6 +96,7 @@ function SchedulePage() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Editing | null>(null);
   const [addingPlaceholder, setAddingPlaceholder] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const set = (next: ScheduleSearch) => navigate({ search: (prev) => ({ ...prev, ...next }) });
   const go = (week: string) => set({ week: week === thisWeek ? undefined : week });
 
@@ -134,7 +136,7 @@ function SchedulePage() {
           }}
           onClick={() => setEditing({ booking: b, personId: b.personId, job: null })}
         >
-          {b.isLeave ? b.jobTitle : `${b.hoursPerDay} h/d`}
+          {b.isLeave ? b.jobTitle : `${Math.round(b.hoursPerDay * 100) / 100} h/d`}
         </button>
       );
     });
@@ -431,6 +433,9 @@ function SchedulePage() {
             + Add placeholder
           </button>
         )}
+        <button type="button" className="btn" onClick={() => setExporting(true)}>
+          Export
+        </button>
       </div>
       {editing && (
         <BookingModal
@@ -440,6 +445,7 @@ function SchedulePage() {
           onClose={() => setEditing(null)}
         />
       )}
+      {exporting && <ScheduleExportModal onClose={() => setExporting(false)} />}
       {addingPlaceholder && (
         <PersonModal person={null} placeholder onClose={() => setAddingPlaceholder(false)} />
       )}

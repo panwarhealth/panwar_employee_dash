@@ -42,6 +42,15 @@ export interface TsTime {
   stars: TsStar[];
 }
 
+export interface ScheduleExport {
+  kind: 'projects' | 'team';
+  tasks: boolean;
+  period: 'week' | 'month';
+  rows: boolean;
+  from: string;
+  to: string;
+}
+
 export interface PickJob {
   id: string;
   code: string;
@@ -343,6 +352,18 @@ export const ts = {
 
   schedule: (weekStart: string, weeks: number) =>
     apiFetch<Schedule>(`/ts/schedule?${qs({ weekStart, weeks: String(weeks) })}`),
+  exportSchedule: (o: ScheduleExport) =>
+    apiDownload(
+      `/ts/schedule/export.csv?${qs({
+        kind: o.kind,
+        tasks: o.kind === 'projects' && o.tasks ? 'true' : undefined,
+        period: o.period,
+        rows: o.rows ? 'true' : undefined,
+        from: o.from,
+        to: o.to,
+      })}`,
+      `${o.kind === 'team' ? 'team' : 'project'}-export-from-${o.from}-to-${o.to}.csv`,
+    ),
   createBooking: (body: BookingBody) => apiFetch<Booking>('/ts/bookings', { method: 'POST', body }),
   updateBooking: (id: string, body: BookingBody) =>
     apiFetch<Booking>(`/ts/bookings/${id}`, { method: 'PUT', body }),
