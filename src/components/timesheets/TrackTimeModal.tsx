@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ts, type PickJob } from '@/api/timesheets';
 import { errorText } from '@/hooks/useTimesheets';
 import { fmtDate, parseHours, todayIso } from '@/lib/timesheets';
 import { TsModal } from './TsModal';
 import { JobPicker } from './JobPicker';
+
+const LAST_PICK = 'ts.lastPick';
+
+const readLastPick = (): { jobId: string; taskId: string } | null => {
+  try {
+    return JSON.parse(localStorage.getItem(LAST_PICK) ?? 'null');
+  } catch {
+    return null;
+  }
+};
 
 export function TrackTimeModal({
   date,
@@ -26,6 +36,20 @@ export function TrackTimeModal({
   const [hoursText, setHoursText] = useState('');
   const [star, setStar] = useState(true);
 
+  useEffect(() => {
+    const last = readLastPick();
+    const lastJob = last && jobs.data?.find((j) => j.id === last.jobId);
+    if (!lastJob) return;
+    setJob((current) => current ?? lastJob);
+    setTaskId(
+      (current) =>
+        current ||
+        (lastJob.tasks.some((t) => t.id === last.taskId)
+          ? last.taskId
+          : (lastJob.tasks[0]?.id ?? '')),
+    );
+  }, [jobs.data]);
+
   const hours = parseHours(hoursText);
   const startTimer = !personId && hoursText.trim() === '' && date === todayIso();
 
@@ -42,6 +66,11 @@ export function TrackTimeModal({
         startTimer,
       });
       if (star && !personId) await ts.setStar(job.id, taskId, true);
+      try {
+        localStorage.setItem(LAST_PICK, JSON.stringify({ jobId: job.id, taskId }));
+      } catch {
+        return;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ts', 'time'] });
