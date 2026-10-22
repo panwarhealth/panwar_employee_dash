@@ -64,15 +64,15 @@ export function ScheduleExportModal({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <TsModal onClose={onClose}>
+    <TsModal onClose={onClose} className="sx">
       <div className="tool">Export scheduled hours</div>
       <p className="hint">Export the project or team schedule to a CSV file.</p>
-      <div className="field" style={{ marginTop: 8 }}>
+      <div className="field">
         <label>Export format</label>
         {radio('Projects schedule', o.kind === 'projects', () => set({ kind: 'projects' }))}
         {radio('Team schedule', o.kind === 'team', () => set({ kind: 'team' }))}
         {o.kind === 'projects' && (
-          <label className="ck2" style={{ marginTop: 6 }}>
+          <label className="ck2">
             <input
               type="checkbox"
               checked={o.tasks}

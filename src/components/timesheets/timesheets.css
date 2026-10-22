@@ -337,6 +337,18 @@
 .ts .field .sel {
   width: 100%;
 }
+.ts .modal.sx .hint {
+  margin: 8px 0 28px;
+}
+.ts .modal.sx .field {
+  margin-bottom: 28px;
+}
+.ts .modal.sx .field > label {
+  margin-bottom: 10px;
+}
+.ts .modal.sx .ck2 {
+  padding: 6px 0;
+}
 .ts .req {
   font-size: 12px;
   color: var(--purple);
