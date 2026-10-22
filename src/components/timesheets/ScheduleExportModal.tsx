@@ -69,28 +69,34 @@ export function ScheduleExportModal({ onClose }: { onClose: () => void }) {
       <p className="hint">Export the project or team schedule to a CSV file.</p>
       <div className="field">
         <label>Export format</label>
-        {radio('Projects schedule', o.kind === 'projects', () => set({ kind: 'projects' }))}
-        {radio('Team schedule', o.kind === 'team', () => set({ kind: 'team' }))}
-        {o.kind === 'projects' && (
-          <label className="ck2">
-            <input
-              type="checkbox"
-              checked={o.tasks}
-              onChange={(e) => set({ tasks: e.target.checked })}
-            />{' '}
-            Include tasks
-          </label>
-        )}
+        <div>
+          {radio('Projects schedule', o.kind === 'projects', () => set({ kind: 'projects' }))}
+          {radio('Team schedule', o.kind === 'team', () => set({ kind: 'team' }))}
+          {o.kind === 'projects' && (
+            <label className="ck2">
+              <input
+                type="checkbox"
+                checked={o.tasks}
+                onChange={(e) => set({ tasks: e.target.checked })}
+              />{' '}
+              Include tasks
+            </label>
+          )}
+        </div>
       </div>
       <div className="field">
         <label>Time format</label>
-        {radio('Weekly', o.period === 'week', () => set({ period: 'week' }))}
-        {radio('Monthly', o.period === 'month', () => set({ period: 'month' }))}
+        <div>
+          {radio('Weekly', o.period === 'week', () => set({ period: 'week' }))}
+          {radio('Monthly', o.period === 'month', () => set({ period: 'month' }))}
+        </div>
       </div>
       <div className="field">
         <label>{o.period === 'week' ? 'Weeks' : 'Months'} are added as</label>
-        {radio('Columns', !o.rows, () => set({ rows: false }))}
-        {radio('Rows', o.rows, () => set({ rows: true }))}
+        <div>
+          {radio('Columns', !o.rows, () => set({ rows: false }))}
+          {radio('Rows', o.rows, () => set({ rows: true }))}
+        </div>
       </div>
       <div className="field">
         <label>Timeframe</label>
