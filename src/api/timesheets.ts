@@ -373,6 +373,8 @@ export const ts = {
   createBooking: (body: BookingBody) => apiFetch<Booking>('/ts/bookings', { method: 'POST', body }),
   updateBooking: (id: string, body: BookingBody) =>
     apiFetch<Booking>(`/ts/bookings/${id}`, { method: 'PUT', body }),
+  moveBooking: (id: string, startDate: string, endDate: string) =>
+    apiFetch<Booking>(`/ts/bookings/${id}/dates`, { method: 'PUT', body: { startDate, endDate } }),
   deleteBooking: (id: string, following: boolean) =>
     apiFetch<void>(`/ts/bookings/${id}${following ? '?following=true' : ''}`, { method: 'DELETE' }),
 

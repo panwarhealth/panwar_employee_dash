@@ -1,6 +1,6 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ts,
   type Booking,
@@ -76,6 +76,19 @@ const dayPercent = (d: ScheduleDay) =>
 
 const pct = (days: number) => `${(days / DAYS) * 100}%`;
 
+type Drag = { id: string; mode: 'move' | 'start' | 'end'; days: number };
+
+const shifted = (b: Booking, drag: Drag | null) => {
+  if (!drag || drag.id !== b.id) return { startDate: b.startDate, endDate: b.endDate };
+  const from = addDays(b.startDate, drag.days);
+  const to = addDays(b.endDate, drag.days);
+  if (drag.mode === 'start')
+    return { startDate: from < b.endDate ? from : b.endDate, endDate: b.endDate };
+  if (drag.mode === 'end')
+    return { startDate: b.startDate, endDate: to > b.startDate ? to : b.startDate };
+  return { startDate: from, endDate: to };
+};
+
 type Editing = {
   booking: Booking | null;
   personId: string | null;
@@ -98,6 +111,17 @@ function SchedulePage() {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [addingPlaceholder, setAddingPlaceholder] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const dragged = useRef(false);
+  const queryClient = useQueryClient();
+  const move = useMutation({
+    mutationFn: (v: { id: string; startDate: string; endDate: string }) =>
+      ts.moveBooking(v.id, v.startDate, v.endDate),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['ts', 'schedule'] });
+      setDrag(null);
+    },
+  });
   const set = (next: ScheduleSearch) => navigate({ search: (prev) => ({ ...prev, ...next }) });
   const go = (week: string) => set({ week: week === thisWeek ? undefined : week });
 
@@ -120,24 +144,61 @@ function SchedulePage() {
 
   const grid = { backgroundSize: `calc(100% / ${DAYS}) 100%` };
 
+  const startDrag = (e: ReactPointerEvent, b: Booking, mode: Drag['mode']) => {
+    if (e.button !== 0 || move.isPending) return;
+    e.stopPropagation();
+    const grid = (e.currentTarget as HTMLElement).closest('.fc-grid')!;
+    const dayWidth = grid.getBoundingClientRect().width / DAYS;
+    const x0 = e.clientX;
+    let days = 0;
+    dragged.current = false;
+    const onMove = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientX - x0) > 4) dragged.current = true;
+      days = Math.round((ev.clientX - x0) / dayWidth);
+      if (dragged.current) setDrag({ id: b.id, mode, days });
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      const next = shifted(b, { id: b.id, mode, days });
+      if (!dragged.current || (next.startDate === b.startDate && next.endDate === b.endDate)) {
+        setDrag(null);
+        return;
+      }
+      move.mutate({ id: b.id, ...next });
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
   const bars = (list: Booking[]) =>
     list.map((b) => {
-      const first = Math.max(0, daysApart(start, b.startDate));
-      const last = Math.min(DAYS - 1, daysApart(start, b.endDate));
+      const at = shifted(b, drag);
+      const first = Math.max(0, daysApart(start, at.startDate));
+      const last = Math.min(DAYS - 1, daysApart(start, at.endDate));
+      if (last < first) return null;
       return (
         <button
           type="button"
           key={b.id}
-          className={b.isLeave ? 'fbar leave' : 'fbar'}
+          className={['fbar', b.isLeave ? 'leave' : '', drag?.id === b.id ? 'dragging' : ''].join(
+            ' ',
+          )}
           title={b.note ?? undefined}
           style={{
             left: pct(first),
             width: pct(last - first + 1),
             background: b.isLeave ? undefined : colourFor(b.clientName),
           }}
-          onClick={() => setEditing({ booking: b, personId: b.personId, job: null })}
+          onPointerDown={(e) => startDrag(e, b, 'move')}
+          onClick={() => {
+            if (dragged.current) return;
+            setEditing({ booking: b, personId: b.personId, job: null });
+          }}
         >
+          <span className="fh l" onPointerDown={(e) => startDrag(e, b, 'start')} />
           {b.isLeave ? b.jobTitle : `${Math.round(b.hoursPerDay * 100) / 100} h/d`}
+          <span className="fh r" onPointerDown={(e) => startDrag(e, b, 'end')} />
         </button>
       );
     });
