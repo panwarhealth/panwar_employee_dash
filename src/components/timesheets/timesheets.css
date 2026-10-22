@@ -1790,6 +1790,9 @@
   display: grid;
   gap: 4px;
 }
+.ts .rflt6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
 .ts .saved td a {
   font-weight: 700;
   text-decoration: none;

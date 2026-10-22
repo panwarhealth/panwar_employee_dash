@@ -72,6 +72,12 @@ function ReportsPage() {
           >
             Saved reports
           </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/app/timesheets/reports/activity' })}
+          >
+            Activity log
+          </button>
         </div>
         <Link className="primary" to="/app/timesheets/reports/detailed" search={detailedSearch}>
           Detailed time report

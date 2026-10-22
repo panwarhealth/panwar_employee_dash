@@ -273,6 +273,21 @@ export interface Detailed {
   groups: { label: string; hours: number; rows: DetailedEntry[] }[];
 }
 
+export interface ActivityRow {
+  at: string;
+  kind: 'Created' | 'Edited' | 'Deleted' | 'TimerStarted' | 'TimerStopped';
+  date: string;
+  clientName: string;
+  jobCode: string;
+  jobTitle: string;
+  fromJob: string | null;
+  taskName: string;
+  hoursBefore: number | null;
+  hours: number;
+  personName: string;
+  performedByName: string;
+}
+
 export interface ReportOption extends Named {
   archived: boolean;
 }
@@ -427,6 +442,13 @@ export const ts = {
     apiFetch<Summary>(`/ts/reports/summary?${filterQuery(f)}&groupBy=${groupBy}`),
   detailed: (f: ReportFilter, groupBy: string) =>
     apiFetch<Detailed>(`/ts/reports/detailed?${filterQuery(f)}&groupBy=${groupBy}`),
+  activity: (f: ReportFilter & { performedByIds: string[]; kinds: string[] }) =>
+    apiFetch<{ count: number; rows: ActivityRow[] }>(
+      `/ts/reports/activity?${filterQuery(f)}&${qs({
+        performedByIds: f.performedByIds.join(','),
+        kinds: f.kinds.join(','),
+      })}`,
+    ),
   moveEntries: (entryIds: string[], jobId: string, taskId: string) =>
     apiFetch<{ moved: number }>('/ts/entries/move', {
       method: 'POST',
