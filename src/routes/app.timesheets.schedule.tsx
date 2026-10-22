@@ -22,8 +22,10 @@ import {
   todayIso,
   weekStart,
   workingDays,
+  dayCapacity,
 } from '@/lib/timesheets';
 import { BookingModal } from '@/components/timesheets/BookingModal';
+import { TsModal } from '@/components/timesheets/TsModal';
 import { PersonModal } from '@/components/timesheets/PersonModals';
 import { ScheduleExportModal } from '@/components/timesheets/ScheduleExportModal';
 
@@ -96,6 +98,7 @@ type Editing = {
   personId: string | null;
   job: Pick<JobRow, 'id' | 'code' | 'title' | 'clientName'> | null;
   date?: string;
+  onDaysOff?: boolean;
 };
 
 function SchedulePage() {
@@ -114,6 +117,7 @@ function SchedulePage() {
   const [addingPlaceholder, setAddingPlaceholder] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [offDay, setOffDay] = useState<Editing | null>(null);
   const staff = useQuery({ queryKey: ['ts', 'people'], queryFn: ts.people });
   const dragged = useRef(false);
   const queryClient = useQueryClient();
@@ -176,7 +180,7 @@ function SchedulePage() {
 
   const barLabel = (b: Booking, at: { startDate: string; endDate: string }) => {
     const person = staff.data?.find((p) => p.id === b.personId);
-    const days = person ? workingDays(person, at.startDate, at.endDate) : 0;
+    const days = person ? workingDays(person, at.startDate, at.endDate, b.onDaysOff) : 0;
     const perDay = Math.round(b.hoursPerDay * 100) / 100;
     const total = Math.round(b.hoursPerDay * days * 100) / 100;
     if (days <= 1) return `${perDay}h`;
@@ -228,7 +232,12 @@ function SchedulePage() {
         className="fc-day"
         aria-label={`Schedule ${fmtDate(d, { day: 'numeric', month: 'short' })}`}
         style={{ left: pct(i), width: pct(1) }}
-        onClick={() => setEditing({ booking: null, personId, job, date: d })}
+        onClick={() => {
+          const person = staff.data?.find((p) => p.id === personId);
+          const next = { booking: null, personId, job, date: d };
+          if (person && dayCapacity(person, d) === 0) setOffDay(next);
+          else setEditing(next);
+        }}
       >
         +
       </button>
@@ -557,10 +566,35 @@ function SchedulePage() {
           personId={editing.personId}
           job={editing.job}
           date={editing.date}
+          onDaysOff={editing.onDaysOff}
           onClose={() => setEditing(null)}
         />
       )}
       {exporting && <ScheduleExportModal onClose={() => setExporting(false)} />}
+      {offDay && (
+        <TsModal onClose={() => setOffDay(null)}>
+          <div className="tool">Schedule on a non-work day?</div>
+          <p className="hint">
+            {fmtDate(offDay.date!, { weekday: 'long', day: 'numeric', month: 'short' })} isn't one
+            of their working days.
+          </p>
+          <div className="mfoot">
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                setEditing({ ...offDay, onDaysOff: true });
+                setOffDay(null);
+              }}
+            >
+              Yes
+            </button>
+            <button type="button" className="link" onClick={() => setOffDay(null)}>
+              Cancel
+            </button>
+          </div>
+        </TsModal>
+      )}
       {addingPlaceholder && (
         <PersonModal person={null} placeholder onClose={() => setAddingPlaceholder(false)} />
       )}

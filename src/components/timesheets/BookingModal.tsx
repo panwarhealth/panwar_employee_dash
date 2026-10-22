@@ -5,6 +5,7 @@ import { errorText } from '@/hooks/useTimesheets';
 import { fmtAgo } from '@/lib/edm';
 import {
   addDays,
+  daysApart,
   parseHours,
   todayIso,
   weekdayIndex,
@@ -22,12 +23,14 @@ export function BookingModal({
   personId,
   job: presetJob,
   date,
+  onDaysOff: presetOnDaysOff = false,
   onClose,
 }: {
   booking: Booking | null;
   personId: string | null;
   job: JobChoice | null;
   date?: string;
+  onDaysOff?: boolean;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -60,11 +63,13 @@ export function BookingModal({
   const [hoursText, setHoursText] = useState(booking ? String(round2(booking.hoursPerDay)) : '');
   const [totalText, setTotalText] = useState<string | null>(null);
   const [note, setNote] = useState(booking?.note ?? '');
+  const [onDaysOff, setOnDaysOff] = useState(booking?.onDaysOff ?? presetOnDaysOff);
   const [repeat, setRepeat] = useState((booking?.repeatWeeks ?? 1) > 1);
   const [weeksText, setWeeksText] = useState(String(Math.max(2, booking?.repeatWeeks ?? 2)));
 
   const person = people.data?.find((p) => p.id === who);
-  const workingDays = person ? countWorkingDays(person, from, to) : 0;
+  const workingDays = person ? countWorkingDays(person, from, to, onDaysOff) : 0;
+  const hasDaysOff = person ? countWorkingDays(person, from, to) < daysApart(from, to) + 1 : false;
   const fullDay = person
     ? (person.dayHours[weekdayIndex(from)] ?? 0) || Math.max(0, ...person.dayHours)
     : 0;
@@ -99,6 +104,7 @@ export function BookingModal({
         endDate: to,
         hoursPerDay: hours ?? 0,
         note,
+        onDaysOff,
         repeatWeeks: weeks,
       };
       return editing ? ts.updateBooking(booking.id, body) : ts.createBooking(body);
@@ -242,6 +248,19 @@ export function BookingModal({
           onChange={(e) => setNote(e.target.value)}
         />
       </div>
+      {(hasDaysOff || onDaysOff) && (
+        <label className="ck2" style={{ marginBottom: 8 }}>
+          <input
+            type="checkbox"
+            checked={onDaysOff}
+            onChange={(e) => {
+              setOnDaysOff(e.target.checked);
+              setTotalText(null);
+            }}
+          />{' '}
+          Also book days they don't normally work
+        </label>
+      )}
       <label className="ck2">
         <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />{' '}
         Repeat weekly

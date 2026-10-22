@@ -220,6 +220,7 @@ export interface Booking {
   startDate: string;
   endDate: string;
   hoursPerDay: number;
+  onDaysOff: boolean;
   note: string | null;
   repeatWeeks: number;
   updatedAt: string;
