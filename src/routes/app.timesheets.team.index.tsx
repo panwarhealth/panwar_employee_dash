@@ -34,6 +34,7 @@ function TeamPage() {
   const people = useQuery({ queryKey: ['ts', 'people'], queryFn: ts.people });
   const [filter, setFilter] = useState('');
   const [notDoneOnly, setNotDoneOnly] = useState(false);
+  const [jobRole, setJobRole] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<Person | 'new' | null>(null);
   const [capacity, setCapacity] = useState<Person | null>(null);
@@ -43,9 +44,13 @@ function TeamPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ts'] }),
   });
 
+  const rolesOf = (title: string | null) => (title ? title.split(', ') : []);
+  const jobRoles = [...new Set((team.data ?? []).flatMap((r) => rolesOf(r.title)))].sort();
   const rows = (team.data ?? []).filter(
     (r) =>
-      r.name.toLowerCase().includes(filter.trim().toLowerCase()) && (!notDoneOnly || r.notDone),
+      r.name.toLowerCase().includes(filter.trim().toLowerCase()) &&
+      (!notDoneOnly || r.notDone) &&
+      (!jobRole || rolesOf(r.title).includes(jobRole)),
   );
   const totalHours = rows.reduce((s, r) => s + r.hours, 0);
   const base = rows.reduce((s, r) => s + r.baseCapacity, 0);
@@ -248,6 +253,14 @@ function TeamPage() {
             >
               <option value="">Everyone</option>
               <option value="nd">Not done this week</option>
+            </select>
+            <select className="sel" value={jobRole} onChange={(e) => setJobRole(e.target.value)}>
+              <option value="">All roles</option>
+              {jobRoles.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
             </select>
           </div>
           <div className="card rt">
