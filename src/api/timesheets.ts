@@ -79,6 +79,7 @@ export interface JobRow {
   archived: boolean;
   isLeave: boolean;
   color: string | null;
+  managerIds: string[];
 }
 
 export interface ColorLabel {

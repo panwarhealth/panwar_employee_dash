@@ -20,6 +20,8 @@ function JobsPage() {
   const [status, setStatus] = useState<Status>('open');
   const [search, setSearch] = useState('');
   const [client, setClient] = useState('');
+  const [manager, setManager] = useState('');
+  const people = useQuery({ queryKey: ['ts', 'people'], queryFn: ts.people });
   const jobs = useQuery({
     queryKey: ['ts', 'jobs', status],
     queryFn: () => ts.jobs(status),
@@ -32,17 +34,23 @@ function JobsPage() {
 
   const all = jobs.data ?? [];
   const clients = [...new Set(all.map((j) => j.clientName))];
+  const managerIds = new Set(all.flatMap((j) => j.managerIds));
+  const managers = (people.data ?? [])
+    .filter((p) => managerIds.has(p.id))
+    .map((p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`.trim() }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const groups = useMemo(() => {
     const term = search.trim().toLowerCase();
     const shown = all.filter(
       (j) =>
         (!client || j.clientName === client) &&
+        (!manager || j.managerIds.includes(manager)) &&
         `${j.code} ${j.title} ${j.clientName}`.toLowerCase().includes(term),
     );
     const byClient = new Map<string, JobRow[]>();
     shown.forEach((j) => byClient.set(j.clientName, [...(byClient.get(j.clientName) ?? []), j]));
     return [...byClient.entries()];
-  }, [all, search, client]);
+  }, [all, search, client, manager]);
 
   return (
     <>
@@ -100,6 +108,14 @@ function JobsPage() {
               <option key={c}>{c}</option>
             ))}
           </select>
+          <select className="sel" value={manager} onChange={(e) => setManager(e.target.value)}>
+            <option value="">Filter by manager</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
       {(jobs.error || archive.error) && (
@@ -145,6 +161,11 @@ function JobsPage() {
                                 to: '/app/timesheets/jobs/$jobId/edit',
                                 params: { jobId: j.id },
                               }),
+                          },
+                          {
+                            label: 'Duplicate',
+                            onSelect: () =>
+                              navigate({ to: '/app/timesheets/jobs/new', search: { from: j.id } }),
                           },
                           {
                             label: j.archived ? 'Restore' : 'Archive',

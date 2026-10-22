@@ -9,10 +9,12 @@ const DEFAULT_ALERT = 80;
 
 export function JobForm({
   job,
+  copyOf = null,
   onSaved,
   onCancel,
 }: {
   job: JobDetail | null;
+  copyOf?: JobDetail | null;
   onSaved: (job: JobDetail) => void;
   onCancel: () => void;
 }) {
@@ -26,45 +28,46 @@ export function JobForm({
   const people = useQuery({ queryKey: ['ts', 'people'], queryFn: ts.people });
   const active = (people.data ?? []).filter((p) => !p.archived && !p.isPlaceholder);
 
-  const [clientId, setClientId] = useState(job?.clientId ?? '');
-  const [title, setTitle] = useState(job?.title ?? '');
+  const src = job ?? copyOf;
+  const [clientId, setClientId] = useState(src?.clientId ?? '');
+  const [title, setTitle] = useState(src?.title ?? '');
   const [code, setCode] = useState(job?.code ?? '');
-  const [isLeave, setIsLeave] = useState(job?.isLeave ?? false);
-  const [color, setColor] = useState(job?.color ?? '');
+  const [isLeave, setIsLeave] = useState(src?.isLeave ?? false);
+  const [color, setColor] = useState(src?.color ?? '');
   const colorLabels = useQuery({ queryKey: ['ts', 'color-labels'], queryFn: ts.colorLabels });
   const [trello, setTrello] = useState(true);
-  const [byTask, setByTask] = useState(job ? job.budget !== null : true);
-  const [alertOn, setAlertOn] = useState(job ? job.alertPercent !== null : true);
-  const [alertPercent, setAlertPercent] = useState(String(job?.alertPercent ?? DEFAULT_ALERT));
+  const [byTask, setByTask] = useState(src ? src.budget !== null : true);
+  const [alertOn, setAlertOn] = useState(src ? src.alertPercent !== null : true);
+  const [alertPercent, setAlertPercent] = useState(String(src?.alertPercent ?? DEFAULT_ALERT));
   const [budgets, setBudgets] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      (job?.tasks ?? []).map((t) => [t.taskId, t.budget === null ? '' : String(t.budget)]),
+      (src?.tasks ?? []).map((t) => [t.taskId, t.budget === null ? '' : String(t.budget)]),
     ),
   );
   const [canLog, setCanLog] = useState<Set<string> | null>(null);
   const [managers, setManagers] = useState<Set<string>>(
     () =>
       new Set(
-        job ? job.people.filter((p) => p.isManager).map((p) => p.personId) : [viewer.personId],
+        src ? src.people.filter((p) => p.isManager).map((p) => p.personId) : [viewer.personId],
       ),
   );
   const [addingClient, setAddingClient] = useState(false);
 
   useEffect(() => {
-    if (job || !tasks.data || Object.keys(budgets).length > 0) return;
+    if (src || !tasks.data || Object.keys(budgets).length > 0) return;
     setBudgets(Object.fromEntries(tasks.data.filter((t) => t.isCommon).map((t) => [t.id, ''])));
-  }, [job, tasks.data, budgets]);
+  }, [src, tasks.data, budgets]);
 
   useEffect(() => {
     if (canLog || !people.data) return;
     setCanLog(
       new Set(
-        !job || job.everyone
+        !src || src.everyone
           ? active.map((p) => p.id)
-          : job.people.filter((p) => p.canLog).map((p) => p.personId),
+          : src.people.filter((p) => p.canLog).map((p) => p.personId),
       ),
     );
-  }, [canLog, people.data, job, active]);
+  }, [canLog, people.data, src, active]);
 
   const next = useQuery({
     queryKey: ['ts', 'next-code', clientId],
@@ -74,9 +77,9 @@ export function JobForm({
   useEffect(() => {
     if (!job && next.data) {
       setCode(next.data.code ?? '');
-      setColor(next.data.lastColor ?? '');
+      if (!copyOf) setColor(next.data.lastColor ?? '');
     }
-  }, [job, next.data]);
+  }, [job, copyOf, next.data]);
 
   const save = useMutation({
     mutationFn: () => {
