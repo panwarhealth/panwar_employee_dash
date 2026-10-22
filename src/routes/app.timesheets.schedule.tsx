@@ -1,7 +1,14 @@
 import { Fragment, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText } from 'lucide-react';
+import {
+  CalendarDays,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  FileText,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import {
   ts,
   type Booking,
@@ -29,8 +36,13 @@ import { TsModal } from '@/components/timesheets/TsModal';
 import { PersonModal } from '@/components/timesheets/PersonModals';
 import { ScheduleExportModal } from '@/components/timesheets/ScheduleExportModal';
 
-const WEEKS = 3;
-const DAYS = WEEKS * 7;
+const SCALES = {
+  day: { label: 'Day', weeks: 3, step: 1 },
+  week: { label: 'Week', weeks: 12, step: 4 },
+  month: { label: 'Month', weeks: 26, step: 13 },
+} as const;
+type Scale = keyof typeof SCALES;
+const SCALE_ORDER: Scale[] = ['day', 'week', 'month'];
 const COLOURS = [
   '#1f6fbf',
   '#2f8a7d',
@@ -47,6 +59,7 @@ interface ScheduleSearch {
   week?: string;
   view?: 'jobs';
   daily?: boolean;
+  scale?: 'week' | 'month';
 }
 
 export const Route = createFileRoute('/app/timesheets/schedule')({
@@ -57,6 +70,7 @@ export const Route = createFileRoute('/app/timesheets/schedule')({
         : undefined,
     view: search.view === 'jobs' ? 'jobs' : undefined,
     daily: search.daily === true || search.daily === 'true' ? true : undefined,
+    scale: search.scale === 'week' || search.scale === 'month' ? search.scale : undefined,
   }),
   component: SchedulePage,
 });
@@ -77,8 +91,6 @@ const heatOf = (percent: number | null) =>
 
 const dayPercent = (d: ScheduleDay) =>
   d.capacity - d.off > 0 ? Math.round((d.booked / (d.capacity - d.off)) * 100) : null;
-
-const pct = (days: number) => `${(days / DAYS) * 100}%`;
 
 type Drag = { id: string; mode: 'move' | 'start' | 'end'; days: number };
 
@@ -107,10 +119,16 @@ function SchedulePage() {
   const admin = isAdmin(useTsViewer().data!.level);
   const thisWeek = weekStart(todayIso());
   const start = search.week ?? thisWeek;
+  const scale: Scale = search.scale ?? 'day';
+  const WEEKS = SCALES[scale].weeks;
+  const DAYS = WEEKS * 7;
+  const pct = (days: number) => `${(days / DAYS) * 100}%`;
+  const daily = scale === 'day' && search.daily;
   const schedule = useQuery({
-    queryKey: ['ts', 'schedule', start],
+    queryKey: ['ts', 'schedule', start, WEEKS],
     queryFn: () => ts.schedule(start, WEEKS),
   });
+  const jump = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -141,6 +159,13 @@ function SchedulePage() {
     `${j.jobCode} ${j.jobTitle} ${j.clientName}`.toLowerCase().includes(term),
   );
   const personName = (id: string) => schedule.data?.people.find((p) => p.id === id)?.name ?? '';
+  const zoom = (by: number) => {
+    const next = SCALE_ORDER[SCALE_ORDER.indexOf(scale) + by];
+    if (next) set({ scale: next === 'day' ? undefined : next });
+  };
+  const visibleIds = search.view ? jobs.map((j) => j.jobId) : people.map((p) => p.id);
+  const allOpen = visibleIds.length > 0 && visibleIds.every((id) => open.has(id));
+  const toggleAll = () => setOpen(allOpen ? new Set() : new Set(visibleIds));
   const toggle = (id: string) =>
     setOpen((s) => {
       const next = new Set(s);
@@ -283,7 +308,16 @@ function SchedulePage() {
             </a>
           </div>
           <div className="fc-tools">
-            {!search.view && (
+            <button
+              type="button"
+              className="btn ico"
+              title={allOpen ? 'Collapse all' : 'Expand all'}
+              aria-label={allOpen ? 'Collapse all' : 'Expand all'}
+              onClick={toggleAll}
+            >
+              {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
+            </button>
+            {!search.view && scale === 'day' && (
               <select
                 className="sel"
                 value={search.daily ? 'daily' : 'weekly'}
@@ -296,9 +330,63 @@ function SchedulePage() {
             <span className="sp" />
             <button
               type="button"
+              className="btn ico"
+              title="Zoom out"
+              aria-label="Zoom out"
+              disabled={scale === 'month'}
+              onClick={() => zoom(1)}
+            >
+              <ZoomOut />
+            </button>
+            <button
+              type="button"
+              className="btn ico"
+              title="Zoom in"
+              aria-label="Zoom in"
+              disabled={scale === 'day'}
+              onClick={() => zoom(-1)}
+            >
+              <ZoomIn />
+            </button>
+            <select
+              className="sel"
+              value={scale}
+              onChange={(e) =>
+                set({
+                  scale:
+                    e.target.value === 'day' ? undefined : (e.target.value as 'week' | 'month'),
+                })
+              }
+            >
+              {SCALE_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {SCALES[s].label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn ico"
+              title="Jump to a date"
+              aria-label="Jump to a date"
+              onClick={() => jump.current?.showPicker()}
+            >
+              <CalendarDays />
+            </button>
+            <input
+              ref={jump}
+              type="date"
+              className="fc-jump"
+              tabIndex={-1}
+              aria-hidden="true"
+              value={start}
+              onChange={(e) => e.target.value && go(weekStart(e.target.value))}
+            />
+            <button
+              type="button"
               className="btn"
-              aria-label="Previous week"
-              onClick={() => go(addDays(start, -7))}
+              aria-label="Previous"
+              onClick={() => go(addDays(start, -7 * SCALES[scale].step))}
             >
               &larr;
             </button>
@@ -308,8 +396,8 @@ function SchedulePage() {
             <button
               type="button"
               className="btn"
-              aria-label="Next week"
-              onClick={() => go(addDays(start, 7))}
+              aria-label="Next"
+              onClick={() => go(addDays(start, 7 * SCALES[scale].step))}
             >
               &rarr;
             </button>
@@ -326,22 +414,40 @@ function SchedulePage() {
           </div>
           <div className="fc-t">
             <div className="fc-wk">
-              {Array.from({ length: WEEKS }, (_, w) => (
-                <span key={w} style={{ left: pct(w * 7), width: pct(7) }}>
-                  {fmtDate(days[w * 7]!, { month: 'short' })}
-                </span>
-              ))}
+              {Array.from({ length: WEEKS }, (_, w) => {
+                const monday = days[w * 7]!;
+                const newMonth =
+                  w === 0 || fromIso(monday).getMonth() !== fromIso(days[w * 7 - 7]!).getMonth();
+                return scale === 'day' || newMonth ? (
+                  <span key={w} style={{ left: pct(w * 7), width: pct(7) }}>
+                    {fmtDate(monday, { month: 'short' })}
+                  </span>
+                ) : null;
+              })}
             </div>
             <div className="fc-dd">
-              {days.map((d, i) => (
-                <span
-                  key={d}
-                  className={d === today ? 'today' : undefined}
-                  style={{ left: pct(i), width: pct(1) }}
-                >
-                  {fromIso(d).getDate()}
-                </span>
-              ))}
+              {scale === 'day'
+                ? days.map((d, i) => (
+                    <span
+                      key={d}
+                      className={d === today ? 'today' : undefined}
+                      style={{ left: pct(i), width: pct(1) }}
+                    >
+                      {fromIso(d).getDate()}
+                    </span>
+                  ))
+                : Array.from({ length: WEEKS }, (_, w) => {
+                    const monday = days[w * 7]!;
+                    return (
+                      <span
+                        key={monday}
+                        className={monday === thisWeek ? 'today' : undefined}
+                        style={{ left: pct(w * 7), width: pct(7) }}
+                      >
+                        {fromIso(monday).getDate()}
+                      </span>
+                    );
+                  })}
             </div>
           </div>
         </div>
@@ -370,7 +476,7 @@ function SchedulePage() {
                     </button>
                   </div>
                   <div className="fc-t fc-grid" style={grid}>
-                    {search.daily ? p.days.map(dayBlock) : p.weeks.map(weekBlock)}
+                    {daily ? p.days.map(dayBlock) : p.weeks.map(weekBlock)}
                   </div>
                 </div>
                 {expanded && (
