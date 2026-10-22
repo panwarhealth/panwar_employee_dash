@@ -105,10 +105,11 @@ export const initials = (name: string) =>
 export const isManager = (level: TsLevel) => level !== 'Member';
 export const isAdmin = (level: TsLevel) => level === 'Admin';
 
-export type Period = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom';
+export type Period = 'week' | 'semimonth' | 'month' | 'quarter' | 'year' | 'all' | 'custom';
 
 export const PERIODS: { value: Period; label: string }[] = [
   { value: 'week', label: 'Week' },
+  { value: 'semimonth', label: 'Semimonth' },
   { value: 'month', label: 'Month' },
   { value: 'quarter', label: 'Quarter' },
   { value: 'year', label: 'Year' },
@@ -122,8 +123,17 @@ const monthsIn: Partial<Record<Period, number>> = {
   year: 12,
 };
 
+const semimonthIndex = (iso: string) => {
+  const d = fromIso(iso);
+  return d.getFullYear() * 24 + d.getMonth() * 2 + (d.getDate() > 15 ? 1 : 0);
+};
+
+const semimonthFrom = (index: number) =>
+  toIso(new Date(Math.floor(index / 24), Math.floor((index % 24) / 2), index % 2 ? 16 : 1));
+
 export const periodStart = (period: Period, iso: string) => {
   if (period === 'week') return weekStart(iso);
+  if (period === 'semimonth') return semimonthFrom(semimonthIndex(iso));
   const d = fromIso(iso);
   const months = monthsIn[period];
   if (!months) return iso;
@@ -133,12 +143,14 @@ export const periodStart = (period: Period, iso: string) => {
 
 export const periodEnd = (period: Period, start: string) => {
   if (period === 'week') return addDays(start, 6);
+  if (period === 'semimonth') return addDays(semimonthFrom(semimonthIndex(start) + 1), -1);
   const d = fromIso(start);
   return toIso(new Date(d.getFullYear(), d.getMonth() + (monthsIn[period] ?? 0), 0));
 };
 
 export const shiftPeriod = (period: Period, start: string, by: number) => {
   if (period === 'week') return addDays(start, 7 * by);
+  if (period === 'semimonth') return semimonthFrom(semimonthIndex(start) + by);
   const d = fromIso(start);
   return toIso(new Date(d.getFullYear(), d.getMonth() + (monthsIn[period] ?? 0) * by, 1));
 };

@@ -261,18 +261,28 @@ export interface Summary {
   rows: { id: string; name: string; hours: number }[];
 }
 
+export interface DetailedEntry extends TsEntry {
+  personName: string;
+  roles: string | null;
+}
+
 export interface Detailed {
   total: number;
   count: number;
-  headers: string[];
-  rows: string[][];
+  shown: number;
+  groups: { label: string; hours: number; rows: DetailedEntry[] }[];
+}
+
+export interface ReportOption extends Named {
+  archived: boolean;
 }
 
 export interface ReportOptions {
-  clients: Named[];
-  jobs: Named[];
-  tasks: Named[];
-  people: Named[];
+  clients: ReportOption[];
+  jobs: ReportOption[];
+  tasks: ReportOption[];
+  people: ReportOption[];
+  roles: string[];
 }
 
 export interface SavedReport {
@@ -291,6 +301,7 @@ export interface ReportFilter {
   jobIds?: string[];
   taskIds?: string[];
   personIds?: string[];
+  roles?: string[];
   openOnly?: boolean;
 }
 
@@ -308,6 +319,7 @@ const filterQuery = (f: ReportFilter) =>
     jobIds: f.jobIds?.join(','),
     taskIds: f.taskIds?.join(','),
     personIds: f.personIds?.join(','),
+    roles: f.roles?.join('|'),
     openOnly: f.openOnly ? 'true' : undefined,
   });
 
@@ -413,7 +425,13 @@ export const ts = {
 
   summary: (f: ReportFilter, groupBy: GroupBy) =>
     apiFetch<Summary>(`/ts/reports/summary?${filterQuery(f)}&groupBy=${groupBy}`),
-  detailed: (f: ReportFilter) => apiFetch<Detailed>(`/ts/reports/detailed?${filterQuery(f)}`),
+  detailed: (f: ReportFilter, groupBy: string) =>
+    apiFetch<Detailed>(`/ts/reports/detailed?${filterQuery(f)}&groupBy=${groupBy}`),
+  moveEntries: (entryIds: string[], jobId: string, taskId: string) =>
+    apiFetch<{ moved: number }>('/ts/entries/move', {
+      method: 'POST',
+      body: { entryIds, jobId, taskId },
+    }),
   reportOptions: () => apiFetch<ReportOptions>('/ts/reports/options'),
   exportReport: (f: ReportFilter, format: 'csv' | 'xlsx') =>
     apiDownload(

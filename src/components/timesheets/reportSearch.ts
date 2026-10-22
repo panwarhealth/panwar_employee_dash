@@ -11,9 +11,15 @@ export interface ReportSearch {
   jobIds?: string;
   taskIds?: string;
   personIds?: string;
+  roles?: string;
+  by?: DetailBy;
+  archived?: boolean;
 }
 
-const PERIOD_VALUES: Period[] = ['week', 'month', 'quarter', 'year', 'all', 'custom'];
+export type DetailBy = 'date' | 'client' | 'job' | 'task' | 'person';
+const BYS: DetailBy[] = ['date', 'client', 'job', 'task', 'person'];
+
+const PERIOD_VALUES: Period[] = ['week', 'semimonth', 'month', 'quarter', 'year', 'all', 'custom'];
 const GROUPS: GroupBy[] = ['client', 'job', 'task', 'person'];
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const isIds = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f,-]+$/i.test(v);
@@ -28,6 +34,9 @@ export const validateReportSearch = (s: Record<string, unknown>): ReportSearch =
   jobIds: isIds(s.jobIds) ? s.jobIds : undefined,
   taskIds: isIds(s.taskIds) ? s.taskIds : undefined,
   personIds: isIds(s.personIds) ? s.personIds : undefined,
+  roles: typeof s.roles === 'string' && s.roles.length > 0 ? s.roles : undefined,
+  by: BYS.includes(s.by as DetailBy) ? (s.by as DetailBy) : undefined,
+  archived: s.archived === true || s.archived === 'true' ? true : undefined,
 });
 
 export const periodOf = (s: ReportSearch): Period => s.period ?? (s.from ? 'custom' : 'week');
@@ -50,6 +59,7 @@ export const toFilter = (s: ReportSearch): ReportFilter => {
     jobIds: split(s.jobIds),
     taskIds: split(s.taskIds),
     personIds: split(s.personIds),
+    roles: s.roles ? s.roles.split('|') : undefined,
     openOnly: s.openOnly,
   };
 };
