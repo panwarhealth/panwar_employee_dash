@@ -18,6 +18,7 @@ export const Route = createFileRoute('/app/admin')({
 });
 
 const AVAILABLE_ROLES = [
+  { value: 'staff', label: 'Staff' },
   { value: 'panwar-admin', label: 'Admin' },
   { value: 'dashboard-editor', label: 'Dashboard Editor' },
   { value: 'medical-writer', label: 'Medical Writer' },
