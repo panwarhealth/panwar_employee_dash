@@ -1,4 +1,4 @@
-import type { Block, ButtonAction } from './doc';
+import type { Block, ButtonAction, Condition } from './doc';
 import type { Answer } from './scorm';
 
 export interface ReviewItem {
@@ -28,4 +28,9 @@ export interface BlockContext {
   audioProgress(blockId: string, seconds: number): void;
   results(): ResultsData;
   retry(): void;
+  mediaEnded(blockId: string): void;
+  setVar(varId: string, value: string): void;
+  passes(conditions: Condition[]): boolean;
+  merge(text: string, html: boolean): string;
+  clickable: Set<string>;
 }

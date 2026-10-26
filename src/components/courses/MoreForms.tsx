@@ -5,6 +5,7 @@ import {
   type AnimationBlock,
   type AudioBlock,
   type BlankBlock,
+  type CourseDoc,
   type DragBlock,
   type FlipBlock,
   type HotspotBlock,
@@ -766,7 +767,16 @@ export function BlankForm({ block, set }: { block: BlankBlock; set: Edit<BlankBl
   );
 }
 
-export function WrittenForm({ block, set }: { block: WrittenBlock; set: Edit<WrittenBlock> }) {
+export function WrittenForm({
+  block,
+  doc,
+  set,
+}: {
+  block: WrittenBlock;
+  doc: CourseDoc;
+  set: Edit<WrittenBlock>;
+}) {
+  const textVars = doc.variables.filter((v) => v.type === 'text');
   return (
     <>
       <TextArea
@@ -782,6 +792,15 @@ export function WrittenForm({ block, set }: { block: WrittenBlock; set: Edit<Wri
           { value: 'essay', label: 'Essay' },
         ]}
         onChange={(v) => set((b) => (b.length = v))}
+      />
+      <Select
+        label="Save the answer into a variable"
+        value={block.saveTo ?? ''}
+        options={[
+          { value: '', label: textVars.length ? "Don't save" : 'Add a text variable first' },
+          ...textVars.map((v) => ({ value: v.id, label: v.name })),
+        ]}
+        onChange={(v) => set((b) => (b.saveTo = v || undefined))}
       />
       <Toggle
         label="Must answer before continuing"

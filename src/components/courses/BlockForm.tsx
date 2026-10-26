@@ -1,4 +1,4 @@
-import type { Block, ButtonAction, CheckBlock, Page } from '@/course/doc';
+import type { Block, ButtonAction, CheckBlock, CourseDoc, Page } from '@/course/doc';
 import { uid } from '@/course/doc';
 import { MediaInput, RichText, Select, TextArea, TextInput, Toggle } from './fields';
 import {
@@ -26,16 +26,17 @@ const ALIGN = [
 export function BlockForm({
   block,
   page,
-  pages,
+  doc,
   courseId,
   onChange,
 }: {
   block: Block;
   page: Page;
-  pages: Page[];
+  doc: CourseDoc;
   courseId: string;
   onChange: (update: (b: Block) => void) => void;
 }) {
+  const pages = doc.pages;
   const set = <B extends Block>(fn: (b: B) => void) => onChange((b) => fn(b as B));
 
   switch (block.type) {
@@ -201,7 +202,7 @@ export function BlockForm({
     case 'blank':
       return <BlankForm block={block} set={set<typeof block>} />;
     case 'written':
-      return <WrittenForm block={block} set={set<typeof block>} />;
+      return <WrittenForm block={block} doc={doc} set={set<typeof block>} />;
     case 'likert':
       return <LikertForm block={block} set={set<typeof block>} />;
     case 'results':

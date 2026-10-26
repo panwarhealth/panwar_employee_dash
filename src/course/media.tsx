@@ -37,7 +37,10 @@ export function AudioView({ block, ctx }: { block: AudioBlock; ctx: BlockContext
           setTime(t);
           ctx.audioProgress(block.id, t);
         }}
-        onEnded={() => ctx.audioProgress(block.id, Number.MAX_SAFE_INTEGER)}
+        onEnded={() => {
+          ctx.audioProgress(block.id, Number.MAX_SAFE_INTEGER);
+          ctx.mediaEnded(block.id);
+        }}
       />
       <button
         type="button"

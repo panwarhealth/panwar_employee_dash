@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   newPickRule,
   type Block,
-  type ClickAction,
+  type Action,
   type CourseDoc,
   type Layout,
   type Page,
   type PopupBlock,
+  type TriggerEvent,
 } from './doc';
 import type { Lms, PlayState } from './scorm';
 import { BlockView } from './blocks';
@@ -18,6 +19,7 @@ import { pickBlocks, pickStatus, togglePick } from './picks';
 import { choosePool, computeResults, cueHidden, resultsSettings } from './grading';
 import { PopupLayer } from './interactive';
 import { animClass, animStyle, hasExit, OUT_MS } from './anim';
+import { applySet, eventMatches, initialVars, mergeText, passes, type Vars } from './logic';
 
 function PickFeedback({
   page,
@@ -101,7 +103,15 @@ function PageBody({
 function freshState(doc: CourseDoc): PlayState {
   const skip = choosePool(doc);
   const first = doc.pages.find((p) => !skip.includes(p.id));
-  return { v: 1, pageId: first?.id ?? '', visited: [], answers: {}, skip };
+  return {
+    v: 1,
+    pageId: first?.id ?? '',
+    visited: [],
+    answers: {},
+    skip,
+    vars: initialVars(doc),
+    vis: {},
+  };
 }
 
 const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
@@ -139,6 +149,7 @@ export function Player({
   const [popup, setPopup] = useState<string | null>(null);
   const [cueTimes, setCueTimes] = useState<Record<string, number>>({});
   const [leaving, setLeaving] = useState(false);
+  const dispatchRef = useRef<(event: TriggerEvent) => void>(() => {});
 
   const pages = useMemo(
     () => doc.pages.filter((p) => !(state.skip ?? []).includes(p.id)),
@@ -161,6 +172,11 @@ export function Player({
   useEffect(() => {
     if (pages.length) lms.save(state, Math.min(1, state.visited.length / pages.length));
   }, [state, lms, pages.length]);
+
+  const pageId = page?.id;
+  useEffect(() => {
+    if (pageId) dispatchRef.current({ kind: 'pageStart' });
+  }, [pageId]);
 
   useEffect(() => {
     if (onResultsPage && results.passed)
@@ -189,11 +205,15 @@ export function Player({
 
   const next = () => (index < pages.length - 1 ? go(pages[index + 1].id) : finish());
 
-  const act = (a: Exclude<ClickAction, { kind: 'none' } | { kind: 'pick' }>) => {
+  const act = (a: Action) => {
     if (a.kind === 'next') next();
-    else if (a.kind === 'page') go(a.pageId);
+    else if (a.kind === 'prev') {
+      if (index > 0) go(pages[index - 1].id);
+    } else if (a.kind === 'page') go(a.pageId);
     else if (a.kind === 'popup') setPopup(a.blockId);
-    else if (a.url) window.open(a.url, '_blank', 'noopener');
+    else if (a.kind === 'closePopup') setPopup(null);
+    else if (a.kind === 'link') window.open(a.url, '_blank', 'noopener');
+    else if (a.kind === 'finish') finish();
   };
 
   const retry = () => {
@@ -205,6 +225,40 @@ export function Player({
   const picked = state.picks?.[page.id] ?? [];
   const setPicks = (ids: string[]) =>
     setState((s) => ({ ...s, picks: { ...s.picks, [page.id]: ids } }));
+  const vars: Vars = state.vars ?? initialVars(doc);
+
+  const dispatch = (first: TriggerEvent, base: Vars = vars) => {
+    let nextVars = base;
+    const vis = { ...state.vis };
+    let picks = picked;
+    let navigate: Action | null = null;
+    const queue: TriggerEvent[] = [first];
+    for (let n = 0; queue.length && n < 50; n++) {
+      const ev = queue.shift()!;
+      for (const t of page.triggers) {
+        if (!eventMatches(t.when, ev) || !passes(t.conditions, nextVars, doc)) continue;
+        const a = t.action;
+        if (a.kind === 'set') {
+          nextVars = applySet(nextVars, doc, a.varId, a.op, a.value);
+          queue.push({ kind: 'varChange', varId: a.varId });
+        } else if (a.kind === 'show' || a.kind === 'hide') vis[a.blockId] = a.kind === 'show';
+        else if (a.kind === 'pick') {
+          const target = ev.kind === 'click' && page.blocks.find((b) => b.id === ev.blockId);
+          if (target) picks = togglePick(page, picks, target);
+        } else if (a.kind === 'popup' || a.kind === 'closePopup') act(a);
+        else navigate = a;
+      }
+    }
+    setState((s) => ({ ...s, vars: nextVars, vis, picks: { ...s.picks, [page.id]: picks } }));
+    if (navigate) act(navigate);
+  };
+  dispatchRef.current = dispatch;
+
+  const clickable = new Set(
+    page.triggers.flatMap((t) => (t.when.kind === 'click' ? [t.when.blockId] : [])),
+  );
+  const hidden = cueHidden(page, cueTimes);
+  for (const b of page.blocks) if (!(state.vis?.[b.id] ?? !b.startHidden)) hidden.add(b.id);
 
   const ctx: BlockContext = {
     edit: false,
@@ -229,16 +283,25 @@ export function Player({
       setState((s) =>
         s.clicked?.includes(b.id) ? s : { ...s, clicked: [...(s.clicked ?? []), b.id] },
       );
-      const a = b.interact?.onClick;
-      if (!a || a.kind === 'none') return;
-      if (a.kind === 'pick') setPicks(togglePick(page, picked, b));
-      else act(a);
+      dispatch({ kind: 'click', blockId: b.id });
     },
     openPopup: setPopup,
     audioProgress: (blockId, seconds) =>
       setCueTimes((c) => (seconds > (c[blockId] ?? -1) ? { ...c, [blockId]: seconds } : c)),
     results: () => results,
     retry,
+    mediaEnded: (blockId) => dispatch({ kind: 'mediaEnd', blockId }),
+    setVar: (varId, value) => dispatch({ kind: 'varChange', varId }, { ...vars, [varId]: value }),
+    passes: (conditions) => passes(conditions, vars, doc),
+    merge: (text, html) =>
+      mergeText(
+        text,
+        vars,
+        doc,
+        { score: results.score === null ? '' : String(results.score) },
+        html,
+      ),
+    clickable,
   };
 
   const blocked =
@@ -293,7 +356,7 @@ export function Player({
           page={page}
           layout={layout}
           ctx={ctx}
-          hidden={cueHidden(page, cueTimes)}
+          hidden={hidden}
           leaving={leaving}
           onRetryPicks={() => setPicks([])}
         />

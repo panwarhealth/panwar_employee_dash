@@ -1,12 +1,12 @@
 import {
   hasPicks,
   newPickRule,
+  pickIds,
   type Block,
+  type CourseDoc,
   type Frame,
-  type Interaction,
   type Layout,
   type Page,
-  type PickRule,
 } from '@/course/doc';
 import { cn } from '@/lib/utils';
 import { BlockForm } from './BlockForm';
@@ -14,12 +14,13 @@ import { blockLabel, blockName } from './blockMeta';
 import { AnimFields } from './AnimFields';
 import { FrameFields } from './FrameFields';
 import { InteractionFields, PickRuleFields } from './InteractionFields';
-import { Select, TextInput } from './fields';
+import { TriggersPanel } from './TriggersPanel';
+import { Select, TextInput, Toggle } from './fields';
 import { SortableList } from './SortableList';
 
 export function Inspector({
+  doc,
   page,
-  pages,
   courseId,
   selectedId,
   onSelect,
@@ -31,8 +32,8 @@ export function Inspector({
   onRemoveBlock,
   canvas,
 }: {
+  doc: CourseDoc;
   page: Page;
-  pages: Page[];
   courseId: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -124,12 +125,18 @@ export function Inspector({
         <PickRuleFields
           rule={page.pick ?? newPickRule()}
           correctCount={
-            page.blocks.filter((b) => b.interact?.onClick.kind === 'pick' && b.interact.correct)
+            pickIds(page).filter((id) => page.blocks.find((b) => b.id === id)?.interact?.correct)
               .length
           }
-          onChange={canvas.onPickRule}
+          onChange={(r) => onPage((p) => (p.pick = r))}
         />
       )}
+      <TriggersPanel
+        doc={doc}
+        page={page}
+        selectedId={selectedId}
+        onChange={(triggers) => onPage((p) => (p.triggers = triggers))}
+      />
 
       {block && (
         <div className="mt-4 flex flex-col gap-3 border-t border-ph-charcoal/10 pt-4">
@@ -140,7 +147,7 @@ export function Inspector({
             key={block.id}
             block={block}
             page={page}
-            pages={pages}
+            doc={doc}
             courseId={courseId}
             onChange={(update) => onChangeBlock(block.id, update)}
           />
@@ -148,11 +155,17 @@ export function Inspector({
             <>
               <FrameFields frame={canvas.frame} onChange={canvas.onFrame} />
               <InteractionFields
+                doc={doc}
                 block={block}
-                pages={pages}
                 page={page}
-                onChange={canvas.onInteract}
-                onEnabledWhen={canvas.onEnabledWhen}
+                onChange={(i) => onChangeBlock(block.id, (b) => (b.interact = i))}
+                onEnabledWhen={(when, conditions) =>
+                  onChangeBlock(block.id, (b) => {
+                    if (b.type !== 'button') return;
+                    b.enabledWhen = when;
+                    b.enabledIf = conditions;
+                  })
+                }
               />
               <div className="flex gap-4">
                 <button
@@ -174,6 +187,11 @@ export function Inspector({
               </div>
             </>
           )}
+          <Toggle
+            label="Hidden when the page starts (show it with a trigger)"
+            checked={!!block.startHidden}
+            onChange={(v) => onChangeBlock(block.id, (b) => (b.startHidden = v))}
+          />
           <AnimFields
             anim={block.anim}
             onChange={(a) => onChangeBlock(block.id, (b) => (b.anim = a))}
@@ -206,7 +224,4 @@ export interface CanvasControls {
   frame: Frame | null;
   onFrame: (frame: Frame) => void;
   onCopyLayout: () => void;
-  onInteract: (i: Interaction) => void;
-  onEnabledWhen: (v: 'always' | 'picks') => void;
-  onPickRule: (r: PickRule) => void;
 }

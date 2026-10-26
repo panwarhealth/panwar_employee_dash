@@ -9,7 +9,55 @@ export interface CourseDoc {
   screens: Screens;
   passMark: number | null;
   accent: string;
+  variables: Variable[];
   pages: Page[];
+}
+
+export type VarType = 'boolean' | 'number' | 'text';
+
+export interface Variable {
+  id: string;
+  name: string;
+  type: VarType;
+  initial: string;
+}
+
+export type Action =
+  | { kind: 'next' }
+  | { kind: 'prev' }
+  | { kind: 'page'; pageId: string }
+  | { kind: 'link'; url: string }
+  | { kind: 'popup'; blockId: string }
+  | { kind: 'closePopup' }
+  | { kind: 'set'; varId: string; op: SetOp; value: string }
+  | { kind: 'pick' }
+  | { kind: 'show'; blockId: string }
+  | { kind: 'hide'; blockId: string }
+  | { kind: 'finish' };
+
+export type SetOp = 'set' | 'add' | 'subtract' | 'toggle';
+
+export type TriggerEvent =
+  | { kind: 'click'; blockId: string }
+  | { kind: 'pageStart' }
+  | { kind: 'varChange'; varId: string }
+  | { kind: 'mediaEnd'; blockId: string };
+
+export type CompareOp = 'eq' | 'ne' | 'lt' | 'gt' | 'lte' | 'gte';
+
+export interface Condition {
+  id: string;
+  join: 'and' | 'or';
+  varId: string;
+  op: CompareOp;
+  value: string;
+}
+
+export interface Trigger {
+  id: string;
+  action: Action;
+  when: TriggerEvent;
+  conditions: Condition[];
 }
 
 export interface Page {
@@ -17,6 +65,7 @@ export interface Page {
   title: string;
   kind: 'flow' | 'canvas';
   blocks: Block[];
+  triggers: Trigger[];
   pick?: PickRule;
   transition?: Transition;
 }
@@ -42,17 +91,10 @@ export type HoverLook = 'none' | 'scale' | 'glow' | 'lift' | 'border';
 export type PickedLook = 'none' | 'tick' | 'glow' | 'dim';
 export type VisitedLook = 'none' | 'fade';
 
-export type ClickAction =
-  | { kind: 'none' }
-  | { kind: 'pick' }
-  | { kind: 'popup'; blockId: string }
-  | ButtonAction;
-
 export interface Interaction {
   hover: HoverLook;
   picked: PickedLook;
   visited: VisitedLook;
-  onClick: ClickAction;
   correct: boolean;
 }
 
@@ -69,6 +111,7 @@ export interface BlockBase {
   frames?: Partial<Record<Layout, Frame>>;
   interact?: Interaction;
   anim?: Anim;
+  startHidden?: boolean;
 }
 
 export interface HeadingBlock extends BlockBase {
@@ -113,7 +156,8 @@ export interface ButtonBlock extends BlockBase {
   label: string;
   action: ButtonAction;
   style: 'solid' | 'outline';
-  enabledWhen?: 'always' | 'picks';
+  enabledWhen?: 'always' | 'picks' | 'condition';
+  enabledIf?: Condition[];
 }
 
 export type ButtonAction =
@@ -277,6 +321,7 @@ export interface WrittenBlock extends BlockBase {
   prompt: string;
   length: 'short' | 'essay';
   required: boolean;
+  saveTo?: string;
 }
 
 export interface LikertBlock extends BlockBase {
@@ -337,12 +382,13 @@ export function newDoc(title: string, screens: Screens, passMark: number | null)
     screens,
     passMark,
     accent: '#702f8f',
+    variables: [],
     pages: [newPage('Welcome')],
   };
 }
 
 export function newPage(title: string): Page {
-  return { id: uid(), title, kind: 'flow', blocks: [] };
+  return { id: uid(), title, kind: 'flow', blocks: [], triggers: [] };
 }
 
 export function newBlock(type: BlockType): Block {
@@ -522,11 +568,23 @@ export function moveItem<T>(list: T[], from: number, to: number): void {
 
 export const NO_INTERACTION: Interaction = {
   hover: 'none',
-  picked: 'none',
+  picked: 'tick',
   visited: 'none',
-  onClick: { kind: 'none' },
   correct: false,
 };
+
+export function normalizeDoc(doc: CourseDoc): CourseDoc {
+  return {
+    ...doc,
+    variables: doc.variables ?? [],
+    pages: doc.pages.map((p) => ({ ...p, triggers: p.triggers ?? [] })),
+  };
+}
+
+export const pickIds = (page: Page): string[] =>
+  page.triggers.flatMap((t) =>
+    t.action.kind === 'pick' && t.when.kind === 'click' ? [t.when.blockId] : [],
+  );
 
 export const newPickRule = (): PickRule => ({
   needed: null,
@@ -536,5 +594,4 @@ export const newPickRule = (): PickRule => ({
   required: true,
 });
 
-export const hasPicks = (page: Page) =>
-  page.blocks.some((b) => b.interact?.onClick.kind === 'pick');
+export const hasPicks = (page: Page) => pickIds(page).length > 0;

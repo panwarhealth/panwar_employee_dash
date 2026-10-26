@@ -12,6 +12,8 @@ export interface PlayState {
   picks?: Record<string, string[]>;
   clicked?: string[];
   skip?: string[];
+  vars?: Record<string, string>;
+  vis?: Record<string, boolean>;
 }
 
 export interface Lms {

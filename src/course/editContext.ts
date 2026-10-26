@@ -14,4 +14,9 @@ export const EDIT_CTX: BlockContext = {
   audioProgress: () => {},
   results: () => ({ score: 80, passMark: null, passed: true, review: [] }),
   retry: () => {},
+  mediaEnded: () => {},
+  setVar: () => {},
+  passes: () => true,
+  merge: (text) => text,
+  clickable: new Set(),
 };

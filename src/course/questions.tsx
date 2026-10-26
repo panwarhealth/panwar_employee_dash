@@ -464,7 +464,10 @@ export function BlankView({ block, ctx }: { block: BlankBlock; ctx: BlockContext
 
 export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockContext }) {
   const [text, setText] = useState(ctx.answers[block.id]?.selected[0] ?? '');
-  const save = () => ctx.answer(block.id, [text], text.trim().length > 0);
+  const save = () => {
+    ctx.answer(block.id, [text], text.trim().length > 0);
+    if (block.saveTo) ctx.setVar(block.saveTo, text.trim());
+  };
   return (
     <div className="cp-check">
       <label className="cp-q" htmlFor={`w-${block.id}`}>

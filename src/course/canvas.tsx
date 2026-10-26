@@ -7,11 +7,10 @@ import { animClass, animStyle } from './anim';
 
 function objectClass(block: Block, ctx: BlockContext): string {
   const i = block.interact;
-  if (!i) return 'cp-obj';
+  const clickable = block.type !== 'button' && ctx.clickable.has(block.id);
+  if (!i) return clickable ? 'cp-obj cp-click' : 'cp-obj';
   const picked = ctx.picked.includes(block.id);
-  const clickable = block.type !== 'button' && i.onClick.kind !== 'none';
-  const dimmed =
-    !picked && i.onClick.kind === 'pick' && ctx.picked.length > 0 && i.picked === 'dim';
+  const dimmed = !picked && ctx.picked.length > 0 && i.picked === 'dim';
   return [
     'cp-obj',
     i.hover !== 'none' && `cp-hover-${i.hover}`,
@@ -48,7 +47,7 @@ export function CanvasStage({
           const frame = frameFor(page, b, layout);
           const content = <BlockView block={b} ctx={ctx} />;
           if (renderObject) return renderObject(b, frame, content);
-          const clickable = b.type !== 'button' && (b.interact?.onClick.kind ?? 'none') !== 'none';
+          const clickable = b.type !== 'button' && ctx.clickable.has(b.id);
           return (
             <div
               key={b.id}

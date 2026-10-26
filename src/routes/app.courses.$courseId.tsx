@@ -12,8 +12,9 @@ import { PageList } from '@/components/courses/PageList';
 import { PreviewModal } from '@/components/courses/PreviewModal';
 import { SettingsModal } from '@/components/courses/SettingsModal';
 import { Stage } from '@/components/courses/Stage';
+import { VariablesModal } from '@/components/courses/VariablesModal';
 import { frameFor, newFrame } from '@/course/canvasLayout';
-import { newBlock, newPage, type CourseDoc, type Layout } from '@/course/doc';
+import { newBlock, newPage, normalizeDoc, type CourseDoc, type Layout } from '@/course/doc';
 import * as ops from '@/course/edit';
 import { useCourseAutosave } from '@/hooks/useCourseAutosave';
 import { cn } from '@/lib/utils';
@@ -35,7 +36,7 @@ function EditorPage() {
   if (isLoading) return <p className="p-6 text-sm text-ph-charcoal/60">Loading…</p>;
   if (error || !data)
     return <p className="p-6 text-sm text-red-700">{error?.message ?? 'Course not found'}</p>;
-  return <Editor courseId={courseId} initial={data.content} />;
+  return <Editor courseId={courseId} initial={normalizeDoc(data.content)} />;
 }
 
 function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc }) {
@@ -44,7 +45,9 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const [pageId, setPageId] = useState(initial.pages[0].id);
   const [blockId, setBlockId] = useState<string | null>(null);
   const [phone, setPhone] = useState(initial.screens === 'phone');
-  const [modal, setModal] = useState<'add' | 'export' | 'settings' | 'preview' | null>(null);
+  const [modal, setModal] = useState<
+    'add' | 'export' | 'settings' | 'preview' | 'variables' | null
+  >(null);
   const save = useCourseAutosave(courseId, doc);
 
   const page = doc.pages.find((p) => p.id === pageId) ?? doc.pages[0];
@@ -148,6 +151,13 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             )}
             <button
               type="button"
+              onClick={() => setModal('variables')}
+              className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
+            >
+              Variables
+            </button>
+            <button
+              type="button"
               title="Course settings"
               onClick={() => setModal('settings')}
               className="rounded-md p-1.5 text-ph-charcoal/60 hover:bg-ph-charcoal/5 hover:text-ph-purple"
@@ -185,8 +195,8 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
       </div>
 
       <Inspector
+        doc={doc}
         page={page}
-        pages={doc.pages}
         courseId={courseId}
         selectedId={blockId}
         onSelect={setBlockId}
@@ -209,19 +219,6 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                 onFrame: (f) => selectedBlock && setFrame(selectedBlock.id, f),
                 onCopyLayout: () =>
                   otherLayout && setDoc((d) => ops.copyLayout(d, page.id, otherLayout, layout)),
-                onInteract: (i) =>
-                  selectedBlock &&
-                  setDoc((d) =>
-                    ops.updateBlock(d, page.id, selectedBlock.id, (b) => (b.interact = i)),
-                  ),
-                onEnabledWhen: (v) =>
-                  selectedBlock &&
-                  setDoc((d) =>
-                    ops.updateBlock(d, page.id, selectedBlock.id, (b) => {
-                      if (b.type === 'button') b.enabledWhen = v;
-                    }),
-                  ),
-                onPickRule: (r) => setDoc((d) => ops.updatePage(d, page.id, (p) => (p.pick = r))),
               }
             : null
         }
@@ -244,6 +241,12 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
       />
       <SettingsModal
         open={modal === 'settings'}
+        onClose={() => setModal(null)}
+        doc={doc}
+        onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}
+      />
+      <VariablesModal
+        open={modal === 'variables'}
         onClose={() => setModal(null)}
         doc={doc}
         onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}

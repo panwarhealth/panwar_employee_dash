@@ -25,13 +25,15 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
   switch (block.type) {
     case 'heading': {
       const Tag = block.level === 1 ? 'h1' : 'h2';
-      return <Tag className={`cp-h${block.level} cp-${block.align}`}>{block.text}</Tag>;
+      return (
+        <Tag className={`cp-h${block.level} cp-${block.align}`}>{ctx.merge(block.text, false)}</Tag>
+      );
     }
     case 'text':
       return (
         <div
           className={`cp-text cp-${block.align}`}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.html) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
         />
       );
     case 'image':
@@ -42,7 +44,14 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       );
     case 'video':
       return block.src ? (
-        <video className="cp-video" src={block.src} controls playsInline preload="metadata">
+        <video
+          className="cp-video"
+          src={block.src}
+          controls
+          playsInline
+          preload="metadata"
+          onEnded={() => ctx.mediaEnded(block.id)}
+        >
           {block.captions && <track kind="captions" src={block.captions} default />}
         </video>
       ) : (
@@ -70,7 +79,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
           className="cp-text cp-scroll"
           style={{ maxHeight: block.height }}
           tabIndex={0}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.html) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
         />
       );
     case 'button':
@@ -79,10 +88,14 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
           <button
             type="button"
             className={`cp-btn cp-btn-${block.style}`}
-            disabled={!ctx.edit && block.enabledWhen === 'picks' && !ctx.picksCorrect}
+            disabled={
+              !ctx.edit &&
+              ((block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
+                (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])))
+            }
             onClick={() => !ctx.edit && ctx.act(block.action)}
           >
-            {block.label}
+            {ctx.merge(block.label, false)}
           </button>
         </div>
       );

@@ -1,4 +1,4 @@
-import { hasPicks, type Block, type Page } from './doc';
+import { hasPicks, pickIds, type Block, type Page } from './doc';
 
 export interface PickStatus {
   needed: number;
@@ -7,9 +7,7 @@ export interface PickStatus {
 }
 
 const correctIds = (page: Page) =>
-  page.blocks
-    .filter((b) => b.interact?.onClick.kind === 'pick' && b.interact.correct)
-    .map((b) => b.id);
+  pickIds(page).filter((id) => page.blocks.find((b) => b.id === id)?.interact?.correct);
 
 export function pickStatus(page: Page, picks: string[]): PickStatus {
   const right = correctIds(page);

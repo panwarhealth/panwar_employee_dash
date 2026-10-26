@@ -45,15 +45,16 @@ export function preflight(doc: CourseDoc): Check[] {
     });
 
   const pageIds = new Set(doc.pages.map((p) => p.id));
-  const targets = blocks.flatMap((b) => [
-    ...(b.type === 'button' ? [b.action] : []),
-    ...(b.interact ? [b.interact.onClick] : []),
-  ]);
+  const triggerActions = doc.pages.flatMap((p) => p.triggers.map((t) => t.action));
+  const targets = [
+    ...triggerActions,
+    ...blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
+  ];
   const blockIds = new Set(blocks.map((b) => b.id));
   const deadLinks = targets.filter(
     (a) =>
       (a.kind === 'page' && !pageIds.has(a.pageId)) ||
-      (a.kind === 'popup' && !blockIds.has(a.blockId)),
+      ((a.kind === 'popup' || a.kind === 'show' || a.kind === 'hide') && !blockIds.has(a.blockId)),
   );
   const unsetPaths = blocks.filter(
     (b) => b.type === 'pathway' && b.choices.some((c) => !pageIds.has(c.pageId)),

@@ -1,35 +1,37 @@
 import {
   hasPicks,
   NO_INTERACTION,
-  type PopupBlock,
+  pickIds,
   type Block,
-  type ClickAction,
+  type Condition,
+  type CourseDoc,
   type Interaction,
   type Page,
   type PickRule,
 } from '@/course/doc';
+import { ConditionsEditor } from './ConditionsEditor';
 import { Select, TextInput, Toggle } from './fields';
 
 const sectionClass = 'mt-1 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
+export type EnabledWhen = 'always' | 'picks' | 'condition';
+
 export function InteractionFields({
+  doc,
   block,
-  pages,
   page,
   onChange,
   onEnabledWhen,
 }: {
+  doc: CourseDoc;
   block: Block;
-  pages: Page[];
   page: Page;
   onChange: (i: Interaction) => void;
-  onEnabledWhen: (v: 'always' | 'picks') => void;
+  onEnabledWhen: (when: EnabledWhen, conditions: Condition[]) => void;
 }) {
   const i = block.interact ?? NO_INTERACTION;
   const set = (patch: Partial<Interaction>) => onChange({ ...i, ...patch });
-  const picks = i.onClick.kind === 'pick';
-  const pagePicks = hasPicks(page);
-  const popups = page.blocks.filter((b): b is PopupBlock => b.type === 'popup');
+  const pickable = pickIds(page).includes(block.id);
 
   return (
     <>
@@ -46,18 +48,25 @@ export function InteractionFields({
         ]}
         onChange={(hover) => set({ hover })}
       />
-      {picks && (
-        <Select
-          label="When picked"
-          value={i.picked}
-          options={[
-            { value: 'tick', label: 'Green border and tick' },
-            { value: 'glow', label: 'Glow' },
-            { value: 'dim', label: 'Dim the others' },
-            { value: 'none', label: 'None' },
-          ]}
-          onChange={(picked) => set({ picked })}
-        />
+      {pickable && (
+        <>
+          <Select
+            label="When picked"
+            value={i.picked}
+            options={[
+              { value: 'tick', label: 'Green border and tick' },
+              { value: 'glow', label: 'Glow' },
+              { value: 'dim', label: 'Dim the others' },
+              { value: 'none', label: 'None' },
+            ]}
+            onChange={(picked) => set({ picked })}
+          />
+          <Toggle
+            label="This is a correct pick"
+            checked={i.correct}
+            onChange={(correct) => set({ correct })}
+          />
+        </>
       )}
       {block.type !== 'button' && (
         <Select
@@ -70,109 +79,28 @@ export function InteractionFields({
           onChange={(visited) => set({ visited })}
         />
       )}
-
-      {block.type === 'button' ? (
-        pagePicks && (
+      {block.type === 'button' && (
+        <>
           <Select
             label="Enabled when"
             value={block.enabledWhen ?? 'always'}
             options={[
               { value: 'always', label: 'Always' },
-              { value: 'picks', label: 'All correct picks are made' },
+              ...(hasPicks(page)
+                ? [{ value: 'picks' as const, label: 'All correct picks are made' }]
+                : []),
+              { value: 'condition', label: 'A condition is true' },
             ]}
-            onChange={onEnabledWhen}
+            onChange={(v) => onEnabledWhen(v, block.enabledIf ?? [])}
           />
-        )
-      ) : (
-        <>
-          <h4 className={sectionClass}>On click</h4>
-          <ClickFields
-            action={i.onClick}
-            pages={pages}
-            popups={popups}
-            onChange={(onClick) =>
-              set(
-                onClick.kind === 'pick' && i.picked === 'none'
-                  ? { onClick, picked: 'tick' }
-                  : { onClick },
-              )
-            }
-          />
-          {picks && (
-            <Toggle
-              label="This is a correct pick"
-              checked={i.correct}
-              onChange={(correct) => set({ correct })}
+          {block.enabledWhen === 'condition' && (
+            <ConditionsEditor
+              doc={doc}
+              conditions={block.enabledIf ?? []}
+              onChange={(c) => onEnabledWhen('condition', c)}
             />
           )}
         </>
-      )}
-    </>
-  );
-}
-
-function ClickFields({
-  action,
-  pages,
-  popups,
-  onChange,
-}: {
-  action: ClickAction;
-  pages: Page[];
-  popups: PopupBlock[];
-  onChange: (a: ClickAction) => void;
-}) {
-  return (
-    <>
-      <Select
-        label="Action"
-        value={action.kind}
-        options={[
-          { value: 'none', label: 'Nothing' },
-          { value: 'pick', label: 'Mark as a pick' },
-          ...(popups.length ? [{ value: 'popup' as const, label: 'Open a pop-up layer' }] : []),
-          { value: 'next', label: 'Go to next page' },
-          { value: 'page', label: 'Go to a page...' },
-          { value: 'link', label: 'Open a link' },
-        ]}
-        onChange={(k) =>
-          onChange(
-            k === 'page'
-              ? { kind: 'page', pageId: pages[0]?.id ?? '' }
-              : k === 'link'
-                ? { kind: 'link', url: '' }
-                : k === 'popup'
-                  ? { kind: 'popup', blockId: popups[0]?.id ?? '' }
-                  : { kind: k },
-          )
-        }
-      />
-      {action.kind === 'page' && (
-        <Select
-          label="Page"
-          value={action.pageId}
-          options={pages.map((p, i) => ({
-            value: p.id,
-            label: `${i + 1}. ${p.title || 'Untitled'}`,
-          }))}
-          onChange={(pageId) => onChange({ kind: 'page', pageId })}
-        />
-      )}
-      {action.kind === 'popup' && (
-        <Select
-          label="Pop-up"
-          value={action.blockId}
-          options={popups.map((p) => ({ value: p.id, label: p.title || 'Untitled pop-up' }))}
-          onChange={(blockId) => onChange({ kind: 'popup', blockId })}
-        />
-      )}
-      {action.kind === 'link' && (
-        <TextInput
-          label="Link"
-          placeholder="https://"
-          value={action.url}
-          onChange={(url) => onChange({ kind: 'link', url })}
-        />
       )}
     </>
   );
