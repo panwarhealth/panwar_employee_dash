@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
-import { frameFor, frameStyle } from '@/course/canvasLayout';
+import { frameFor, frameStyle, UNSAFE_TOP } from '@/course/canvasLayout';
 import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
 
@@ -231,6 +231,15 @@ export function CanvasEditor({
             }}
             overlay={
               <>
+                <div
+                  title="Clinical Studio's course controls cover this strip on phones. Keep buttons and key text out of it."
+                  className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end border-b border-dashed border-ph-pink/70 bg-[repeating-linear-gradient(135deg,rgba(236,72,153,0.12)_0_6px,transparent_6px_12px)] p-1"
+                  style={{ height: `${UNSAFE_TOP[layout]}%` }}
+                >
+                  <span className="rounded bg-white/85 px-1.5 py-px text-[10px] font-semibold text-ph-pink">
+                    Keep clear: LMS controls on phones
+                  </span>
+                </div>
                 {guides.x.map((x) => (
                   <i
                     key={`x${x}`}

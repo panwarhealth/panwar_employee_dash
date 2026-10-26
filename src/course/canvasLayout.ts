@@ -16,6 +16,8 @@ function autoFrame(page: Page, block: Block, layout: Layout): Frame {
   return newFrame(block.type, layout);
 }
 
+export const UNSAFE_TOP: Record<Layout, number> = { desktop: 13, phone: 7 };
+
 export const frameFor = (page: Page, block: Block, layout: Layout): Frame =>
   block.frames?.[layout] ?? autoFrame(page, block, layout);
 
