@@ -22,7 +22,9 @@ import {
   type WrittenBlock,
 } from '@/course/doc';
 import { blockLabel } from './blockMeta';
-import { Field, MediaInput, RichText, Select, TextArea, TextInput, Toggle } from './fields';
+import { Field, MediaInput, Select, TextArea, TextInput, Toggle } from './fields';
+import { RichText } from './RichText';
+import { TextStyleFields } from './TextStyleFields';
 
 type Edit<B> = (fn: (b: B) => void) => void;
 
@@ -239,6 +241,7 @@ export function ScrollForm({ block, set }: { block: ScrollBlock; set: Edit<Scrol
         value={block.height}
         onChange={(n) => set((b) => (b.height = Math.max(80, n)))}
       />
+      <TextStyleFields value={block.textStyle} onChange={(v) => set((b) => (b.textStyle = v))} />
     </>
   );
 }

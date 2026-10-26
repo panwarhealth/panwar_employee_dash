@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { EDIT_CTX } from '@/course/editContext';
+import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
 import { frameFor, frameStyle } from '@/course/canvasLayout';
-import type { Frame, Layout, Page } from '@/course/doc';
+import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
 
 type Mode = 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
@@ -40,6 +40,7 @@ function snapAxis(
 }
 
 export function CanvasEditor({
+  doc,
   page,
   layout,
   selectedId,
@@ -47,6 +48,7 @@ export function CanvasEditor({
   onFrame,
   onRemove,
 }: {
+  doc: CourseDoc;
   page: Page;
   layout: Layout;
   selectedId: string | null;
@@ -187,7 +189,7 @@ export function CanvasEditor({
           <CanvasStage
             page={page}
             layout={layout}
-            ctx={EDIT_CTX}
+            ctx={editContext(doc)}
             renderObject={(b, frame, content) => {
               const f = drag?.id === b.id && live ? live : frame;
               const on = b.id === selectedId;

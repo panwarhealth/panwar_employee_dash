@@ -1,6 +1,8 @@
 import type { Block, ButtonAction, CheckBlock, CourseDoc, Page } from '@/course/doc';
 import { uid } from '@/course/doc';
-import { MediaInput, RichText, Select, TextArea, TextInput, Toggle } from './fields';
+import { MediaInput, Select, TextArea, TextInput, Toggle } from './fields';
+import { RichText } from './RichText';
+import { TextStyleFields } from './TextStyleFields';
 import {
   AnimationForm,
   AudioForm,
@@ -21,6 +23,8 @@ import {
 const ALIGN = [
   { value: 'left' as const, label: 'Left' },
   { value: 'center' as const, label: 'Centre' },
+  { value: 'right' as const, label: 'Right' },
+  { value: 'justify' as const, label: 'Justify' },
 ];
 
 export function BlockForm({
@@ -63,6 +67,11 @@ export function BlockForm({
             options={ALIGN}
             onChange={(v) => set<typeof block>((b) => (b.align = v))}
           />
+          <TextStyleFields
+            value={block.textStyle}
+            boldByDefault
+            onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
+          />
         </>
       );
     case 'text':
@@ -79,6 +88,10 @@ export function BlockForm({
             value={block.align}
             options={ALIGN}
             onChange={(v) => set<typeof block>((b) => (b.align = v))}
+          />
+          <TextStyleFields
+            value={block.textStyle}
+            onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />
         </>
       );
@@ -173,6 +186,13 @@ export function BlockForm({
               { value: 'outline', label: 'Outline' },
             ]}
             onChange={(v) => set<typeof block>((b) => (b.style = v))}
+          />
+          <TextStyleFields
+            value={block.textStyle}
+            boldByDefault
+            onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
+            fill={block.fill}
+            onFill={(v) => set<typeof block>((b) => (b.fill = v))}
           />
         </>
       );

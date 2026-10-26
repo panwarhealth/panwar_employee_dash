@@ -10,8 +10,27 @@ export interface CourseDoc {
   passMark: number | null;
   accent: string;
   navBar?: boolean;
+  fonts: CourseFont[];
   variables: Variable[];
   pages: Page[];
+}
+
+export interface CourseFont {
+  id: string;
+  name: string;
+  src: string;
+  fileName: string;
+}
+
+export interface TextStyle {
+  font?: string;
+  size?: number;
+  color?: string;
+  weight?: 400 | 700;
+  italic?: boolean;
+  underline?: boolean;
+  lineHeight?: number;
+  letterSpacing?: number;
 }
 
 export type VarType = 'boolean' | 'number' | 'text';
@@ -120,12 +139,14 @@ export interface HeadingBlock extends BlockBase {
   text: string;
   level: 1 | 2;
   align: Align;
+  textStyle?: TextStyle;
 }
 
 export interface TextBlock extends BlockBase {
   type: 'text';
   html: string;
   align: Align;
+  textStyle?: TextStyle;
 }
 
 export interface ImageBlock extends BlockBase {
@@ -157,6 +178,8 @@ export interface ButtonBlock extends BlockBase {
   label: string;
   action: ButtonAction;
   style: 'solid' | 'outline';
+  fill?: string;
+  textStyle?: TextStyle;
   enabledWhen?: 'always' | 'picks' | 'condition';
   enabledIf?: Condition[];
 }
@@ -209,6 +232,7 @@ export interface ScrollBlock extends BlockBase {
   type: 'scroll';
   html: string;
   height: number;
+  textStyle?: TextStyle;
 }
 
 export interface Panel {
@@ -343,7 +367,7 @@ export interface ResultsBlock extends BlockBase {
   pool: number | null;
 }
 
-export type Align = 'left' | 'center';
+export type Align = 'left' | 'center' | 'right' | 'justify';
 
 export type Block =
   | HeadingBlock
@@ -383,6 +407,7 @@ export function newDoc(title: string, screens: Screens, passMark: number | null)
     screens,
     passMark,
     accent: '#702f8f',
+    fonts: [],
     variables: [],
     pages: [newPage('Welcome')],
   };
@@ -578,6 +603,7 @@ export function normalizeDoc(doc: CourseDoc): CourseDoc {
   return {
     ...doc,
     variables: doc.variables ?? [],
+    fonts: doc.fonts ?? [],
     pages: doc.pages.map((p) => ({ ...p, triggers: p.triggers ?? [] })),
   };
 }

@@ -18,6 +18,7 @@ import { useCanvasLayout } from './canvasLayout';
 import { pickBlocks, pickStatus, togglePick } from './picks';
 import { choosePool, computeResults, cueHidden, resultsSettings } from './grading';
 import { PopupLayer } from './interactive';
+import { fontFaces, textStyleCss } from './typography';
 import { animClass, animStyle, hasExit, OUT_MS } from './anim';
 import { applySet, eventMatches, initialVars, mergeText, passes, type Vars } from './logic';
 
@@ -307,6 +308,7 @@ export function Player({
       ),
     clickable,
     canLeave: !blocked,
+    textStyle: (style) => textStyleCss(style, doc),
   };
 
   const last = index === pages.length - 1;
@@ -343,6 +345,7 @@ export function Player({
 
   return (
     <div className="cp cp-shell" style={accentStyle(doc)}>
+      {doc.fonts.length > 0 && <style>{fontFaces(doc)}</style>}
       <main
         key={page.id}
         className={[

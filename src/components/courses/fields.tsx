@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Bold, Italic, Link2, List, ListOrdered } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
 import { uploadMedia } from '@/api/courses';
 import { cn } from '@/lib/utils';
 
@@ -101,89 +100,6 @@ export function Toggle({
       />
       {label}
     </label>
-  );
-}
-
-export function RichText({
-  label,
-  html,
-  onChange,
-}: {
-  label: string;
-  html: string;
-  onChange: (v: string) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const initial = useRef(html);
-
-  useEffect(() => {
-    if (ref.current) ref.current.innerHTML = initial.current;
-  }, []);
-
-  const run = (command: string, arg?: string) => {
-    ref.current?.focus();
-    document.execCommand(command, false, arg);
-    if (ref.current) onChange(ref.current.innerHTML);
-  };
-
-  const tools: { icon: ReactNode; title: string; act: () => void }[] = [
-    {
-      icon: <Bold className="h-3.5 w-3.5" />,
-      title: 'Bold',
-      act: () => run('bold'),
-    },
-    {
-      icon: <Italic className="h-3.5 w-3.5" />,
-      title: 'Italic',
-      act: () => run('italic'),
-    },
-    {
-      icon: <Link2 className="h-3.5 w-3.5" />,
-      title: 'Link',
-      act: () => {
-        const url = window.prompt('Link address (https://...)');
-        if (url) run('createLink', url);
-      },
-    },
-    {
-      icon: <List className="h-3.5 w-3.5" />,
-      title: 'Bullet list',
-      act: () => run('insertUnorderedList'),
-    },
-    {
-      icon: <ListOrdered className="h-3.5 w-3.5" />,
-      title: 'Numbered list',
-      act: () => run('insertOrderedList'),
-    },
-  ];
-
-  return (
-    <div>
-      <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">{label}</span>
-      <div className="rounded-md border-[1.5px] border-ph-charcoal/15 bg-white focus-within:border-ph-purple">
-        <div className="flex gap-1 border-b border-ph-charcoal/10 px-1.5 py-1">
-          {tools.map((t) => (
-            <button
-              key={t.title}
-              type="button"
-              title={t.title}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={t.act}
-              className="rounded p-1.5 text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
-            >
-              {t.icon}
-            </button>
-          ))}
-        </div>
-        <div
-          ref={ref}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={(e) => onChange(e.currentTarget.innerHTML)}
-          className="min-h-[110px] px-2.5 py-2 text-sm text-ph-charcoal focus:outline-none [&_a]:text-ph-purple [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5"
-        />
-      </div>
-    </div>
   );
 }
 

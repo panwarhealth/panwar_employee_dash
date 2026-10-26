@@ -26,13 +26,19 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
     case 'heading': {
       const Tag = block.level === 1 ? 'h1' : 'h2';
       return (
-        <Tag className={`cp-h${block.level} cp-${block.align}`}>{ctx.merge(block.text, false)}</Tag>
+        <Tag
+          className={`cp-h${block.level} cp-${block.align}`}
+          style={ctx.textStyle(block.textStyle)}
+        >
+          {ctx.merge(block.text, false)}
+        </Tag>
       );
     }
     case 'text':
       return (
         <div
           className={`cp-text cp-${block.align}`}
+          style={ctx.textStyle(block.textStyle)}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
         />
       );
@@ -77,7 +83,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       return (
         <div
           className="cp-text cp-scroll"
-          style={{ maxHeight: block.height }}
+          style={{ maxHeight: block.height, ...ctx.textStyle(block.textStyle) }}
           tabIndex={0}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
         />
@@ -88,6 +94,14 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
           <button
             type="button"
             className={`cp-btn cp-btn-${block.style}`}
+            style={{
+              ...(block.fill
+                ? block.style === 'solid'
+                  ? { background: block.fill, borderColor: block.fill }
+                  : { borderColor: block.fill, color: block.fill }
+                : {}),
+              ...ctx.textStyle(block.textStyle),
+            }}
             disabled={
               !ctx.edit &&
               ((block.action.kind !== 'link' && !ctx.canLeave) ||

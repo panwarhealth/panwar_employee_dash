@@ -1,4 +1,5 @@
-import type { Block, ButtonAction, Condition } from './doc';
+import type { CSSProperties } from 'react';
+import type { Block, ButtonAction, Condition, TextStyle } from './doc';
 import type { Answer } from './scorm';
 
 export interface ReviewItem {
@@ -34,4 +35,5 @@ export interface BlockContext {
   merge(text: string, html: boolean): string;
   clickable: Set<string>;
   canLeave: boolean;
+  textStyle(style: TextStyle | undefined): CSSProperties;
 }

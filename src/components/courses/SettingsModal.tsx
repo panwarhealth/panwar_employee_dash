@@ -2,15 +2,18 @@ import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
 import { labelClass } from '@/lib/edm';
 import { PassMarkField, ScreensPicker } from './CourseSettingsFields';
+import { FontsField } from './FontsField';
 import { Toggle } from './fields';
 
 export function SettingsModal({
   open,
   onClose,
   doc,
+  courseId,
   onChange,
 }: {
   open: boolean;
+  courseId: string;
   onClose: () => void;
   doc: CourseDoc;
   onChange: (update: (d: CourseDoc) => void) => void;
@@ -36,6 +39,7 @@ export function SettingsModal({
           checked={!!doc.navBar}
           onChange={(v) => onChange((d) => (d.navBar = v))}
         />
+        <FontsField doc={doc} courseId={courseId} onChange={onChange} />
         <label className="flex items-center gap-3">
           <span className={labelClass + ' mb-0'}>Accent colour</span>
           <input

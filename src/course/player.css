@@ -74,6 +74,12 @@
 .cp-left {
   text-align: left;
 }
+.cp-right {
+  text-align: right;
+}
+.cp-justify {
+  text-align: justify;
+}
 .cp-center,
 .cp-h1.cp-center,
 .cp-h2.cp-center,

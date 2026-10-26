@@ -1,6 +1,8 @@
 import type { BlockContext } from './context';
+import type { CourseDoc } from './doc';
+import { textStyleCss } from './typography';
 
-export const EDIT_CTX: BlockContext = {
+export const editContext = (doc: CourseDoc): BlockContext => ({
   edit: true,
   answers: {},
   answer: () => {},
@@ -20,4 +22,5 @@ export const EDIT_CTX: BlockContext = {
   merge: (text) => text,
   clickable: new Set(),
   canLeave: true,
-};
+  textStyle: (style) => textStyleCss(style, doc),
+});

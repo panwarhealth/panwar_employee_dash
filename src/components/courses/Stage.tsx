@@ -1,6 +1,6 @@
 import type { CourseDoc, Page } from '@/course/doc';
 import { BlockView } from '@/course/blocks';
-import { EDIT_CTX } from '@/course/editContext';
+import { editContext } from '@/course/editContext';
 import { accentStyle } from '@/course/util';
 import { cn } from '@/lib/utils';
 import { blockName } from './blockMeta';
@@ -18,6 +18,7 @@ export function Stage({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 }) {
+  const ctx = editContext(doc);
   return (
     <div className="flex flex-1 justify-center overflow-auto p-6" onClick={() => onSelect(null)}>
       <div
@@ -52,7 +53,7 @@ export function Stage({
                   {blockName(b.type)}
                 </span>
               )}
-              <BlockView block={b} ctx={EDIT_CTX} />
+              <BlockView block={b} ctx={ctx} />
             </div>
           ))}
         </div>
