@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { MAILER_ROLES } from '@/lib/roles';
+import { COURSE_EDITOR_ROLES, MAILER_ROLES } from '@/lib/roles';
 
 export interface AppDefinition {
   to: string;
@@ -86,6 +86,23 @@ export const APPS: readonly AppDefinition[] = [
           <rect x="6" y="11" width="36" height="26" rx="3" />
           <path d="M7 13l17 13 17-13" />
         </g>
+      </svg>
+    ),
+  },
+  {
+    to: '/app/courses',
+    name: 'Course Editor',
+    group: 'Clients',
+    colour: '#b41e8c',
+    roles: COURSE_EDITOR_ROLES,
+    glyph: (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <g {...stroke} strokeWidth="4">
+          <rect x="6" y="9" width="36" height="24" rx="3" />
+          <path d="M16 41h16" />
+          <path d="M24 33v8" />
+        </g>
+        <path d="M20 15.5v11l9-5.5z" fill="currentColor" />
       </svg>
     ),
   },

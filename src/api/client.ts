@@ -58,6 +58,12 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   return (await response.json()) as T;
 }
 
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  const response = await fetch(`${BASE_URL}${path}`, { credentials: 'include' });
+  await throwIfFailed(response);
+  return response.blob();
+}
+
 /** Fetches a file from the API and hands it to the browser as a download. */
 export async function apiDownload(path: string, fileName: string): Promise<void> {
   const response = await fetch(`${BASE_URL}${path}`, { credentials: 'include' });

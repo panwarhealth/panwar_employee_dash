@@ -23,6 +23,7 @@ const AVAILABLE_ROLES = [
   { value: 'dashboard-editor', label: 'Dashboard Editor' },
   { value: 'medical-writer', label: 'Medical Writer' },
   { value: 'mailer', label: 'Mailer' },
+  { value: 'course-editor', label: 'Course Editor' },
   { value: 'timesheets-admin', label: 'Timesheets Admin' },
   { value: 'timesheets-manager', label: 'Timesheets Manager' },
 ];
