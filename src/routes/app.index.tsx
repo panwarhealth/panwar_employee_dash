@@ -31,7 +31,7 @@ function HomePage() {
                   className="flex h-28 w-28 flex-col justify-between rounded p-3 text-white transition-[filter] hover:brightness-110 [&>svg]:h-8 [&>svg]:w-8"
                 >
                   {app.glyph}
-                  <span className="text-[13px] font-bold leading-tight">{app.name}</span>
+                  <span className="text-[13px] font-medium leading-tight">{app.name}</span>
                 </Link>
               ))}
           </div>
