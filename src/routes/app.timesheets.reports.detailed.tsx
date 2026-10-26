@@ -112,7 +112,7 @@ function DetailedPage() {
       </Link>
       <div className="jh">
         <h1 className="jt1" style={{ fontSize: 28 }}>
-          <b style={{ fontWeight: 700 }}>Detailed time report</b>
+          <b style={{ fontWeight: 500 }}>Detailed time report</b>
         </h1>
         <div className="weeknav no-print">
           <SaveReportButton />

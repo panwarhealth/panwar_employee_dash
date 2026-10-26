@@ -116,7 +116,7 @@ function ActivityPage() {
       </Link>
       <div className="jh">
         <h1 className="jt1" style={{ fontSize: 28 }}>
-          <b style={{ fontWeight: 700 }}>Activity log</b>
+          <b style={{ fontWeight: 500 }}>Activity log</b>
         </h1>
       </div>
       <div className="head">
