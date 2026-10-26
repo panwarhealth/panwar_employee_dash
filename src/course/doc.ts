@@ -9,6 +9,7 @@ export interface CourseDoc {
   screens: Screens;
   passMark: number | null;
   accent: string;
+  navBar?: boolean;
   variables: Variable[];
   pages: Page[];
 }
@@ -68,7 +69,6 @@ export interface Page {
   triggers: Trigger[];
   pick?: PickRule;
   transition?: Transition;
-  ownNav?: boolean;
 }
 
 export type Transition = 'none' | 'fade' | 'slide';

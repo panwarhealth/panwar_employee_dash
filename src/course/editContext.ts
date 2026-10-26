@@ -19,4 +19,5 @@ export const EDIT_CTX: BlockContext = {
   passes: () => true,
   merge: (text) => text,
   clickable: new Set(),
+  canLeave: true,
 };

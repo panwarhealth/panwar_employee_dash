@@ -57,21 +57,21 @@ export function preflight(doc: CourseDoc): Check[] {
       ((a.kind === 'popup' || a.kind === 'show' || a.kind === 'hide') && !blockIds.has(a.blockId)),
   );
   const leaves = (a: { kind: string }) => ['next', 'page', 'finish'].includes(a.kind);
-  const stuck = doc.pages.filter(
-    (p, i) =>
-      p.ownNav &&
-      i < doc.pages.length - 1 &&
-      !p.blocks.some(
-        (b) =>
-          (b.type === 'button' && b.action.kind !== 'link') ||
-          (b.type === 'pathway' && b.choices.length > 0),
-      ) &&
-      !p.triggers.some((t) => leaves(t.action)),
-  );
+  const stuck = doc.navBar
+    ? []
+    : doc.pages.filter(
+        (p) =>
+          !p.blocks.some(
+            (b) =>
+              (b.type === 'button' && b.action.kind !== 'link') ||
+              (b.type === 'pathway' && b.choices.length > 0) ||
+              b.type === 'results',
+          ) && !p.triggers.some((t) => leaves(t.action)),
+      );
   if (stuck.length)
     checks.push({
       ok: false,
-      text: `No way to move on from: ${stuck.map((p) => p.title).join(', ')} (bottom bar is off and nothing goes to another page)`,
+      text: `No way to move on from: ${stuck.map((p) => p.title).join(', ')} (add a button that goes to the next page, or turn on the Back and Continue bar in course settings)`,
     });
 
   const unsetPaths = blocks.filter(

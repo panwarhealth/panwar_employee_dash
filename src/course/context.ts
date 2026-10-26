@@ -33,4 +33,5 @@ export interface BlockContext {
   passes(conditions: Condition[]): boolean;
   merge(text: string, html: boolean): string;
   clickable: Set<string>;
+  canLeave: boolean;
 }

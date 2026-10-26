@@ -260,6 +260,10 @@ export function Player({
   const hidden = cueHidden(page, cueTimes);
   for (const b of page.blocks) if (!(state.vis?.[b.id] ?? !b.startHidden)) hidden.add(b.id);
 
+  const blocked =
+    page.blocks.some((b) => mustAnswer(b) && !answered(b, state)) ||
+    (pickBlocks(page) && !pickStatus(page, picked).correct);
+
   const ctx: BlockContext = {
     edit: false,
     answers: state.answers,
@@ -302,11 +306,9 @@ export function Player({
         html,
       ),
     clickable,
+    canLeave: !blocked,
   };
 
-  const blocked =
-    page.blocks.some((b) => mustAnswer(b) && !answered(b, state)) ||
-    (pickBlocks(page) && !ctx.picksCorrect);
   const last = index === pages.length - 1;
   const openPopup = page.blocks.find((b): b is PopupBlock => b.type === 'popup' && b.id === popup);
 
@@ -362,8 +364,8 @@ export function Player({
         />
       </main>
       {openPopup && <PopupLayer block={openPopup} onClose={() => setPopup(null)} />}
-      <nav className="cp-nav">
-        {!page.ownNav && (
+      {doc.navBar && (
+        <nav className="cp-nav">
           <button
             type="button"
             className="cp-navbtn"
@@ -372,25 +374,25 @@ export function Player({
           >
             Back
           </button>
-        )}
-        <div className="cp-prog">
-          <i style={{ width: `${((index + 1) / pages.length) * 100}%` }} />
-        </div>
-        <span className="cp-count">
-          {index + 1} of {pages.length}
-        </span>
-        {!page.ownNav && !(last && onResultsPage) && (
-          <button
-            type="button"
-            className="cp-navbtn cp-navbtn-next"
-            disabled={blocked}
-            title={blocked ? 'Finish this page to continue' : undefined}
-            onClick={next}
-          >
-            {last ? 'Finish' : 'Continue'}
-          </button>
-        )}
-      </nav>
+          <div className="cp-prog">
+            <i style={{ width: `${((index + 1) / pages.length) * 100}%` }} />
+          </div>
+          <span className="cp-count">
+            {index + 1} of {pages.length}
+          </span>
+          {!(last && onResultsPage) && (
+            <button
+              type="button"
+              className="cp-navbtn cp-navbtn-next"
+              disabled={blocked}
+              title={blocked ? 'Finish this page to continue' : undefined}
+              onClick={next}
+            >
+              {last ? 'Finish' : 'Continue'}
+            </button>
+          )}
+        </nav>
+      )}
     </div>
   );
 }

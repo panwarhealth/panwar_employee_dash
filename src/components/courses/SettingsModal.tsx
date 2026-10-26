@@ -2,6 +2,7 @@ import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
 import { labelClass } from '@/lib/edm';
 import { PassMarkField, ScreensPicker } from './CourseSettingsFields';
+import { Toggle } from './fields';
 
 export function SettingsModal({
   open,
@@ -30,6 +31,11 @@ export function SettingsModal({
           <ScreensPicker value={doc.screens} onChange={(v) => onChange((d) => (d.screens = v))} />
         </div>
         <PassMarkField value={doc.passMark} onChange={(v) => onChange((d) => (d.passMark = v))} />
+        <Toggle
+          label="Show a Back and Continue bar at the bottom of every page"
+          checked={!!doc.navBar}
+          onChange={(v) => onChange((d) => (d.navBar = v))}
+        />
         <label className="flex items-center gap-3">
           <span className={labelClass + ' mb-0'}>Accent colour</span>
           <input

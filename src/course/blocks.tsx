@@ -90,7 +90,8 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
             className={`cp-btn cp-btn-${block.style}`}
             disabled={
               !ctx.edit &&
-              ((block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
+              ((block.action.kind !== 'link' && !ctx.canLeave) ||
+                (block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
                 (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])))
             }
             onClick={() => !ctx.edit && ctx.act(block.action)}
