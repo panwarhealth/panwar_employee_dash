@@ -20,7 +20,7 @@ function HomePage() {
           <h2 className="mb-2 border-b border-ph-charcoal/10 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
             {group}
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-4">
             {apps
               .filter((a) => a.group === group)
               .map((app) => (
