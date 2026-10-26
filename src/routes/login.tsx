@@ -12,7 +12,7 @@ function LoginPage() {
   return (
     <AuthShell>
       <Card>
-        <CardContent className="flex flex-col gap-3 pt-6">
+        <CardContent className="flex flex-col gap-3 pt-4 md:pt-6">
           <Button
             type="button"
             size="lg"

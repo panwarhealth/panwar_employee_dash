@@ -136,7 +136,7 @@ function CpdInvestmentsTab() {
       </Modal>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6">
           {isLoading && <p className="text-sm text-ph-charcoal/60">Loading…</p>}
           {!isLoading && items.length === 0 && (
             <p className="text-sm text-ph-charcoal/60">No CPD investments for {year} yet.</p>

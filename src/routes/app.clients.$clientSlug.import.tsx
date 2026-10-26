@@ -480,7 +480,7 @@ function ImportTab() {
     <div className="flex flex-col gap-4">
       {/* ── Upload ─────────────────────────────────────────────── */}
       <Card>
-        <CardContent className="flex flex-col gap-3 pt-6">
+        <CardContent className="flex flex-col gap-3 pt-4 md:pt-6">
           <div className="flex flex-wrap items-center gap-3">
             <input ref={inputRef} type="file" accept=".xlsx,.xls" multiple className="hidden" onChange={(e) => void handleFiles(e.target.files)} />
             <Button variant="outline" onClick={() => inputRef.current?.click()}>Choose files</Button>
@@ -514,7 +514,7 @@ function ImportTab() {
       {/* ── Working status: parse + AI runs before the preview appears ─────────── */}
       {previewMutation.isPending && (
         <Card>
-          <CardContent className="flex items-start gap-3 pt-6">
+          <CardContent className="flex items-start gap-3 pt-4 md:pt-6">
             <span className="mt-1 h-3 w-3 shrink-0 animate-pulse rounded-full bg-ph-purple" />
             <div className="text-sm">
               <div className="font-medium text-ph-charcoal">Building preview… ({elapsedLabel})</div>
@@ -577,7 +577,7 @@ function ImportTab() {
 
           {/* Commit */}
           <Card>
-            <CardContent className="flex flex-col gap-3 pt-6">
+            <CardContent className="flex flex-col gap-3 pt-4 md:pt-6">
               {needsAck && (
                 <label className="flex items-center gap-2 text-sm text-amber-800">
                   <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />
@@ -651,7 +651,7 @@ function SummaryBar({
 
   return (
     <Card>
-      <CardContent className="flex flex-col gap-3 pt-6">
+      <CardContent className="flex flex-col gap-3 pt-4 md:pt-6">
         <div className="text-sm font-semibold text-ph-charcoal">Here's what we found in your file{preview.sources.length > 1 ? 's' : ''}</div>
 
         {settledCount > 0 && (
@@ -963,7 +963,7 @@ function PlacementCard({
 
   return (
     <Card className={statusRing(decided, p.needsReview)}>
-      <CardContent className="flex flex-col gap-3 pt-6">
+      <CardContent className="flex flex-col gap-3 pt-4 md:pt-6">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-base font-semibold text-ph-charcoal">{p.parsedName}</span>
@@ -1261,7 +1261,7 @@ function EducationCard({ ei, e, target, setTarget, decision, setDecision, edits,
 
   return (
     <Card className={statusRing(decided, eduNeedsReview(e))}>
-      <CardContent className="flex flex-col gap-3 pt-6">
+      <CardContent className="flex flex-col gap-3 pt-4 md:pt-6">
         <div>
           <div className="text-base font-semibold text-ph-charcoal">{e.title}</div>
           <div className="text-sm font-medium text-ph-charcoal/80">{e.brand}{e.type ? ` · ${e.type}` : ''} · education</div>

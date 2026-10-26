@@ -50,7 +50,7 @@ function ClientsPage() {
       {showForm && <NewClientForm onDone={() => setShowForm(false)} />}
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6">
           {isLoading && <p className="text-sm text-ph-charcoal/60">Loading clients…</p>}
           {!isLoading && clients.length === 0 && (
             <p className="text-sm text-ph-charcoal/60">No clients yet — create the first one.</p>
@@ -148,7 +148,7 @@ function NewClientForm({ onDone }: { onDone: () => void }) {
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent className="pt-4 md:pt-6">
         <h2 className="text-base font-semibold text-ph-charcoal">New client</h2>
         <form
           onSubmit={form.handleSubmit((values) => mutation.mutate(values))}

@@ -47,7 +47,7 @@ function DetailsTab() {
     <div className="flex flex-col gap-6 pb-[40vh]">
       <AddUserCard clientSlug={clientSlug} />
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6">
           <h2 className="text-base font-semibold text-ph-charcoal">Users with access</h2>
           <p className="mt-1 text-sm text-ph-charcoal/60">
             Client users who can sign in and view this client&rsquo;s dashboards.
@@ -105,7 +105,7 @@ function DangerZoneCard({ clientSlug }: { clientSlug: string }) {
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent className="pt-4 md:pt-6">
         <h2 className="text-base font-semibold text-ph-charcoal">Danger zone</h2>
         <div className="mt-4 flex flex-col gap-3 rounded border border-red-200 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -291,7 +291,7 @@ function ReportInvitesCard({ clientSlug, users }: { clientSlug: string; users: C
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent className="pt-4 md:pt-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-ph-charcoal">Emailer</h2>
@@ -524,7 +524,7 @@ function InviteHistory({ clientSlug }: { clientSlug: string }) {
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent className="pt-4 md:pt-6">
         <h2 className="text-base font-semibold text-ph-charcoal">Send history</h2>
         {isLoading && <p className="mt-3 text-sm text-ph-charcoal/60">Loading…</p>}
         {!isLoading && invites.length === 0 && (
@@ -653,7 +653,7 @@ function AddUserCard({ clientSlug }: { clientSlug: string }) {
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent className="pt-4 md:pt-6">
         <h2 className="text-base font-semibold text-ph-charcoal">Grant access</h2>
         <p className="mt-1 text-sm text-ph-charcoal/60">
           Enter a client user&rsquo;s email. If they don&rsquo;t exist yet, we&rsquo;ll create

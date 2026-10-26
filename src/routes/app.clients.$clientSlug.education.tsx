@@ -90,7 +90,7 @@ function EducationTab() {
       {isLoading && <p className="text-sm text-ph-charcoal/60">Loading…</p>}
       {!isLoading && pages.length === 0 && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <p className="text-sm text-ph-charcoal/60">No education pages yet — create the first one above.</p>
           </CardContent>
         </Card>
@@ -234,7 +234,7 @@ function PageEditor({ clientSlug, pageId, onDeleted }: { clientSlug: string; pag
 
       {tree.charts.length === 0 && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <p className="text-sm text-ph-charcoal/60">No charts on this page yet — add one above.</p>
           </CardContent>
         </Card>
@@ -345,7 +345,7 @@ function ChartEditor({
 
   return (
     <Card>
-      <CardContent className="flex flex-col gap-4 pt-6">
+      <CardContent className="flex flex-col gap-4 pt-4 md:pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
             {editTitle ? (
@@ -668,7 +668,7 @@ function AssetsEditor({
 
   return (
     <Card>
-      <CardContent className="flex flex-col gap-4 pt-6">
+      <CardContent className="flex flex-col gap-4 pt-4 md:pt-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold text-ph-charcoal">Detail table</h3>

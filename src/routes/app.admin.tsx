@@ -35,7 +35,7 @@ function AdminPage() {
       <div>
         <h1 className="text-2xl font-semibold text-ph-charcoal">Users & Roles</h1>
         <Card className="mt-6">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 md:pt-6">
             <p className="text-sm text-ph-charcoal/60">
               You don't have permission to view this page.
             </p>
@@ -64,7 +64,7 @@ function AdminContent() {
       {data?.secretExpiry && <SecretExpiryBanner expiry={data.secretExpiry} />}
 
       <Card className="mt-6">
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6">
           {isLoading && (
             <p className="text-sm text-ph-charcoal/60">Loading users...</p>
           )}

@@ -205,7 +205,7 @@ function PlacementsTab() {
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6">
           {isLoading && <p className="text-sm text-ph-charcoal/60">Loading…</p>}
           {!isLoading && placements.length === 0 && (
             <p className="text-sm text-ph-charcoal/60">
@@ -707,7 +707,7 @@ function PlacementEditor({
   return (
     <div className="flex flex-col gap-4 p-6">
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 md:pt-6">
           <form
             onSubmit={form.handleSubmit((v) => active.mutate(v))}
             onBlur={isEdit ? triggerSave : undefined}
