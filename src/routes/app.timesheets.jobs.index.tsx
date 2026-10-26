@@ -32,7 +32,7 @@ function JobsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ts', 'jobs'] }),
   });
 
-  const all = jobs.data ?? [];
+  const all = useMemo(() => jobs.data ?? [], [jobs.data]);
   const clients = [...new Set(all.map((j) => j.clientName))];
   const managerIds = new Set(all.flatMap((j) => j.managerIds));
   const managers = (people.data ?? [])

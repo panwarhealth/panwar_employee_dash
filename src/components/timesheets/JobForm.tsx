@@ -292,7 +292,11 @@ export function JobForm({
                         <input
                           type="checkbox"
                           checked
-                          onChange={() => setBudgets(({ [t.id]: _gone, ...rest }) => rest)}
+                          onChange={() =>
+                            setBudgets((b) =>
+                              Object.fromEntries(Object.entries(b).filter(([id]) => id !== t.id)),
+                            )
+                          }
                         />{' '}
                         {t.name}
                       </label>
