@@ -376,6 +376,86 @@
   top: 50%;
 }
 
+.cp-obj {
+  transition:
+    scale 0.15s,
+    translate 0.15s,
+    filter 0.15s,
+    opacity 0.2s,
+    box-shadow 0.15s;
+}
+.cp-click {
+  cursor: pointer;
+}
+.cp-hover-scale:hover {
+  scale: 1.05;
+}
+.cp-hover-glow:hover {
+  filter: drop-shadow(0 0 0.6em var(--cp-accent));
+}
+.cp-hover-lift:hover {
+  translate: 0 -0.3em;
+  box-shadow: 0 0.6em 1.2em rgba(0, 0, 0, 0.18);
+}
+.cp-hover-border:hover {
+  outline: 0.2em solid var(--cp-accent);
+}
+.cp-picked-tick {
+  outline: 0.2em solid var(--cp-ok);
+}
+.cp-picked-tick::after {
+  content: '\2713';
+  position: absolute;
+  top: -0.6em;
+  right: -0.6em;
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: 50%;
+  background: var(--cp-ok);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1em;
+  line-height: 1.4em;
+  text-align: center;
+}
+.cp-picked-glow {
+  filter: drop-shadow(0 0 0.7em var(--cp-ok));
+}
+.cp-dim {
+  opacity: 0.45;
+}
+.cp-visited {
+  opacity: 0.6;
+}
+.cp-canvascol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.cp-pickfb-popup {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 10;
+}
+.cp-pickfb-popup .cp-fb {
+  width: min(80%, 32em);
+  background: #fff;
+  box-shadow: 0 1em 3em rgba(0, 0, 0, 0.25);
+  padding: 1.4em;
+}
+.cp-pickfb .cp-fb p {
+  margin: 0 0 1em;
+}
+.cp-pickfb-text {
+  width: min(100%, 760px);
+}
+
 @media (max-width: 639px) {
   .cp-main:not(.cp-main-canvas) {
     padding: 22px 18px 36px;

@@ -9,6 +9,8 @@ export interface PlayState {
   pageId: string;
   visited: string[];
   answers: Record<string, Answer>;
+  picks?: Record<string, string[]>;
+  clicked?: string[];
 }
 
 export interface Lms {

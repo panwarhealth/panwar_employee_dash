@@ -40,16 +40,16 @@ export function preflight(doc: CourseDoc): Check[] {
       text: `${plural(missing.length, 'media block')} without a file or link`,
     });
 
-  const deadLinks = blocks.filter(
-    (b) =>
-      b.type === 'button' &&
-      b.action.kind === 'page' &&
-      !doc.pages.some((p) => b.action.kind === 'page' && p.id === b.action.pageId),
-  );
+  const pageIds = new Set(doc.pages.map((p) => p.id));
+  const targets = blocks.flatMap((b) => [
+    ...(b.type === 'button' ? [b.action] : []),
+    ...(b.interact ? [b.interact.onClick] : []),
+  ]);
+  const deadLinks = targets.filter((a) => a.kind === 'page' && !pageIds.has(a.pageId));
   if (deadLinks.length)
     checks.push({
       ok: false,
-      text: `${plural(deadLinks.length, 'button')} going to a page that no longer exists`,
+      text: `${plural(deadLinks.length, 'click action')} going to a page that no longer exists`,
     });
 
   for (const layout of layoutsFor(doc.screens)) {

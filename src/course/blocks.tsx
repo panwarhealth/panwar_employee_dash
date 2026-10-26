@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Block, CheckBlock } from './doc';
+import type { Block, ButtonAction, CheckBlock } from './doc';
 import type { Answer } from './scorm';
 import { sanitizeHtml } from './sanitize';
 import { embedUrl } from './util';
@@ -9,7 +9,11 @@ export interface BlockContext {
   answers: Record<string, Answer>;
   answer(blockId: string, selected: string[], correct: boolean): void;
   next(): void;
-  goTo(pageId: string): void;
+  act(action: ButtonAction): void;
+  picked: string[];
+  clicked: string[];
+  picksCorrect: boolean;
+  click(block: Block): void;
 }
 
 export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
@@ -61,13 +65,8 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
           <button
             type="button"
             className={`cp-btn cp-btn-${block.style}`}
-            onClick={() => {
-              if (ctx.edit) return;
-              const a = block.action;
-              if (a.kind === 'next') ctx.next();
-              else if (a.kind === 'page') ctx.goTo(a.pageId);
-              else if (a.url) window.open(a.url, '_blank', 'noopener');
-            }}
+            disabled={!ctx.edit && block.enabledWhen === 'picks' && !ctx.picksCorrect}
+            onClick={() => !ctx.edit && ctx.act(block.action)}
           >
             {block.label}
           </button>

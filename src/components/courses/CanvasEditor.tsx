@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import type { BlockContext } from '@/course/blocks';
+import { EDIT_CTX } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
 import { frameFor, frameStyle } from '@/course/canvasLayout';
 import type { Frame, Layout, Page } from '@/course/doc';
@@ -22,14 +22,6 @@ interface Guides {
 
 const SNAP = 1;
 const MIN = 2;
-
-const EDIT_CTX: BlockContext = {
-  edit: true,
-  answers: {},
-  answer: () => {},
-  next: () => {},
-  goTo: () => {},
-};
 
 function snapAxis(
   pos: number,

@@ -211,6 +211,19 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                 onFrame: (f) => selectedBlock && setFrame(selectedBlock.id, f),
                 onCopyLayout: () =>
                   otherLayout && setDoc((d) => ops.copyLayout(d, page.id, otherLayout, layout)),
+                onInteract: (i) =>
+                  selectedBlock &&
+                  setDoc((d) =>
+                    ops.updateBlock(d, page.id, selectedBlock.id, (b) => (b.interact = i)),
+                  ),
+                onEnabledWhen: (v) =>
+                  selectedBlock &&
+                  setDoc((d) =>
+                    ops.updateBlock(d, page.id, selectedBlock.id, (b) => {
+                      if (b.type === 'button') b.enabledWhen = v;
+                    }),
+                  ),
+                onPickRule: (r) => setDoc((d) => ops.updatePage(d, page.id, (p) => (p.pick = r))),
               }
             : null
         }

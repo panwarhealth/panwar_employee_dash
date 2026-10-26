@@ -1,16 +1,9 @@
 import type { CourseDoc, Page } from '@/course/doc';
-import { BlockView, type BlockContext } from '@/course/blocks';
+import { BlockView } from '@/course/blocks';
+import { EDIT_CTX } from '@/course/editContext';
 import { accentStyle } from '@/course/util';
 import { cn } from '@/lib/utils';
 import { blockName } from './blockMeta';
-
-const EDIT_CTX: BlockContext = {
-  edit: true,
-  answers: {},
-  answer: () => {},
-  next: () => {},
-  goTo: () => {},
-};
 
 export function Stage({
   doc,

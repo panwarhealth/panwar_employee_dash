@@ -17,6 +17,29 @@ export interface Page {
   title: string;
   kind: 'flow' | 'canvas';
   blocks: Block[];
+  pick?: PickRule;
+}
+
+export interface PickRule {
+  needed: number | null;
+  feedbackCorrect: string;
+  feedbackWrong: string;
+  showAs: 'popup' | 'text';
+  required: boolean;
+}
+
+export type HoverLook = 'none' | 'scale' | 'glow' | 'lift' | 'border';
+export type PickedLook = 'none' | 'tick' | 'glow' | 'dim';
+export type VisitedLook = 'none' | 'fade';
+
+export type ClickAction = { kind: 'none' } | { kind: 'pick' } | ButtonAction;
+
+export interface Interaction {
+  hover: HoverLook;
+  picked: PickedLook;
+  visited: VisitedLook;
+  onClick: ClickAction;
+  correct: boolean;
 }
 
 export interface Frame {
@@ -30,6 +53,7 @@ export interface Frame {
 export interface BlockBase {
   id: string;
   frames?: Partial<Record<Layout, Frame>>;
+  interact?: Interaction;
 }
 
 export interface HeadingBlock extends BlockBase {
@@ -74,6 +98,7 @@ export interface ButtonBlock extends BlockBase {
   label: string;
   action: ButtonAction;
   style: 'solid' | 'outline';
+  enabledWhen?: 'always' | 'picks';
 }
 
 export type ButtonAction =
@@ -184,3 +209,22 @@ export function moveItem<T>(list: T[], from: number, to: number): void {
   const [item] = list.splice(from, 1);
   list.splice(to, 0, item);
 }
+
+export const NO_INTERACTION: Interaction = {
+  hover: 'none',
+  picked: 'none',
+  visited: 'none',
+  onClick: { kind: 'none' },
+  correct: false,
+};
+
+export const newPickRule = (): PickRule => ({
+  needed: null,
+  feedbackCorrect: "That's right!",
+  feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+  showAs: 'popup',
+  required: true,
+});
+
+export const hasPicks = (page: Page) =>
+  page.blocks.some((b) => b.interact?.onClick.kind === 'pick');

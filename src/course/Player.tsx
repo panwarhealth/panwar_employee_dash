@@ -1,13 +1,73 @@
 import { useEffect, useMemo, useState } from 'react';
-import { scoredQuestions, type CourseDoc, type Layout, type Page } from './doc';
+import {
+  newPickRule,
+  scoredQuestions,
+  type ButtonAction,
+  type CourseDoc,
+  type Layout,
+  type Page,
+} from './doc';
 import type { Lms, PlayState } from './scorm';
 import { BlockView, type BlockContext } from './blocks';
 import { accentStyle } from './util';
 import { CanvasStage } from './canvas';
 import { useCanvasLayout } from './canvasLayout';
+import { pickBlocks, pickStatus, togglePick } from './picks';
 
-function PageBody({ page, layout, ctx }: { page: Page; layout: Layout; ctx: BlockContext }) {
-  if (page.kind === 'canvas') return <CanvasStage page={page} layout={layout} ctx={ctx} />;
+function PickFeedback({
+  page,
+  correct,
+  ctx,
+  onRetry,
+}: {
+  page: Page;
+  correct: boolean;
+  ctx: BlockContext;
+  onRetry: () => void;
+}) {
+  const rule = page.pick ?? newPickRule();
+  const text = correct ? rule.feedbackCorrect : rule.feedbackWrong;
+  return (
+    <div className={`cp-pickfb cp-pickfb-${rule.showAs}`}>
+      <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
+        <p>{text}</p>
+        <button
+          type="button"
+          className={`cp-btn ${correct ? 'cp-btn-solid' : 'cp-btn-outline'}`}
+          onClick={correct ? ctx.next : onRetry}
+        >
+          {correct ? 'Continue' : 'Try again'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PageBody({
+  page,
+  layout,
+  ctx,
+  onRetryPicks,
+}: {
+  page: Page;
+  layout: Layout;
+  ctx: BlockContext;
+  onRetryPicks: () => void;
+}) {
+  if (page.kind === 'canvas') {
+    const status = pickStatus(page, ctx.picked);
+    const feedback = status.done && (
+      <PickFeedback page={page} correct={status.correct} ctx={ctx} onRetry={onRetryPicks} />
+    );
+    return page.pick?.showAs === 'text' ? (
+      <div className="cp-canvascol">
+        <CanvasStage page={page} layout={layout} ctx={ctx} />
+        {feedback}
+      </div>
+    ) : (
+      <CanvasStage page={page} layout={layout} ctx={ctx} overlay={feedback} />
+    );
+  }
   return (
     <div className="cp-flow">
       {page.blocks.map((b) => (
@@ -65,6 +125,18 @@ export function Player({
     window.scrollTo(0, 0);
   };
 
+  const next = () => (index < doc.pages.length - 1 ? go(doc.pages[index + 1].id) : finish());
+
+  const act = (a: ButtonAction) => {
+    if (a.kind === 'next') next();
+    else if (a.kind === 'page') go(a.pageId);
+    else if (a.url) window.open(a.url, '_blank', 'noopener');
+  };
+
+  const picked = state.picks?.[page.id] ?? [];
+  const setPicks = (ids: string[]) =>
+    setState((s) => ({ ...s, picks: { ...s.picks, [page.id]: ids } }));
+
   const finish = () => {
     if (scored.length && doc.passMark !== null) {
       const right = scored.filter((q) => state.answers[q.id]?.firstCorrect).length;
@@ -101,13 +173,25 @@ export function Player({
           },
         };
       }),
-    next: () => (index < doc.pages.length - 1 ? go(doc.pages[index + 1].id) : finish()),
-    goTo: go,
+    next,
+    act,
+    picked,
+    clicked: state.clicked ?? [],
+    picksCorrect: pickStatus(page, picked).correct,
+    click: (b) => {
+      setState((s) =>
+        s.clicked?.includes(b.id) ? s : { ...s, clicked: [...(s.clicked ?? []), b.id] },
+      );
+      const a = b.interact?.onClick;
+      if (!a || a.kind === 'none') return;
+      if (a.kind === 'pick') setPicks(togglePick(page, picked, b));
+      else act(a);
+    },
   };
 
-  const blocked = page.blocks.some(
-    (b) => b.type === 'check' && b.required && !state.answers[b.id]?.correct,
-  );
+  const blocked =
+    page.blocks.some((b) => b.type === 'check' && b.required && !state.answers[b.id]?.correct) ||
+    (pickBlocks(page) && !ctx.picksCorrect);
   const last = index === doc.pages.length - 1;
 
   if (result) {
@@ -142,7 +226,13 @@ export function Player({
   return (
     <div className="cp cp-shell" style={accentStyle(doc)}>
       <main className={page.kind === 'canvas' ? 'cp-main cp-main-canvas' : 'cp-main'}>
-        <PageBody key={page.id} page={page} layout={layout} ctx={ctx} />
+        <PageBody
+          key={page.id}
+          page={page}
+          layout={layout}
+          ctx={ctx}
+          onRetryPicks={() => setPicks([])}
+        />
       </main>
       <nav className="cp-nav">
         <button
@@ -163,7 +253,7 @@ export function Player({
           type="button"
           className="cp-navbtn cp-navbtn-next"
           disabled={blocked}
-          title={blocked ? 'Answer the question to continue' : undefined}
+          title={blocked ? 'Finish this page to continue' : undefined}
           onClick={ctx.next}
         >
           {last ? 'Finish' : 'Continue'}

@@ -1,8 +1,18 @@
-import type { Block, Frame, Layout, Page } from '@/course/doc';
+import {
+  hasPicks,
+  newPickRule,
+  type Block,
+  type Frame,
+  type Interaction,
+  type Layout,
+  type Page,
+  type PickRule,
+} from '@/course/doc';
 import { cn } from '@/lib/utils';
 import { BlockForm } from './BlockForm';
 import { blockLabel, blockName } from './blockMeta';
 import { FrameFields } from './FrameFields';
+import { InteractionFields, PickRuleFields } from './InteractionFields';
 import { TextInput } from './fields';
 import { SortableList } from './SortableList';
 
@@ -93,6 +103,16 @@ export function Inspector({
       >
         {canvas ? '+ Add object' : '+ Add block'}
       </button>
+      {canvas && hasPicks(page) && (
+        <PickRuleFields
+          rule={page.pick ?? newPickRule()}
+          correctCount={
+            page.blocks.filter((b) => b.interact?.onClick.kind === 'pick' && b.interact.correct)
+              .length
+          }
+          onChange={canvas.onPickRule}
+        />
+      )}
 
       {block && (
         <div className="mt-4 flex flex-col gap-3 border-t border-ph-charcoal/10 pt-4">
@@ -109,6 +129,13 @@ export function Inspector({
           {canvas?.frame && (
             <>
               <FrameFields frame={canvas.frame} onChange={canvas.onFrame} />
+              <InteractionFields
+                block={block}
+                pages={pages}
+                pagePicks={hasPicks(page)}
+                onChange={canvas.onInteract}
+                onEnabledWhen={canvas.onEnabledWhen}
+              />
               <div className="flex gap-4">
                 <button
                   type="button"
@@ -157,4 +184,7 @@ export interface CanvasControls {
   frame: Frame | null;
   onFrame: (frame: Frame) => void;
   onCopyLayout: () => void;
+  onInteract: (i: Interaction) => void;
+  onEnabledWhen: (v: 'always' | 'picks') => void;
+  onPickRule: (r: PickRule) => void;
 }
