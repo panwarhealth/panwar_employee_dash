@@ -1,5 +1,7 @@
 import {
+  hasPicks,
   NO_INTERACTION,
+  type PopupBlock,
   type Block,
   type ClickAction,
   type Interaction,
@@ -13,19 +15,21 @@ const sectionClass = 'mt-1 text-[11px] font-semibold uppercase tracking-wider te
 export function InteractionFields({
   block,
   pages,
-  pagePicks,
+  page,
   onChange,
   onEnabledWhen,
 }: {
   block: Block;
   pages: Page[];
-  pagePicks: boolean;
+  page: Page;
   onChange: (i: Interaction) => void;
   onEnabledWhen: (v: 'always' | 'picks') => void;
 }) {
   const i = block.interact ?? NO_INTERACTION;
   const set = (patch: Partial<Interaction>) => onChange({ ...i, ...patch });
   const picks = i.onClick.kind === 'pick';
+  const pagePicks = hasPicks(page);
+  const popups = page.blocks.filter((b): b is PopupBlock => b.type === 'popup');
 
   return (
     <>
@@ -85,6 +89,7 @@ export function InteractionFields({
           <ClickFields
             action={i.onClick}
             pages={pages}
+            popups={popups}
             onChange={(onClick) =>
               set(
                 onClick.kind === 'pick' && i.picked === 'none'
@@ -109,10 +114,12 @@ export function InteractionFields({
 function ClickFields({
   action,
   pages,
+  popups,
   onChange,
 }: {
   action: ClickAction;
   pages: Page[];
+  popups: PopupBlock[];
   onChange: (a: ClickAction) => void;
 }) {
   return (
@@ -123,6 +130,7 @@ function ClickFields({
         options={[
           { value: 'none', label: 'Nothing' },
           { value: 'pick', label: 'Mark as a pick' },
+          ...(popups.length ? [{ value: 'popup' as const, label: 'Open a pop-up layer' }] : []),
           { value: 'next', label: 'Go to next page' },
           { value: 'page', label: 'Go to a page...' },
           { value: 'link', label: 'Open a link' },
@@ -133,7 +141,9 @@ function ClickFields({
               ? { kind: 'page', pageId: pages[0]?.id ?? '' }
               : k === 'link'
                 ? { kind: 'link', url: '' }
-                : { kind: k },
+                : k === 'popup'
+                  ? { kind: 'popup', blockId: popups[0]?.id ?? '' }
+                  : { kind: k },
           )
         }
       />
@@ -146,6 +156,14 @@ function ClickFields({
             label: `${i + 1}. ${p.title || 'Untitled'}`,
           }))}
           onChange={(pageId) => onChange({ kind: 'page', pageId })}
+        />
+      )}
+      {action.kind === 'popup' && (
+        <Select
+          label="Pop-up"
+          value={action.blockId}
+          options={popups.map((p) => ({ value: p.id, label: p.title || 'Untitled pop-up' }))}
+          onChange={(blockId) => onChange({ kind: 'popup', blockId })}
         />
       )}
       {action.kind === 'link' && (

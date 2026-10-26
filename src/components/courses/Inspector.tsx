@@ -11,9 +11,10 @@ import {
 import { cn } from '@/lib/utils';
 import { BlockForm } from './BlockForm';
 import { blockLabel, blockName } from './blockMeta';
+import { AnimFields } from './AnimFields';
 import { FrameFields } from './FrameFields';
 import { InteractionFields, PickRuleFields } from './InteractionFields';
-import { TextInput } from './fields';
+import { Select, TextInput } from './fields';
 import { SortableList } from './SortableList';
 
 export function Inspector({
@@ -22,7 +23,7 @@ export function Inspector({
   courseId,
   selectedId,
   onSelect,
-  onRenamePage,
+  onPage,
   onAddBlock,
   onMoveBlock,
   onChangeBlock,
@@ -35,7 +36,7 @@ export function Inspector({
   courseId: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onRenamePage: (title: string) => void;
+  onPage: (fn: (p: Page) => void) => void;
   onAddBlock: () => void;
   onMoveBlock: (from: number, to: number) => void;
   onChangeBlock: (id: string, update: (b: Block) => void) => void;
@@ -53,7 +54,23 @@ export function Inspector({
   return (
     <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-ph-charcoal/10 bg-[#faf9fb] px-4 py-4 text-sm">
       <div className="mb-4">
-        <TextInput label="Page title" value={page.title} onChange={onRenamePage} />
+        <TextInput
+          label="Page title"
+          value={page.title}
+          onChange={(title) => onPage((p) => (p.title = title))}
+        />
+        <div className="mt-2">
+          <Select
+            label="Page transition"
+            value={page.transition ?? 'none'}
+            options={[
+              { value: 'none', label: 'None' },
+              { value: 'fade', label: 'Fade' },
+              { value: 'slide', label: 'Slide in' },
+            ]}
+            onChange={(t) => onPage((p) => (p.transition = t))}
+          />
+        </div>
       </div>
 
       <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
@@ -122,6 +139,7 @@ export function Inspector({
           <BlockForm
             key={block.id}
             block={block}
+            page={page}
             pages={pages}
             courseId={courseId}
             onChange={(update) => onChangeBlock(block.id, update)}
@@ -132,7 +150,7 @@ export function Inspector({
               <InteractionFields
                 block={block}
                 pages={pages}
-                pagePicks={hasPicks(page)}
+                page={page}
                 onChange={canvas.onInteract}
                 onEnabledWhen={canvas.onEnabledWhen}
               />
@@ -156,6 +174,10 @@ export function Inspector({
               </div>
             </>
           )}
+          <AnimFields
+            anim={block.anim}
+            onChange={(a) => onChangeBlock(block.id, (b) => (b.anim = a))}
+          />
           <div className="mt-1 flex gap-4">
             <button
               type="button"

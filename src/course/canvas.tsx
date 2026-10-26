@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import type { Block, Frame, Layout, Page } from './doc';
-import { BlockView, type BlockContext } from './blocks';
+import { BlockView } from './blocks';
+import type { BlockContext } from './context';
 import { frameFor, frameStyle } from './canvasLayout';
+import { animClass, animStyle } from './anim';
 
 function objectClass(block: Block, ctx: BlockContext): string {
   const i = block.interact;
@@ -28,12 +30,16 @@ export function CanvasStage({
   ctx,
   renderObject,
   overlay,
+  hidden,
+  leaving = false,
 }: {
   page: Page;
   layout: Layout;
   ctx: BlockContext;
   renderObject?: (block: Block, frame: Frame, content: ReactNode) => ReactNode;
   overlay?: ReactNode;
+  hidden?: Set<string>;
+  leaving?: boolean;
 }) {
   return (
     <div className={`cp-stagewrap cp-stagewrap-${layout}`}>
@@ -46,8 +52,8 @@ export function CanvasStage({
           return (
             <div
               key={b.id}
-              className={objectClass(b, ctx)}
-              style={frameStyle(frame)}
+              className={`${objectClass(b, ctx)} ${animClass(b, leaving, !!hidden?.has(b.id))}`}
+              style={{ ...frameStyle(frame), ...animStyle(b) }}
               onClick={clickable ? () => ctx.click(b) : undefined}
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}

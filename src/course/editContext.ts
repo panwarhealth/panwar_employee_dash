@@ -1,4 +1,4 @@
-import type { BlockContext } from './blocks';
+import type { BlockContext } from './context';
 
 export const EDIT_CTX: BlockContext = {
   edit: true,
@@ -10,4 +10,8 @@ export const EDIT_CTX: BlockContext = {
   clicked: [],
   picksCorrect: false,
   click: () => {},
+  openPopup: () => {},
+  audioProgress: () => {},
+  results: () => ({ score: 80, passMark: null, passed: true, review: [] }),
+  retry: () => {},
 };

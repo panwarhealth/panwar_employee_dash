@@ -1,6 +1,22 @@
 import type { Block, ButtonAction, CheckBlock, Page } from '@/course/doc';
 import { uid } from '@/course/doc';
 import { MediaInput, RichText, Select, TextArea, TextInput, Toggle } from './fields';
+import {
+  AnimationForm,
+  AudioForm,
+  BlankForm,
+  DragForm,
+  FlipForm,
+  HotspotForm,
+  LikertForm,
+  MatchForm,
+  PanelsForm,
+  PathwayForm,
+  PopupForm,
+  ResultsForm,
+  ScrollForm,
+  WrittenForm,
+} from './MoreForms';
 
 const ALIGN = [
   { value: 'left' as const, label: 'Left' },
@@ -9,11 +25,13 @@ const ALIGN = [
 
 export function BlockForm({
   block,
+  page,
   pages,
   courseId,
   onChange,
 }: {
   block: Block;
+  page: Page;
   pages: Page[];
   courseId: string;
   onChange: (update: (b: Block) => void) => void;
@@ -159,6 +177,35 @@ export function BlockForm({
       );
     case 'check':
       return <CheckForm block={block} onChange={(fn) => set<CheckBlock>(fn)} />;
+    case 'audio':
+      return <AudioForm block={block} page={page} courseId={courseId} set={set<typeof block>} />;
+    case 'animation':
+      return <AnimationForm block={block} courseId={courseId} set={set<typeof block>} />;
+    case 'scroll':
+      return <ScrollForm block={block} set={set<typeof block>} />;
+    case 'popup':
+      return <PopupForm block={block} courseId={courseId} set={set<typeof block>} />;
+    case 'accordion':
+    case 'tabs':
+      return <PanelsForm block={block} set={set<typeof block>} />;
+    case 'flip':
+      return <FlipForm block={block} courseId={courseId} set={set<typeof block>} />;
+    case 'hotspots':
+      return <HotspotForm block={block} courseId={courseId} set={set<typeof block>} />;
+    case 'pathway':
+      return <PathwayForm block={block} pages={pages} set={set<typeof block>} />;
+    case 'drag':
+      return <DragForm block={block} courseId={courseId} set={set<typeof block>} />;
+    case 'match':
+      return <MatchForm block={block} set={set<typeof block>} />;
+    case 'blank':
+      return <BlankForm block={block} set={set<typeof block>} />;
+    case 'written':
+      return <WrittenForm block={block} set={set<typeof block>} />;
+    case 'likert':
+      return <LikertForm block={block} set={set<typeof block>} />;
+    case 'results':
+      return <ResultsForm block={block} set={set<typeof block>} />;
   }
 }
 

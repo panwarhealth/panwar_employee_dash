@@ -1,18 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   newPickRule,
-  scoredQuestions,
-  type ButtonAction,
+  type Block,
+  type ClickAction,
   type CourseDoc,
   type Layout,
   type Page,
+  type PopupBlock,
 } from './doc';
 import type { Lms, PlayState } from './scorm';
-import { BlockView, type BlockContext } from './blocks';
+import { BlockView } from './blocks';
+import type { BlockContext } from './context';
 import { accentStyle } from './util';
 import { CanvasStage } from './canvas';
 import { useCanvasLayout } from './canvasLayout';
 import { pickBlocks, pickStatus, togglePick } from './picks';
+import { choosePool, computeResults, cueHidden, resultsSettings } from './grading';
+import { PopupLayer } from './interactive';
+import { animClass, animStyle, hasExit, OUT_MS } from './anim';
 
 function PickFeedback({
   page,
@@ -26,11 +31,10 @@ function PickFeedback({
   onRetry: () => void;
 }) {
   const rule = page.pick ?? newPickRule();
-  const text = correct ? rule.feedbackCorrect : rule.feedbackWrong;
   return (
     <div className={`cp-pickfb cp-pickfb-${rule.showAs}`}>
       <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
-        <p>{text}</p>
+        <p>{correct ? rule.feedbackCorrect : rule.feedbackWrong}</p>
         <button
           type="button"
           className={`cp-btn ${correct ? 'cp-btn-solid' : 'cp-btn-outline'}`}
@@ -47,11 +51,15 @@ function PageBody({
   page,
   layout,
   ctx,
+  hidden,
+  leaving,
   onRetryPicks,
 }: {
   page: Page;
   layout: Layout;
   ctx: BlockContext;
+  hidden: Set<string>;
+  leaving: boolean;
   onRetryPicks: () => void;
 }) {
   if (page.kind === 'canvas') {
@@ -61,24 +69,55 @@ function PageBody({
     );
     return page.pick?.showAs === 'text' ? (
       <div className="cp-canvascol">
-        <CanvasStage page={page} layout={layout} ctx={ctx} />
+        <CanvasStage page={page} layout={layout} ctx={ctx} hidden={hidden} leaving={leaving} />
         {feedback}
       </div>
     ) : (
-      <CanvasStage page={page} layout={layout} ctx={ctx} overlay={feedback} />
+      <CanvasStage
+        page={page}
+        layout={layout}
+        ctx={ctx}
+        hidden={hidden}
+        leaving={leaving}
+        overlay={feedback}
+      />
     );
   }
   return (
     <div className="cp-flow">
       {page.blocks.map((b) => (
-        <BlockView key={b.id} block={b} ctx={ctx} />
+        <div
+          key={b.id}
+          className={`cp-blk ${animClass(b, leaving, hidden.has(b.id))}`}
+          style={animStyle(b)}
+        >
+          <BlockView block={b} ctx={ctx} />
+        </div>
       ))}
     </div>
   );
 }
 
 function freshState(doc: CourseDoc): PlayState {
-  return { v: 1, pageId: doc.pages[0]?.id ?? '', visited: [], answers: {} };
+  const skip = choosePool(doc);
+  const first = doc.pages.find((p) => !skip.includes(p.id));
+  return { v: 1, pageId: first?.id ?? '', visited: [], answers: {}, skip };
+}
+
+const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
+
+function mustAnswer(b: Block): boolean {
+  switch (b.type) {
+    case 'check':
+    case 'drag':
+    case 'match':
+    case 'blank':
+    case 'written':
+    case 'likert':
+      return b.required;
+    default:
+      return false;
+  }
 }
 
 export function Player({
@@ -96,16 +135,23 @@ export function Player({
     const saved = lms.load();
     return saved && doc.pages.some((p) => p.id === saved.pageId) ? saved : freshState(doc);
   });
-  const [result, setResult] = useState<{
-    score: number | null;
-    passed: boolean;
-  } | null>(null);
+  const [ended, setEnded] = useState(false);
+  const [popup, setPopup] = useState<string | null>(null);
+  const [cueTimes, setCueTimes] = useState<Record<string, number>>({});
+  const [leaving, setLeaving] = useState(false);
 
+  const pages = useMemo(
+    () => doc.pages.filter((p) => !(state.skip ?? []).includes(p.id)),
+    [doc.pages, state.skip],
+  );
   const index = Math.max(
     0,
-    doc.pages.findIndex((p) => p.id === state.pageId),
+    pages.findIndex((p) => p.id === state.pageId),
   );
-  const page = doc.pages[index];
+  const page = pages[index];
+  const settings = resultsSettings(doc);
+  const results = computeResults(doc, state.answers, state.skip ?? []);
+  const onResultsPage = !!page?.blocks.some((b) => b.type === 'results');
 
   useEffect(() => {
     if (!page) return;
@@ -113,47 +159,52 @@ export function Player({
   }, [page]);
 
   useEffect(() => {
-    if (doc.pages.length) lms.save(state, Math.min(1, state.visited.length / doc.pages.length));
-  }, [state, lms, doc.pages.length]);
+    if (pages.length) lms.save(state, Math.min(1, state.visited.length / pages.length));
+  }, [state, lms, pages.length]);
 
-  const scored = useMemo(() => scoredQuestions(doc), [doc]);
+  useEffect(() => {
+    if (onResultsPage && results.passed)
+      lms.finish(results.score === null ? 'completed' : 'passed', results.score);
+  }, [onResultsPage, results.passed, results.score, lms]);
 
   if (!page) return <div className="cp cp-shell" />;
 
-  const go = (pageId: string) => {
+  const show = (pageId: string) => {
+    setLeaving(false);
     setState((s) => ({ ...s, pageId }));
     window.scrollTo(0, 0);
   };
 
-  const next = () => (index < doc.pages.length - 1 ? go(doc.pages[index + 1].id) : finish());
+  const go = (pageId: string) => {
+    setPopup(null);
+    if (!hasExit(page) || leaving) return show(pageId);
+    setLeaving(true);
+    window.setTimeout(() => show(pageId), OUT_MS);
+  };
 
-  const act = (a: ButtonAction) => {
+  const finish = () => {
+    if (results.passed) lms.finish(results.score === null ? 'completed' : 'passed', results.score);
+    if (!settings) setEnded(true);
+  };
+
+  const next = () => (index < pages.length - 1 ? go(pages[index + 1].id) : finish());
+
+  const act = (a: Exclude<ClickAction, { kind: 'none' } | { kind: 'pick' }>) => {
     if (a.kind === 'next') next();
     else if (a.kind === 'page') go(a.pageId);
+    else if (a.kind === 'popup') setPopup(a.blockId);
     else if (a.url) window.open(a.url, '_blank', 'noopener');
+  };
+
+  const retry = () => {
+    setEnded(false);
+    setPopup(null);
+    setState(freshState(doc));
   };
 
   const picked = state.picks?.[page.id] ?? [];
   const setPicks = (ids: string[]) =>
     setState((s) => ({ ...s, picks: { ...s.picks, [page.id]: ids } }));
-
-  const finish = () => {
-    if (scored.length && doc.passMark !== null) {
-      const right = scored.filter((q) => state.answers[q.id]?.firstCorrect).length;
-      const score = Math.round((right / scored.length) * 100);
-      const passed = score >= doc.passMark;
-      if (passed) lms.finish('passed', score);
-      setResult({ score, passed });
-    } else {
-      lms.finish('completed', null);
-      setResult({ score: null, passed: true });
-    }
-  };
-
-  const retry = () => {
-    setResult(null);
-    setState(freshState(doc));
-  };
 
   const ctx: BlockContext = {
     edit: false,
@@ -165,11 +216,7 @@ export function Player({
           ...s,
           answers: {
             ...s.answers,
-            [blockId]: {
-              selected,
-              correct,
-              firstCorrect: prev ? prev.firstCorrect : correct,
-            },
+            [blockId]: { selected, correct, firstCorrect: prev ? prev.firstCorrect : correct },
           },
         };
       }),
@@ -187,28 +234,34 @@ export function Player({
       if (a.kind === 'pick') setPicks(togglePick(page, picked, b));
       else act(a);
     },
+    openPopup: setPopup,
+    audioProgress: (blockId, seconds) =>
+      setCueTimes((c) => (seconds > (c[blockId] ?? -1) ? { ...c, [blockId]: seconds } : c)),
+    results: () => results,
+    retry,
   };
 
   const blocked =
-    page.blocks.some((b) => b.type === 'check' && b.required && !state.answers[b.id]?.correct) ||
+    page.blocks.some((b) => mustAnswer(b) && !answered(b, state)) ||
     (pickBlocks(page) && !ctx.picksCorrect);
-  const last = index === doc.pages.length - 1;
+  const last = index === pages.length - 1;
+  const openPopup = page.blocks.find((b): b is PopupBlock => b.type === 'popup' && b.id === popup);
 
-  if (result) {
+  if (ended) {
     return (
       <div className="cp cp-shell" style={accentStyle(doc)}>
         <main className="cp-main">
           <div className="cp-flow cp-done">
-            {result.passed ? (
+            {results.passed ? (
               <>
                 <h1 className="cp-h1">Course complete</h1>
-                {result.score !== null && <p className="cp-text">You scored {result.score}%.</p>}
+                {results.score !== null && <p className="cp-text">You scored {results.score}%.</p>}
               </>
             ) : (
               <>
                 <h1 className="cp-h1">Not quite</h1>
                 <p className="cp-text">
-                  You scored {result.score}%. You need {doc.passMark}% to pass.
+                  You scored {results.score}%. You need {doc.passMark}% to pass.
                 </p>
                 <div className="cp-btnrow">
                   <button type="button" className="cp-btn cp-btn-solid" onClick={retry}>
@@ -225,39 +278,53 @@ export function Player({
 
   return (
     <div className="cp cp-shell" style={accentStyle(doc)}>
-      <main className={page.kind === 'canvas' ? 'cp-main cp-main-canvas' : 'cp-main'}>
+      <main
+        key={page.id}
+        className={[
+          'cp-main',
+          page.kind === 'canvas' && 'cp-main-canvas',
+          page.transition && page.transition !== 'none' && `cp-tr-${page.transition}`,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
         <PageBody
           key={page.id}
           page={page}
           layout={layout}
           ctx={ctx}
+          hidden={cueHidden(page, cueTimes)}
+          leaving={leaving}
           onRetryPicks={() => setPicks([])}
         />
       </main>
+      {openPopup && <PopupLayer block={openPopup} onClose={() => setPopup(null)} />}
       <nav className="cp-nav">
         <button
           type="button"
           className="cp-navbtn"
           disabled={index === 0}
-          onClick={() => go(doc.pages[index - 1].id)}
+          onClick={() => go(pages[index - 1].id)}
         >
           Back
         </button>
         <div className="cp-prog">
-          <i style={{ width: `${((index + 1) / doc.pages.length) * 100}%` }} />
+          <i style={{ width: `${((index + 1) / pages.length) * 100}%` }} />
         </div>
         <span className="cp-count">
-          {index + 1} of {doc.pages.length}
+          {index + 1} of {pages.length}
         </span>
-        <button
-          type="button"
-          className="cp-navbtn cp-navbtn-next"
-          disabled={blocked}
-          title={blocked ? 'Finish this page to continue' : undefined}
-          onClick={ctx.next}
-        >
-          {last ? 'Finish' : 'Continue'}
-        </button>
+        {!(last && onResultsPage) && (
+          <button
+            type="button"
+            className="cp-navbtn cp-navbtn-next"
+            disabled={blocked}
+            title={blocked ? 'Finish this page to continue' : undefined}
+            onClick={next}
+          >
+            {last ? 'Finish' : 'Continue'}
+          </button>
+        )}
       </nav>
     </div>
   );

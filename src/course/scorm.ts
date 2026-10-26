@@ -11,6 +11,7 @@ export interface PlayState {
   answers: Record<string, Answer>;
   picks?: Record<string, string[]>;
   clicked?: string[];
+  skip?: string[];
 }
 
 export interface Lms {

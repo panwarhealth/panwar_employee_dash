@@ -31,8 +31,12 @@ export function preflight(doc: CourseDoc): Check[] {
         },
   );
 
+  const needsFile = ['image', 'video', 'audio', 'animation', 'hotspots'];
   const missing = blocks.filter(
-    (b) => ((b.type === 'image' || b.type === 'video') && !b.src) || (b.type === 'embed' && !b.url),
+    (b) =>
+      (needsFile.includes(b.type) && 'src' in b && !b.src) ||
+      (b.type === 'embed' && !b.url) ||
+      (b.type === 'drag' && b.style === 'targets' && !b.src),
   );
   if (missing.length)
     checks.push({
@@ -45,11 +49,24 @@ export function preflight(doc: CourseDoc): Check[] {
     ...(b.type === 'button' ? [b.action] : []),
     ...(b.interact ? [b.interact.onClick] : []),
   ]);
-  const deadLinks = targets.filter((a) => a.kind === 'page' && !pageIds.has(a.pageId));
+  const blockIds = new Set(blocks.map((b) => b.id));
+  const deadLinks = targets.filter(
+    (a) =>
+      (a.kind === 'page' && !pageIds.has(a.pageId)) ||
+      (a.kind === 'popup' && !blockIds.has(a.blockId)),
+  );
+  const unsetPaths = blocks.filter(
+    (b) => b.type === 'pathway' && b.choices.some((c) => !pageIds.has(c.pageId)),
+  );
+  if (unsetPaths.length)
+    checks.push({
+      ok: false,
+      text: `${plural(unsetPaths.length, 'pathway choice')} block with a choice that goes nowhere`,
+    });
   if (deadLinks.length)
     checks.push({
       ok: false,
-      text: `${plural(deadLinks.length, 'click action')} going to a page that no longer exists`,
+      text: `${plural(deadLinks.length, 'click action')} going to a page or pop-up that no longer exists`,
     });
 
   for (const layout of layoutsFor(doc.screens)) {

@@ -18,6 +18,16 @@ export interface Page {
   kind: 'flow' | 'canvas';
   blocks: Block[];
   pick?: PickRule;
+  transition?: Transition;
+}
+
+export type Transition = 'none' | 'fade' | 'slide';
+export type AnimKind = 'none' | 'fade' | 'fadeUp' | 'slideLeft' | 'zoom';
+
+export interface Anim {
+  in: AnimKind;
+  out: AnimKind;
+  delay: number;
 }
 
 export interface PickRule {
@@ -32,7 +42,11 @@ export type HoverLook = 'none' | 'scale' | 'glow' | 'lift' | 'border';
 export type PickedLook = 'none' | 'tick' | 'glow' | 'dim';
 export type VisitedLook = 'none' | 'fade';
 
-export type ClickAction = { kind: 'none' } | { kind: 'pick' } | ButtonAction;
+export type ClickAction =
+  | { kind: 'none' }
+  | { kind: 'pick' }
+  | { kind: 'popup'; blockId: string }
+  | ButtonAction;
 
 export interface Interaction {
   hover: HoverLook;
@@ -54,6 +68,7 @@ export interface BlockBase {
   id: string;
   frames?: Partial<Record<Layout, Frame>>;
   interact?: Interaction;
+  anim?: Anim;
 }
 
 export interface HeadingBlock extends BlockBase {
@@ -124,6 +139,164 @@ export interface CheckBlock extends BlockBase {
   scored: boolean;
 }
 
+export interface AudioCue {
+  id: string;
+  at: number;
+  blockId: string;
+}
+
+export interface AudioBlock extends BlockBase {
+  type: 'audio';
+  src: string;
+  fileName: string;
+  mode: 'narration' | 'background';
+  cues: AudioCue[];
+}
+
+export interface AnimationBlock extends BlockBase {
+  type: 'animation';
+  src: string;
+  fileName: string;
+  loop: boolean;
+}
+
+export interface ScrollBlock extends BlockBase {
+  type: 'scroll';
+  html: string;
+  height: number;
+}
+
+export interface Panel {
+  id: string;
+  title: string;
+  html: string;
+}
+
+export interface PopupBlock extends BlockBase {
+  type: 'popup';
+  label: string;
+  title: string;
+  html: string;
+  src: string;
+  fileName: string;
+  showButton: boolean;
+}
+
+export interface AccordionBlock extends BlockBase {
+  type: 'accordion';
+  items: Panel[];
+}
+
+export interface TabsBlock extends BlockBase {
+  type: 'tabs';
+  items: Panel[];
+}
+
+export interface FlipCard {
+  id: string;
+  front: string;
+  frontSrc: string;
+  back: string;
+}
+
+export interface FlipBlock extends BlockBase {
+  type: 'flip';
+  cards: FlipCard[];
+}
+
+export interface Hotspot {
+  id: string;
+  x: number;
+  y: number;
+  title: string;
+  html: string;
+}
+
+export interface HotspotBlock extends BlockBase {
+  type: 'hotspots';
+  src: string;
+  fileName: string;
+  alt: string;
+  spots: Hotspot[];
+}
+
+export interface PathwayBlock extends BlockBase {
+  type: 'pathway';
+  prompt: string;
+  choices: { id: string; label: string; pageId: string }[];
+}
+
+export interface QuestionBase extends BlockBase {
+  feedbackCorrect: string;
+  feedbackWrong: string;
+  required: boolean;
+  scored: boolean;
+}
+
+export interface DragItem {
+  id: string;
+  text: string;
+  target: string;
+}
+
+export interface DropTarget {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface DragBlock extends QuestionBase {
+  type: 'drag';
+  style: 'order' | 'targets' | 'groups';
+  prompt: string;
+  items: DragItem[];
+  targets: DropTarget[];
+  groups: { id: string; label: string }[];
+  src: string;
+  fileName: string;
+}
+
+export interface MatchBlock extends QuestionBase {
+  type: 'match';
+  prompt: string;
+  mode: 'drag' | 'dropdown';
+  pairs: { id: string; left: string; right: string }[];
+}
+
+export interface BlankBlock extends QuestionBase {
+  type: 'blank';
+  prompt: string;
+  text: string;
+}
+
+export interface WrittenBlock extends BlockBase {
+  type: 'written';
+  prompt: string;
+  length: 'short' | 'essay';
+  required: boolean;
+}
+
+export interface LikertBlock extends BlockBase {
+  type: 'likert';
+  prompt: string;
+  rows: { id: string; text: string }[];
+  scale: string[];
+  required: boolean;
+}
+
+export interface ResultsBlock extends BlockBase {
+  type: 'results';
+  passText: string;
+  failText: string;
+  retry: boolean;
+  review: boolean;
+  negative: boolean;
+  pool: number | null;
+}
+
 export type Align = 'left' | 'center';
 
 export type Block =
@@ -134,7 +307,24 @@ export type Block =
   | EmbedBlock
   | DividerBlock
   | ButtonBlock
-  | CheckBlock;
+  | CheckBlock
+  | AudioBlock
+  | AnimationBlock
+  | ScrollBlock
+  | PopupBlock
+  | AccordionBlock
+  | TabsBlock
+  | FlipBlock
+  | HotspotBlock
+  | PathwayBlock
+  | DragBlock
+  | MatchBlock
+  | BlankBlock
+  | WrittenBlock
+  | LikertBlock
+  | ResultsBlock;
+
+export type GradedBlock = CheckBlock | DragBlock | MatchBlock | BlankBlock;
 
 export type BlockType = Block['type'];
 
@@ -194,15 +384,135 @@ export function newBlock(type: BlockType): Block {
         required: true,
         scored: true,
       };
+    case 'audio':
+      return { id, type, src: '', fileName: '', mode: 'narration', cues: [] };
+    case 'animation':
+      return { id, type, src: '', fileName: '', loop: true };
+    case 'scroll':
+      return { id, type, html: '<p>Long text goes here.</p>', height: 240 };
+    case 'popup':
+      return {
+        id,
+        type,
+        label: 'Learn more',
+        title: 'More information',
+        html: '<p>Type the pop-up content here.</p>',
+        src: '',
+        fileName: '',
+        showButton: true,
+      };
+    case 'accordion':
+      return { id, type, items: [panel(1), panel(2)] };
+    case 'tabs':
+      return { id, type, items: [panel(1), panel(2)] };
+    case 'flip':
+      return {
+        id,
+        type,
+        cards: [
+          { id: uid(), front: 'Front', frontSrc: '', back: 'Back' },
+          { id: uid(), front: 'Front', frontSrc: '', back: 'Back' },
+        ],
+      };
+    case 'hotspots':
+      return { id, type, src: '', fileName: '', alt: '', spots: [] };
+    case 'pathway':
+      return {
+        id,
+        type,
+        prompt: 'What would you do next?',
+        choices: [
+          { id: uid(), label: 'Option A', pageId: '' },
+          { id: uid(), label: 'Option B', pageId: '' },
+        ],
+      };
+    case 'drag':
+      return {
+        id,
+        type,
+        style: 'order',
+        prompt: 'Put these in the right order.',
+        items: [
+          { id: uid(), text: 'First', target: '' },
+          { id: uid(), text: 'Second', target: '' },
+          { id: uid(), text: 'Third', target: '' },
+        ],
+        targets: [],
+        groups: [
+          { id: uid(), label: 'Group A' },
+          { id: uid(), label: 'Group B' },
+        ],
+        src: '',
+        fileName: '',
+        feedbackCorrect: "That's right!",
+        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        required: true,
+        scored: true,
+      };
+    case 'match':
+      return {
+        id,
+        type,
+        prompt: 'Match each item to its pair.',
+        mode: 'drag',
+        pairs: [
+          { id: uid(), left: 'Item 1', right: 'Match 1' },
+          { id: uid(), left: 'Item 2', right: 'Match 2' },
+        ],
+        feedbackCorrect: "That's right!",
+        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        required: true,
+        scored: true,
+      };
+    case 'blank':
+      return {
+        id,
+        type,
+        prompt: 'Fill in the blanks.',
+        text: 'The capital of Australia is [Canberra].',
+        feedbackCorrect: "That's right!",
+        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        required: true,
+        scored: true,
+      };
+    case 'written':
+      return { id, type, prompt: 'Type your answer.', length: 'short', required: false };
+    case 'likert':
+      return {
+        id,
+        type,
+        prompt: 'How much do you agree?',
+        rows: [{ id: uid(), text: 'This course was useful' }],
+        scale: ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'],
+        required: false,
+      };
+    case 'results':
+      return {
+        id,
+        type,
+        passText: 'Congratulations, you passed!',
+        failText: "You didn't reach the pass mark this time.",
+        retry: true,
+        review: true,
+        negative: false,
+        pool: null,
+      };
   }
 }
 
-export const isQuestion = (b: Block): b is CheckBlock => b.type === 'check';
+const panel = (n: number) => ({
+  id: uid(),
+  title: `Section ${n}`,
+  html: '<p>Type the content here.</p>',
+});
 
-export function scoredQuestions(doc: CourseDoc): CheckBlock[] {
+export const isQuestion = (b: Block): b is GradedBlock =>
+  b.type === 'check' || b.type === 'drag' || b.type === 'match' || b.type === 'blank';
+
+export function scoredQuestions(doc: CourseDoc): GradedBlock[] {
   return doc.pages
     .flatMap((p) => p.blocks)
-    .filter((b): b is CheckBlock => isQuestion(b) && b.scored);
+    .filter((b): b is GradedBlock => isQuestion(b) && b.scored);
 }
 
 export function moveItem<T>(list: T[], from: number, to: number): void {

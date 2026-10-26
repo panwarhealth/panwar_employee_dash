@@ -190,9 +190,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
         courseId={courseId}
         selectedId={blockId}
         onSelect={setBlockId}
-        onRenamePage={(title) =>
-          setDoc((d) => ops.updatePage(d, page.id, (p) => (p.title = title)))
-        }
+        onPage={(fn) => setDoc((d) => ops.updatePage(d, page.id, fn))}
         onAddBlock={() => setModal('add')}
         onMoveBlock={(from, to) => setDoc((d) => ops.moveBlock(d, page.id, from, to))}
         onChangeBlock={(id, update) => setDoc((d) => ops.updateBlock(d, page.id, id, update))}
