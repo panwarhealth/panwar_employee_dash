@@ -72,6 +72,17 @@ export function Inspector({
             onChange={(t) => onPage((p) => (p.transition = t))}
           />
         </div>
+        <div className="mt-2">
+          <Select
+            label="Page navigation"
+            value={page.ownNav ? 'own' : 'bar'}
+            options={[
+              { value: 'bar', label: 'Back and Continue in the bottom bar' },
+              { value: 'own', label: "Only this page's own buttons" },
+            ]}
+            onChange={(v) => onPage((p) => (p.ownNav = v === 'own'))}
+          />
+        </div>
       </div>
 
       <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">

@@ -363,21 +363,23 @@ export function Player({
       </main>
       {openPopup && <PopupLayer block={openPopup} onClose={() => setPopup(null)} />}
       <nav className="cp-nav">
-        <button
-          type="button"
-          className="cp-navbtn"
-          disabled={index === 0}
-          onClick={() => go(pages[index - 1].id)}
-        >
-          Back
-        </button>
+        {!page.ownNav && (
+          <button
+            type="button"
+            className="cp-navbtn"
+            disabled={index === 0}
+            onClick={() => go(pages[index - 1].id)}
+          >
+            Back
+          </button>
+        )}
         <div className="cp-prog">
           <i style={{ width: `${((index + 1) / pages.length) * 100}%` }} />
         </div>
         <span className="cp-count">
           {index + 1} of {pages.length}
         </span>
-        {!(last && onResultsPage) && (
+        {!page.ownNav && !(last && onResultsPage) && (
           <button
             type="button"
             className="cp-navbtn cp-navbtn-next"

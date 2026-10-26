@@ -68,6 +68,7 @@ export interface Page {
   triggers: Trigger[];
   pick?: PickRule;
   transition?: Transition;
+  ownNav?: boolean;
 }
 
 export type Transition = 'none' | 'fade' | 'slide';
