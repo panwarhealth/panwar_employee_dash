@@ -4,6 +4,7 @@ import { CanvasStage } from '@/course/canvas';
 import { frameFor, frameStyle, growsToFit, MENU_CORNER } from '@/course/canvasLayout';
 import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
+import { InlineText } from './InlineText';
 
 const SAFE_ZONE_KEY = 'course-editor.show-safe-zone';
 
@@ -57,6 +58,7 @@ export function CanvasEditor({
   onSelect,
   onFrame,
   onRemove,
+  onText,
 }: {
   doc: CourseDoc;
   page: Page;
@@ -65,12 +67,14 @@ export function CanvasEditor({
   onSelect: (id: string | null) => void;
   onFrame: (blockId: string, frame: Frame) => void;
   onRemove: (blockId: string) => void;
+  onText: (blockId: string, value: string) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [live, setLive] = useState<Frame | null>(null);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
   const [showSafeZone, setShowSafeZone] = useState(readSafeZone);
+  const [editing, setEditing] = useState<string | null>(null);
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
 
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
@@ -219,17 +223,32 @@ export function CanvasEditor({
             renderObject={(b, frame, content) => {
               const f = drag?.id === b.id && live ? live : frame;
               const on = b.id === selectedId;
+              const typing = editing === b.id && (b.type === 'heading' || b.type === 'text');
               return (
                 <div
                   key={b.id}
                   className={cn(
-                    'cp-obj cursor-move touch-none select-none [&>*:first-child]:pointer-events-none',
+                    'cp-obj',
+                    !typing &&
+                      'cursor-move touch-none select-none [&>*:first-child]:pointer-events-none',
                     !b.frames?.[layout] && 'opacity-60 outline-dashed outline-1 outline-amber-500',
                   )}
                   style={frameStyle(f, growsToFit(b))}
-                  onPointerDown={(e) => begin(e, b.id, 'move')}
+                  onPointerDown={typing ? undefined : (e) => begin(e, b.id, 'move')}
+                  onDoubleClick={growsToFit(b) ? () => setEditing(b.id) : undefined}
                 >
-                  {content}
+                  {typing ? (
+                    <InlineText
+                      block={b}
+                      doc={doc}
+                      onDone={(value) => {
+                        setEditing(null);
+                        onText(b.id, value);
+                      }}
+                    />
+                  ) : (
+                    content
+                  )}
                   {on && (
                     <>
                       <i className="pointer-events-none absolute -inset-[3px] rounded-[2px] border-2 border-ph-purple" />

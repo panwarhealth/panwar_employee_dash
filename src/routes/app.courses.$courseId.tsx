@@ -201,6 +201,14 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                 onSelect={setBlockId}
                 onFrame={setFrame}
                 onRemove={removeBlock}
+                onText={(id, value) =>
+                  setDoc((d) =>
+                    ops.updateBlock(d, page.id, id, (b) => {
+                      if (b.type === 'text') b.html = value;
+                      if (b.type === 'heading') b.text = value;
+                    }),
+                  )
+                }
               />
             </div>
           ) : (
