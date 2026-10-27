@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Monitor, Settings, Smartphone } from 'lucide-react';
+import { ArrowLeft, Monitor, Settings, Smartphone, Sparkles } from 'lucide-react';
 import { CanvasEditor } from '@/components/courses/CanvasEditor';
 import { getCourse } from '@/api/courses';
 import { Button } from '@/components/ui/button';
 import { AddBlockMenu } from '@/components/courses/AddBlockMenu';
+import { AssistantPanel } from '@/components/courses/AssistantPanel';
 import { ExportModal } from '@/components/courses/ExportModal';
 import { Inspector } from '@/components/courses/Inspector';
 import { PageList } from '@/components/courses/PageList';
@@ -18,6 +19,7 @@ import { newBlock, newPage, normalizeDoc, type CourseDoc, type Layout } from '@/
 import * as ops from '@/course/edit';
 import { fontFaces, fontOptions } from '@/course/typography';
 import { FontOptions } from '@/components/courses/fontContext';
+import { useCourseAssistant } from '@/hooks/useCourseAssistant';
 import { useCourseAutosave } from '@/hooks/useCourseAutosave';
 import { cn } from '@/lib/utils';
 import '@/course/player.css';
@@ -51,6 +53,8 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
     'add' | 'export' | 'settings' | 'preview' | 'variables' | null
   >(null);
   const save = useCourseAutosave(courseId, doc);
+  const assistant = useCourseAssistant(courseId, doc, setDoc);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   const page = doc.pages.find((p) => p.id === pageId) ?? doc.pages[0];
   const layout: Layout = doc.screens === 'both' ? (phone ? 'phone' : 'desktop') : doc.screens;
@@ -153,6 +157,17 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                   />
                 </div>
               )}
+              <button
+                type="button"
+                onClick={() => setAssistantOpen((o) => !o)}
+                className={cn(
+                  'flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium hover:bg-ph-charcoal/5 hover:text-ph-purple',
+                  assistantOpen || assistant.busy ? 'text-ph-purple' : 'text-ph-charcoal/70',
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI assistant
+              </button>
               <button
                 type="button"
                 onClick={() => setModal('variables')}
@@ -264,6 +279,18 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           doc={doc}
           onExported={() => void queryClient.invalidateQueries({ queryKey: ['courses'] })}
         />
+        {assistantOpen && (
+          <AssistantPanel
+            entries={assistant.entries}
+            busy={assistant.busy}
+            canUndo={assistant.canUndo}
+            onSend={(text) => void assistant.send(text)}
+            onDeck={(file) => void assistant.buildFromDeck(file)}
+            onStop={assistant.stop}
+            onUndo={assistant.undo}
+            onClose={() => setAssistantOpen(false)}
+          />
+        )}
         {modal === 'preview' && (
           <PreviewModal
             doc={doc}

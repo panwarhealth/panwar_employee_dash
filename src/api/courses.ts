@@ -45,3 +45,31 @@ export const uploadMedia = (id: string, file: File): Promise<{ url: string }> =>
 
 export const downloadMedia = (id: string, url: string): Promise<Blob> =>
   apiFetchBlob(`/courses/${id}/media?url=${encodeURIComponent(url)}`);
+
+export interface AssistantBlock {
+  type: string;
+  text?: string;
+  id?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+}
+
+export interface AssistantMessage {
+  role: 'user' | 'assistant';
+  content: string | unknown[];
+}
+
+export interface AssistantReply {
+  content: AssistantBlock[];
+  stop_reason: string | null;
+}
+
+export const assistantTurn = (
+  id: string,
+  body: { system: string; tools: unknown[]; messages: AssistantMessage[] },
+  signal?: AbortSignal,
+): Promise<AssistantReply> =>
+  apiFetch(`/courses/${id}/assistant`, { method: 'POST', body, signal });
+
+export const importMedia = (id: string, url: string): Promise<{ url: string }> =>
+  apiFetch(`/courses/${id}/media/import`, { method: 'POST', body: { url } });

@@ -1,4 +1,18 @@
-const ALLOWED = new Set(['P', 'BR', 'STRONG', 'EM', 'U', 'S', 'A', 'UL', 'OL', 'LI', 'SPAN']);
+const ALLOWED = new Set([
+  'P',
+  'BR',
+  'STRONG',
+  'EM',
+  'U',
+  'S',
+  'A',
+  'UL',
+  'OL',
+  'LI',
+  'SPAN',
+  'SUP',
+  'SUB',
+]);
 const DROP = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'IFRAME', 'OBJECT', 'NOSCRIPT']);
 const RENAME: Record<string, string> = {
   B: 'strong',
