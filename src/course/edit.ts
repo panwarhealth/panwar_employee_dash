@@ -92,4 +92,5 @@ const roundFrame = (f: Frame): Frame => ({
   w: round(f.w),
   h: round(f.h),
   r: Math.round(f.r),
+  ...(f.a && f.a !== 'auto' ? { a: f.a } : {}),
 });

@@ -26,13 +26,33 @@ export const frameFor = (page: Page, block: Block, layout: Layout): Frame =>
 
 export const growsToFit = (b: Block) => b.type === 'heading' || b.type === 'text';
 
-export const frameStyle = (f: Frame, grow = false): CSSProperties => ({
-  left: `${f.x}%`,
-  top: `${f.y}%`,
-  width: `${f.w}%`,
-  [grow ? 'minHeight' : 'height']: `${f.h}%`,
-  transform: f.r ? `rotate(${f.r}deg)` : undefined,
-});
+const zone = (start: number, size: number) => {
+  const centre = start + size / 2;
+  return centre < 100 / 3 ? 0 : centre > 200 / 3 ? 1 : 0.5;
+};
+
+export function anchorOf(f: Frame): { h: number; v: number } {
+  const a = f.a ?? 'auto';
+  if (a === 'auto') return { h: zone(f.x, f.w), v: zone(f.y, f.h) };
+  return {
+    h: a.endsWith('l') ? 0 : a.endsWith('r') ? 1 : 0.5,
+    v: a.startsWith('t') ? 0 : a.startsWith('b') ? 1 : 0.5,
+  };
+}
+
+const along = (k: number, at: number, size: string, full: string) =>
+  `calc(${k} * (${full} - var(${size})) + ${at / 100} * var(${size}))`;
+
+export const frameStyle = (f: Frame, grow = false): CSSProperties => {
+  const { h, v } = anchorOf(f);
+  return {
+    left: along(h, f.x, '--dw', '100cqw'),
+    top: along(v, f.y, '--dh', '100cqh'),
+    width: `calc(${f.w / 100} * var(--dw))`,
+    [grow ? 'minHeight' : 'height']: `calc(${f.h / 100} * var(--dh))`,
+    transform: f.r ? `rotate(${f.r}deg)` : undefined,
+  };
+};
 
 export function useCanvasLayout(screens: Screens): Layout {
   const query = '(orientation: portrait)';

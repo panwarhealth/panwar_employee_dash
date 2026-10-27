@@ -118,12 +118,15 @@ export interface Interaction {
   correct: boolean;
 }
 
+export type Anchor = 'auto' | 'tl' | 't' | 'tr' | 'l' | 'c' | 'r' | 'bl' | 'b' | 'br';
+
 export interface Frame {
   x: number;
   y: number;
   w: number;
   h: number;
   r: number;
+  a?: Anchor;
 }
 
 export interface BlockBase {
