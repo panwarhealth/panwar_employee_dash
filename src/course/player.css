@@ -33,7 +33,7 @@
 }
 
 .cp-shell {
-  min-height: 100vh;
+  min-height: var(--cp-vh, 100vh);
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -314,10 +314,10 @@
   width: 100%;
 }
 .cp-main-canvas .cp-stagewrap-desktop {
-  width: min(100%, calc((100vh - 92px) * 16 / 9));
+  width: min(100%, calc((var(--cp-vh, 100vh) - 92px) * 16 / 9));
 }
 .cp-main-canvas .cp-stagewrap-phone {
-  width: min(100%, calc((100vh - 92px) * 9 / 16));
+  width: min(100%, calc((var(--cp-vh, 100vh) - 92px) * 9 / 16));
 }
 .cp-stage {
   position: relative;
@@ -544,7 +544,7 @@
   flex-direction: column;
   gap: 0.8em;
   width: min(100%, 560px);
-  max-height: 90vh;
+  max-height: calc(var(--cp-vh, 100vh) * 0.9);
   overflow-y: auto;
   padding: 1.6em;
   border-radius: 8px;
