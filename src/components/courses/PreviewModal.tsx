@@ -38,10 +38,11 @@ export function PreviewModal({
         <button
           type="button"
           onClick={onClose}
-          className="flex items-center gap-1 rounded px-2 py-1 hover:bg-white/10"
+          title="Close preview (Esc)"
+          className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 font-semibold text-ph-charcoal shadow-md hover:bg-ph-purple hover:text-white"
         >
           <X className="h-4 w-4" />
-          Close
+          Close preview
         </button>
       </div>
       <div
