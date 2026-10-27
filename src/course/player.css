@@ -379,7 +379,6 @@
 .cp-obj .cp-img-fill {
   box-sizing: border-box;
   padding: 4%;
-  border-radius: 12px;
 }
 .cp-obj .cp-embed {
   aspect-ratio: auto;
