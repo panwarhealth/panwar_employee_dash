@@ -13,6 +13,7 @@ import {
 import { layoutsFor } from '@/course/canvasLayout';
 import * as ops from '@/course/edit';
 import { BLOCKS, blockLabel } from './blockMeta';
+import { pageFitWarnings } from './pageFit';
 
 export interface ToolOutcome {
   doc: CourseDoc;
@@ -240,10 +241,17 @@ export async function runTool(
         : after && doc.pages.some((p) => p.id === after)
           ? ops.insertPage(doc, after, page)
           : ops.updateCourse(doc, (d) => d.pages.push(page));
-      const warnings = pageWarnings(next, page);
+      const warnings = [...pageWarnings(next, page), ...(await pageFitWarnings(next, page))];
       return {
         doc: next,
-        result: JSON.stringify({ ok: true, page_id: page.id, warnings }),
+        result: JSON.stringify({
+          ok: true,
+          page_id: page.id,
+          warnings,
+          ...(warnings.length
+            ? { next: 'Fix these warnings with put_page before moving on.' }
+            : {}),
+        }),
         activity: `${exists ? 'Updated' : 'Built'} page: ${page.title}`,
       };
     }
