@@ -5,6 +5,16 @@ import { frameFor, frameStyle, UNSAFE_TOP } from '@/course/canvasLayout';
 import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
 
+const UNSAFE_KEY = 'course-editor.show-unsafe';
+
+function readUnsafe(): boolean {
+  try {
+    return localStorage.getItem(UNSAFE_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
 type Mode = 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 
 interface Drag {
@@ -60,6 +70,7 @@ export function CanvasEditor({
   const [drag, setDrag] = useState<Drag | null>(null);
   const [live, setLive] = useState<Frame | null>(null);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
+  const [showUnsafe, setShowUnsafe] = useState(readUnsafe);
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
 
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
@@ -231,15 +242,15 @@ export function CanvasEditor({
             }}
             overlay={
               <>
-                <div
-                  title="Clinical Studio's course controls cover this strip on phones. Keep buttons and key text out of it."
-                  className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end border-b border-dashed border-ph-pink/70 bg-[repeating-linear-gradient(135deg,rgba(236,72,153,0.12)_0_6px,transparent_6px_12px)] p-1"
-                  style={{ height: `${UNSAFE_TOP[layout]}%` }}
-                >
-                  <span className="rounded bg-white/85 px-1.5 py-px text-[10px] font-semibold text-ph-pink">
-                    Keep clear: LMS controls on phones
-                  </span>
-                </div>
+                {showUnsafe && (
+                  <div
+                    title="Clinical Studio's course controls cover this strip on phones. Keep buttons and key text out of it."
+                    className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end border-b border-dashed border-ph-charcoal/25 p-0.5"
+                    style={{ height: `${UNSAFE_TOP[layout]}%` }}
+                  >
+                    <span className="text-[9px] text-ph-charcoal/40">LMS controls on phones</span>
+                  </div>
+                )}
                 {guides.x.map((x) => (
                   <i
                     key={`x${x}`}
@@ -263,6 +274,21 @@ export function CanvasEditor({
         Drag to move, corners to resize, top handle to rotate. Arrow keys nudge, Shift for bigger
         steps, hold Alt to stop snapping.
       </p>
+      <label className="flex items-center gap-1.5 text-xs text-ph-charcoal/50">
+        <input
+          type="checkbox"
+          checked={showUnsafe}
+          onChange={(e) => {
+            setShowUnsafe(e.target.checked);
+            try {
+              localStorage.setItem(UNSAFE_KEY, e.target.checked ? '1' : '0');
+            } catch {
+              return;
+            }
+          }}
+        />
+        Show the strip LMS controls cover on phones
+      </label>
     </div>
   );
 }
