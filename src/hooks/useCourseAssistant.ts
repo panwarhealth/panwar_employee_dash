@@ -39,11 +39,18 @@ export function useCourseAssistant(
     setDoc(next);
   };
 
+  const userBlocks = () => {
+    const last = history.current[history.current.length - 1];
+    if (last?.role !== 'user') return null;
+    if (typeof last.content === 'string') last.content = [{ type: 'text', text: last.content }];
+    return last.content as { type: string; text?: string }[];
+  };
+
   async function run(prompt: string, controller: AbortController) {
-    history.current.push({
-      role: 'user',
-      content: `${prompt}\n\n<course_outline>${courseOutline(docRef.current)}</course_outline>`,
-    });
+    const text = `${prompt}\n\n<course_outline>${courseOutline(docRef.current)}</course_outline>`;
+    const pending = userBlocks();
+    if (pending) pending.push({ type: 'text', text });
+    else history.current.push({ role: 'user', content: text });
     for (let step = 0; step < MAX_STEPS; step++) {
       const reply = await assistantTurn(
         courseId,
@@ -60,13 +67,11 @@ export function useCourseAssistant(
         return;
       }
       if (reply.stop_reason === 'max_tokens') {
-        const last = history.current[history.current.length - 1];
         const nudge = {
           type: 'text',
           text: 'Your last reply was too long and got cut off, so none of it was used. Do less in each reply: one put_page call at a time.',
         };
-        if (typeof last.content === 'string') last.content = [{ type: 'text', text: last.content }];
-        const blocks = last.content as { type: string; text?: string }[];
+        const blocks = userBlocks()!;
         if (blocks.some((b) => b.type === 'text' && b.text === nudge.text)) {
           log(
             'error',
@@ -105,11 +110,9 @@ export function useCourseAssistant(
     abort.current = controller;
     setBusy(true);
     setUndo(docRef.current);
-    const mark = history.current.length;
     try {
       await work(controller);
     } catch (e) {
-      history.current.length = mark;
       if (controller.signal.aborted) log('activity', 'Stopped');
       else log('error', e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
