@@ -12,7 +12,7 @@ ${schema}
 
 How the editor works:
 - A page is "flow" (blocks stack top to bottom and reflow on any screen) or "canvas" (objects placed by hand; each block has frames {x, y, w, h, r} in % of the stage, one per layout: "desktop" is 16:9, "phone" is 9:16; block order is layer order, first is at the back). Use flow pages unless the design depends on where things sit, such as drop targets over a picture. When the course's screens are "both", every canvas block needs a desktop and a phone frame.
-- On phones Clinical Studio's own controls float over the top of the course: the top ${UNSAFE_TOP.phone}% of a phone-layout canvas and the top ${UNSAFE_TOP.desktop}% of a desktop-layout canvas. Keep buttons and key text out of that strip.
+- On phones Clinical Studio's own controls float over the top of the course: the top ${UNSAFE_TOP.phone}% of a phone-layout canvas and the top ${UNSAFE_TOP.desktop}% of a desktop-layout canvas. The controls fade away after a few seconds, so titles, text and pictures can use that strip like the rest of the page; only keep buttons and anything else to click or drag out of it. Start the page title near the top, as on the slide, rather than pushing everything down.
 - html fields take simple HTML: p, br, strong, em, u, s, sup, sub, a, ul, ol, li and span with inline colour, font and size styles.
 - Graded questions are check, drag, match, blank and slider. A results block shows the score against the pass mark.
 - Logic copies Storyline: a trigger runs an action when an event happens, if its conditions pass. A click on an object is a trigger with when {kind: "click", blockId}. A popup block is a button that opens a layer; set showButton false and use a "popup" trigger action to open it from any object instead.

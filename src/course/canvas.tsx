@@ -47,9 +47,11 @@ function Fit({ children }: { children: ReactNode }) {
     resize.observe(outer);
     const mutate = new MutationObserver(fit);
     mutate.observe(content, { childList: true, subtree: true, characterData: true });
+    content.addEventListener('load', fit, true);
     return () => {
       resize.disconnect();
       mutate.disconnect();
+      content.removeEventListener('load', fit, true);
     };
   }, []);
 
