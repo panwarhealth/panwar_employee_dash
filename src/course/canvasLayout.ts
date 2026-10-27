@@ -24,11 +24,13 @@ export const MENU_CORNER: Record<Layout, { w: number; h: number }> = {
 export const frameFor = (page: Page, block: Block, layout: Layout): Frame =>
   block.frames?.[layout] ?? autoFrame(page, block, layout);
 
-export const frameStyle = (f: Frame): CSSProperties => ({
+export const growsToFit = (b: Block) => b.type === 'heading' || b.type === 'text';
+
+export const frameStyle = (f: Frame, grow = false): CSSProperties => ({
   left: `${f.x}%`,
   top: `${f.y}%`,
   width: `${f.w}%`,
-  height: `${f.h}%`,
+  [grow ? 'minHeight' : 'height']: `${f.h}%`,
   transform: f.r ? `rotate(${f.r}deg)` : undefined,
 });
 

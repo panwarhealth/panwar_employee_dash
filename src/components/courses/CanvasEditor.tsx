@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
-import { frameFor, frameStyle, MENU_CORNER } from '@/course/canvasLayout';
+import { frameFor, frameStyle, growsToFit, MENU_CORNER } from '@/course/canvasLayout';
 import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
 
@@ -226,7 +226,7 @@ export function CanvasEditor({
                     'cp-obj cursor-move touch-none select-none [&>*:first-child]:pointer-events-none',
                     !b.frames?.[layout] && 'opacity-60 outline-dashed outline-1 outline-amber-500',
                   )}
-                  style={frameStyle(f)}
+                  style={frameStyle(f, growsToFit(b))}
                   onPointerDown={(e) => begin(e, b.id, 'move')}
                 >
                   {content}

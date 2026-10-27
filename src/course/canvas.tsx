@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { Block, Frame, Layout, Page } from './doc';
 import { BlockView } from './blocks';
 import type { BlockContext } from './context';
-import { frameFor, frameStyle } from './canvasLayout';
+import { frameFor, frameStyle, growsToFit } from './canvasLayout';
 import { animClass, animStyle } from './anim';
 
 function objectClass(block: Block, ctx: BlockContext): string {
@@ -85,14 +85,14 @@ export function CanvasStage({
         {page.blocks.map((b) => {
           const frame = frameFor(page, b, layout);
           const view = <BlockView block={b} ctx={ctx} />;
-          const content = b.type === 'scroll' ? view : <Fit>{view}</Fit>;
+          const content = b.type === 'scroll' || growsToFit(b) ? view : <Fit>{view}</Fit>;
           if (renderObject) return renderObject(b, frame, content);
           const clickable = b.type !== 'button' && ctx.clickable.has(b.id);
           return (
             <div
               key={b.id}
               className={`${objectClass(b, ctx)} ${animClass(b, leaving, !!hidden?.has(b.id))}`}
-              style={{ ...frameStyle(frame), ...animStyle(b) }}
+              style={{ ...frameStyle(frame, growsToFit(b)), ...animStyle(b) }}
               onClick={clickable ? () => ctx.click(b) : undefined}
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}
