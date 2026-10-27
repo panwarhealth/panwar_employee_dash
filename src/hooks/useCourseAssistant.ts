@@ -60,8 +60,23 @@ export function useCourseAssistant(
         return;
       }
       if (reply.stop_reason === 'max_tokens') {
-        log('error', 'The reply got cut off for being too long. Ask it to carry on.');
-        return;
+        const last = history.current[history.current.length - 1];
+        const nudge = {
+          type: 'text',
+          text: 'Your last reply was too long and got cut off, so none of it was used. Do less in each reply: one put_page call at a time.',
+        };
+        if (typeof last.content === 'string') last.content = [{ type: 'text', text: last.content }];
+        const blocks = last.content as { type: string; text?: string }[];
+        if (blocks.some((b) => b.type === 'text' && b.text === nudge.text)) {
+          log(
+            'error',
+            'The reply got cut off for being too long twice in a row. Ask it to carry on.',
+          );
+          return;
+        }
+        blocks.push(nudge);
+        log('activity', 'Reply was too long, asking for a smaller step');
+        continue;
       }
       history.current.push({ role: 'assistant', content: reply.content });
       const uses = reply.content.filter((b) => b.type === 'tool_use');
