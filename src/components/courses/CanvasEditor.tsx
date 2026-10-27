@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
-import { frameFor, frameStyle, UNSAFE_TOP } from '@/course/canvasLayout';
+import { frameFor, frameStyle, MENU_CORNER } from '@/course/canvasLayout';
 import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
 
@@ -259,13 +259,14 @@ export function CanvasEditor({
               <>
                 {showSafeZone && (
                   <div
-                    title="Clinical Studio's course controls cover this strip on phones. Keep buttons and key text out of it."
-                    className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end border-b border-dashed border-ph-pink/50 bg-ph-pink/[0.06] p-1"
-                    style={{ height: `${UNSAFE_TOP[layout]}%` }}
+                    title="Clinical Studio's menu button sits over this corner on phones. Keep buttons out of it."
+                    className="pointer-events-none absolute left-0 top-0 flex items-center justify-center border-b border-r border-dashed border-ph-pink/50 bg-ph-pink/[0.06]"
+                    style={{
+                      width: `${MENU_CORNER[layout].w}%`,
+                      height: `${MENU_CORNER[layout].h}%`,
+                    }}
                   >
-                    <span className="rounded bg-white/70 px-1 text-[10px] font-medium text-ph-pink/80">
-                      Outside safe zone: LMS controls on phones
-                    </span>
+                    <span className="text-[10px] font-medium text-ph-pink/80">Menu</span>
                   </div>
                 )}
                 {guides.x.map((x) => (
