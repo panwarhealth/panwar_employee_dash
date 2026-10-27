@@ -341,6 +341,17 @@ export interface BlankBlock extends QuestionBase {
   text: string;
 }
 
+export interface SliderBlock extends QuestionBase {
+  type: 'slider';
+  prompt: string;
+  min: number;
+  max: number;
+  step: number;
+  answer: number;
+  tolerance: number;
+  unit: string;
+}
+
 export interface WrittenBlock extends BlockBase {
   type: 'written';
   prompt: string;
@@ -390,11 +401,12 @@ export type Block =
   | DragBlock
   | MatchBlock
   | BlankBlock
+  | SliderBlock
   | WrittenBlock
   | LikertBlock
   | ResultsBlock;
 
-export type GradedBlock = CheckBlock | DragBlock | MatchBlock | BlankBlock;
+export type GradedBlock = CheckBlock | DragBlock | MatchBlock | BlankBlock | SliderBlock;
 
 export type BlockType = Block['type'];
 
@@ -547,6 +559,22 @@ export function newBlock(type: BlockType): Block {
         required: true,
         scored: true,
       };
+    case 'slider':
+      return {
+        id,
+        type,
+        prompt: 'Move the slider to your answer.',
+        min: 0,
+        max: 100,
+        step: 1,
+        answer: 50,
+        tolerance: 0,
+        unit: '%',
+        feedbackCorrect: "That's right!",
+        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        required: true,
+        scored: true,
+      };
     case 'written':
       return { id, type, prompt: 'Type your answer.', length: 'short', required: false };
     case 'likert':
@@ -579,7 +607,11 @@ const panel = (n: number) => ({
 });
 
 export const isQuestion = (b: Block): b is GradedBlock =>
-  b.type === 'check' || b.type === 'drag' || b.type === 'match' || b.type === 'blank';
+  b.type === 'check' ||
+  b.type === 'drag' ||
+  b.type === 'match' ||
+  b.type === 'blank' ||
+  b.type === 'slider';
 
 export function scoredQuestions(doc: CourseDoc): GradedBlock[] {
   return doc.pages

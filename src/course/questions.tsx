@@ -13,6 +13,7 @@ import type {
   LikertBlock,
   MatchBlock,
   ResultsBlock,
+  SliderBlock,
   WrittenBlock,
 } from './doc';
 import type { BlockContext } from './context';
@@ -457,6 +458,62 @@ export function BlankView({ block, ctx }: { block: BlankBlock; ctx: BlockContext
             );
           })}
         </p>
+      )}
+    </QuestionFrame>
+  );
+}
+
+export function SliderView({ block, ctx }: { block: SliderBlock; ctx: BlockContext }) {
+  const saved = ctx.answers[block.id]?.selected[0];
+  const [value, setValue] = useState(saved !== undefined ? Number(saved) : block.min);
+  const [moved, setMoved] = useState(saved !== undefined);
+  const correct = Math.abs(value - block.answer) <= block.tolerance;
+
+  return (
+    <QuestionFrame
+      block={block}
+      ctx={ctx}
+      prompt={block.prompt}
+      response={[String(value)]}
+      correct={correct}
+      ready={moved}
+      onReset={() => {
+        setValue(block.min);
+        setMoved(false);
+      }}
+    >
+      {({ locked, submitted }) => (
+        <div className="cp-slider">
+          <output
+            className={`cp-slider-val${submitted ? (correct ? ' cp-right' : ' cp-wrong') : ''}`}
+          >
+            {value}
+            {block.unit}
+          </output>
+          <input
+            type="range"
+            min={block.min}
+            max={block.max}
+            step={block.step}
+            value={value}
+            disabled={locked}
+            aria-label={block.prompt}
+            onChange={(e) => {
+              setValue(Number(e.target.value));
+              setMoved(true);
+            }}
+          />
+          <div className="cp-slider-ends">
+            <span>
+              {block.min}
+              {block.unit}
+            </span>
+            <span>
+              {block.max}
+              {block.unit}
+            </span>
+          </div>
+        </div>
       )}
     </QuestionFrame>
   );

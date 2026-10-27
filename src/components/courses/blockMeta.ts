@@ -48,6 +48,7 @@ export const BLOCKS: BlockMeta[] = [
   },
   { type: 'match', name: 'Matching', detail: 'Pair items, drag or dropdown', group: 'Questions' },
   { type: 'blank', name: 'Fill in the blank', group: 'Questions' },
+  { type: 'slider', name: 'Slider', detail: 'Pick a number on a scale', group: 'Questions' },
   {
     type: 'written',
     name: 'Written response',
@@ -97,6 +98,7 @@ function labelText(b: Block): string {
     case 'drag':
     case 'match':
     case 'blank':
+    case 'slider':
     case 'written':
     case 'likert':
       return b.prompt;

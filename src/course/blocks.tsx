@@ -18,6 +18,7 @@ import {
   LikertView,
   MatchView,
   ResultsView,
+  SliderView,
   WrittenView,
 } from './questions';
 
@@ -138,6 +139,8 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       return <MatchView block={block} ctx={ctx} />;
     case 'blank':
       return <BlankView block={block} ctx={ctx} />;
+    case 'slider':
+      return <SliderView block={block} ctx={ctx} />;
     case 'written':
       return <WrittenView block={block} ctx={ctx} />;
     case 'likert':

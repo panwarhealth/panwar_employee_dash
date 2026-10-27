@@ -18,6 +18,7 @@ import {
   type QuestionBase,
   type ResultsBlock,
   type ScrollBlock,
+  type SliderBlock,
   type TabsBlock,
   type WrittenBlock,
 } from '@/course/doc';
@@ -765,6 +766,41 @@ export function BlankForm({ block, set }: { block: BlankBlock; set: Edit<BlankBl
         Put each answer in [square brackets]. Separate other accepted answers with |, like
         [colour|color].
       </p>
+      <QuestionCommon block={block} set={set} />
+    </>
+  );
+}
+
+export function SliderForm({ block, set }: { block: SliderBlock; set: Edit<SliderBlock> }) {
+  return (
+    <>
+      <TextArea
+        label="Question"
+        value={block.prompt}
+        onChange={(v) => set((b) => (b.prompt = v))}
+      />
+      <div className="grid grid-cols-3 gap-2">
+        <NumberInput label="From" value={block.min} onChange={(n) => set((b) => (b.min = n))} />
+        <NumberInput label="To" value={block.max} onChange={(n) => set((b) => (b.max = n))} />
+        <NumberInput
+          label="Step"
+          value={block.step}
+          onChange={(n) => set((b) => (b.step = n > 0 ? n : 1))}
+        />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <NumberInput
+          label="Correct answer"
+          value={block.answer}
+          onChange={(n) => set((b) => (b.answer = n))}
+        />
+        <NumberInput
+          label="Allow +/-"
+          value={block.tolerance}
+          onChange={(n) => set((b) => (b.tolerance = Math.max(0, n)))}
+        />
+        <TextInput label="Unit" value={block.unit} onChange={(v) => set((b) => (b.unit = v))} />
+      </div>
       <QuestionCommon block={block} set={set} />
     </>
   );

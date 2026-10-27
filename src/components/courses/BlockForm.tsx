@@ -7,6 +7,7 @@ import {
   AnimationForm,
   AudioForm,
   BlankForm,
+  SliderForm,
   DragForm,
   FlipForm,
   HotspotForm,
@@ -221,6 +222,8 @@ export function BlockForm({
       return <MatchForm block={block} set={set<typeof block>} />;
     case 'blank':
       return <BlankForm block={block} set={set<typeof block>} />;
+    case 'slider':
+      return <SliderForm block={block} set={set<typeof block>} />;
     case 'written':
       return <WrittenForm block={block} doc={doc} set={set<typeof block>} />;
     case 'likert':
