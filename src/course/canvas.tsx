@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { Block, Frame, Layout, Page } from './doc';
 import { BlockView } from './blocks';
 import type { BlockContext } from './context';
@@ -23,6 +23,50 @@ function objectClass(block: Block, ctx: BlockContext): string {
     .join(' ');
 }
 
+function Fit({ children }: { children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const outer = box.current;
+    const inner = outer?.firstElementChild as HTMLElement | null;
+    const content = inner?.firstElementChild as HTMLElement | null;
+    if (!outer || !inner || !content) return;
+    const apply = (s: number) => {
+      inner.style.width = s < 1 ? `${100 / s}%` : '';
+      inner.style.height = s < 1 ? `${100 / s}%` : '';
+      inner.style.transform = s < 1 ? `scale(${s})` : '';
+    };
+    const fit = () => {
+      let s = 1;
+      apply(s);
+      for (let i = 0; i < 12; i++) {
+        const ratio = Math.min(
+          content.clientHeight / content.scrollHeight,
+          content.clientWidth / content.scrollWidth,
+        );
+        if (!(ratio < 0.99)) break;
+        s = Math.max(0.25, s * ratio);
+        apply(s);
+      }
+    };
+    fit();
+    const resize = new ResizeObserver(fit);
+    resize.observe(outer);
+    const mutate = new MutationObserver(fit);
+    mutate.observe(content, { childList: true, subtree: true, characterData: true });
+    return () => {
+      resize.disconnect();
+      mutate.disconnect();
+    };
+  }, []);
+
+  return (
+    <div ref={box} className="cp-fit">
+      <div className="cp-fit-in">{children}</div>
+    </div>
+  );
+}
+
 export function CanvasStage({
   page,
   layout,
@@ -45,7 +89,8 @@ export function CanvasStage({
       <div className={`cp-stage cp-stage-${layout}`}>
         {page.blocks.map((b) => {
           const frame = frameFor(page, b, layout);
-          const content = <BlockView block={b} ctx={ctx} />;
+          const view = <BlockView block={b} ctx={ctx} />;
+          const content = b.type === 'scroll' ? view : <Fit>{view}</Fit>;
           if (renderObject) return renderObject(b, frame, content);
           const clickable = b.type !== 'button' && ctx.clickable.has(b.id);
           return (

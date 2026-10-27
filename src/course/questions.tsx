@@ -5,6 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   BlankBlock,
   CheckBlock,
@@ -145,7 +146,13 @@ const fromPlacement = (p: Placement) =>
 
 function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void) {
   const [selected, setSelected] = useState<string | null>(null);
-  const [ghost, setGhost] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [ghost, setGhost] = useState<{
+    text: string;
+    x: number;
+    y: number;
+    root: Element;
+    fontSize: string;
+  } | null>(null);
 
   const tile = (id: string, text: string) => ({
     'aria-pressed': selected === id,
@@ -154,11 +161,13 @@ function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void
       if (locked || e.button !== 0) return;
       const sx = e.clientX;
       const sy = e.clientY;
+      const root = e.currentTarget.closest('.cp') ?? document.body;
+      const fontSize = getComputedStyle(e.currentTarget).fontSize;
       let moved = false;
       const move = (ev: PointerEvent) => {
         if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
         moved = true;
-        setGhost({ text, x: ev.clientX, y: ev.clientY });
+        setGhost({ text, x: ev.clientX, y: ev.clientY, root, fontSize });
       };
       const up = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', move);
@@ -189,11 +198,17 @@ function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void
     },
   });
 
-  const ghostEl = ghost && (
-    <span className="cp-tile cp-ghost" style={{ left: ghost.x, top: ghost.y }}>
-      {ghost.text}
-    </span>
-  );
+  const ghostEl =
+    ghost &&
+    createPortal(
+      <span
+        className="cp-tile cp-ghost"
+        style={{ left: ghost.x, top: ghost.y, fontSize: ghost.fontSize }}
+      >
+        {ghost.text}
+      </span>,
+      ghost.root,
+    );
 
   return { tile, zone, ghostEl, selected };
 }

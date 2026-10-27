@@ -336,9 +336,14 @@
 .cp-obj {
   position: absolute;
 }
-.cp-obj > :first-child {
+.cp-obj > :first-child,
+.cp-fit-in,
+.cp-fit-in > :first-child {
   width: 100%;
   height: 100%;
+}
+.cp-fit-in {
+  transform-origin: top left;
 }
 .cp-obj .cp-h1 {
   font-size: 2em;
@@ -373,7 +378,7 @@
   border-radius: 0.25em;
 }
 .cp-obj .cp-check {
-  overflow: auto;
+  overflow: hidden;
   gap: 0.6em;
   padding: 1em;
 }
