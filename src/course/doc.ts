@@ -118,6 +118,8 @@ export interface Interaction {
   correct: boolean;
 }
 
+export type Corners = 'all' | 'top' | 'bottom' | 'left' | 'right';
+
 export type Anchor = 'auto' | 'tl' | 't' | 'tr' | 'l' | 'c' | 'r' | 'bl' | 'b' | 'br';
 
 export interface Frame {
@@ -143,6 +145,9 @@ export interface HeadingBlock extends BlockBase {
   level: 1 | 2;
   align: Align;
   textStyle?: TextStyle;
+  fill?: string;
+  radius?: number;
+  corners?: Corners;
 }
 
 export interface TextBlock extends BlockBase {
@@ -150,6 +155,9 @@ export interface TextBlock extends BlockBase {
   html: string;
   align: Align;
   textStyle?: TextStyle;
+  fill?: string;
+  radius?: number;
+  corners?: Corners;
 }
 
 export interface ImageBlock extends BlockBase {
@@ -159,6 +167,8 @@ export interface ImageBlock extends BlockBase {
   alt: string;
   size: 'full' | 'medium' | 'small';
   fill?: string;
+  radius?: number;
+  corners?: Corners;
 }
 
 export interface VideoBlock extends BlockBase {
@@ -183,6 +193,8 @@ export interface ButtonBlock extends BlockBase {
   action: ButtonAction;
   style: 'solid' | 'outline';
   fill?: string;
+  radius?: number;
+  corners?: Corners;
   textStyle?: TextStyle;
   enabledWhen?: 'always' | 'picks' | 'condition';
   enabledIf?: Condition[];

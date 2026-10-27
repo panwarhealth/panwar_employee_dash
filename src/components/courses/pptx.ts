@@ -8,7 +8,10 @@ export interface DeckShape {
   h: number;
   text: string;
   fill?: string;
+  colour?: string;
   geometry?: string;
+  radius?: number;
+  corners?: 'top';
   size?: number;
   bold?: boolean;
   link?: string;
@@ -123,14 +126,15 @@ async function readTheme(zip: JSZip, presRels: Awaited<ReturnType<typeof readRel
   return colours;
 }
 
-function solidFill(el: Element | undefined, theme: Record<string, string>): string | undefined {
-  const colour =
-    child(child(el, A, 'solidFill'), A, 'srgbClr') ??
-    child(child(el, A, 'solidFill'), A, 'schemeClr');
+function colourOf(el: Element | undefined, theme: Record<string, string>): string | undefined {
+  const colour = child(el, A, 'srgbClr') ?? child(el, A, 'schemeClr');
   if (!colour) return undefined;
   const val = colour.getAttribute('val') ?? '';
   return colour.localName === 'srgbClr' ? `#${val}` : theme[SCHEME_ALIAS[val] ?? val];
 }
+
+const solidFill = (el: Element | undefined, theme: Record<string, string>) =>
+  colourOf(child(el, A, 'solidFill'), theme);
 
 async function isLightArtwork(blob: Blob): Promise<boolean> {
   const url = URL.createObjectURL(blob);
@@ -187,6 +191,16 @@ export async function readPptx(file: Blob): Promise<Deck> {
   const media: Record<string, Blob> = {};
   const light: Record<string, boolean> = {};
   const theme = await readTheme(zip, presRels);
+  const masterRel = Object.values(presRels).find((r) => r.type.endsWith('/slideMaster'));
+  const master = masterRel && zip.file(masterRel.target);
+  const styles = master ? parseXml(await master.async('string')) : undefined;
+  const styleColour = (name: string) => {
+    const style = styles?.getElementsByTagNameNS(P, name)[0];
+    const defRPr = style?.getElementsByTagNameNS(A, 'defRPr')[0];
+    return solidFill(defRPr, theme);
+  };
+  const titleColour = styleColour('titleStyle');
+  const bodyColour = styleColour('bodyStyle');
   const slides: DeckSlide[] = [];
 
   for (const [i, part] of order.entries()) {
@@ -237,12 +251,32 @@ export async function readPptx(file: Blob): Promise<Deck> {
           const run = el.getElementsByTagNameNS(A, 'rPr')[0];
           const linkId = el.getElementsByTagNameNS(A, 'hlinkClick')[0]?.getAttributeNS(R, 'id');
           const link = linkId ? rels[linkId] : undefined;
+          const at = place(child(spPr, A, 'xfrm'), box);
+          const geom = child(spPr, A, 'prstGeom');
+          const adj = geom
+            ?.getElementsByTagNameNS(A, 'gd')[0]
+            ?.getAttribute('fmla')
+            ?.match(/val (\d+)/)?.[1];
+          const fontRef = child(child(el, P, 'style'), A, 'fontRef');
           shapes.push({
             name,
-            ...place(child(spPr, A, 'xfrm'), box),
+            ...at,
             text,
             fill,
-            geometry: child(spPr, A, 'prstGeom')?.getAttribute('prst') ?? undefined,
+            colour:
+              solidFill(run, theme) ??
+              colourOf(fontRef, theme) ??
+              (/title/i.test(el.getElementsByTagNameNS(P, 'ph')[0]?.getAttribute('type') ?? '')
+                ? titleColour
+                : bodyColour),
+            geometry: geom?.getAttribute('prst') ?? undefined,
+            corners: geom?.getAttribute('prst') === 'round2SameRect' ? 'top' : undefined,
+            radius: /^(roundRect|round2SameRect)$/.test(geom?.getAttribute('prst') ?? '')
+              ? Math.round(
+                  (Number(adj ?? 16667) / 100000) *
+                    Math.min(at.w * 9.6, (at.h * 9.6 * slideH) / slideW),
+                )
+              : undefined,
             size: run?.getAttribute('sz') ? num(run, 'sz') / 100 : undefined,
             bold: run?.getAttribute('b') === '1' || undefined,
             link: link?.external ? link.target : undefined,

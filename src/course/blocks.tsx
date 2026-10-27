@@ -1,6 +1,7 @@
 import type { Block } from './doc';
 import type { BlockContext } from './context';
 import { sanitizeHtml } from './sanitize';
+import { boxCss, radiusCss } from './typography';
 import { embedUrl } from './util';
 import { AnimationView, AudioView } from './media';
 import {
@@ -29,7 +30,10 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       return (
         <Tag
           className={`cp-h${block.level} cp-${block.align}`}
-          style={ctx.textStyle(block.textStyle)}
+          style={{
+            ...boxCss(block.fill, block.radius, block.corners),
+            ...ctx.textStyle(block.textStyle),
+          }}
         >
           {ctx.merge(block.text, false)}
         </Tag>
@@ -39,7 +43,10 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       return (
         <div
           className={`cp-text cp-${block.align}`}
-          style={ctx.textStyle(block.textStyle)}
+          style={{
+            ...boxCss(block.fill, block.radius, block.corners),
+            ...ctx.textStyle(block.textStyle),
+          }}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
         />
       );
@@ -47,7 +54,10 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       return block.src ? (
         <img
           className={`cp-img cp-img-${block.size}${block.fill ? ' cp-img-fill' : ''}`}
-          style={block.fill ? { background: block.fill } : undefined}
+          style={{
+            ...(block.fill ? { background: block.fill } : {}),
+            ...radiusCss(block.radius, block.corners),
+          }}
           src={block.src}
           alt={block.alt}
         />
@@ -106,6 +116,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
                   ? { background: block.fill, borderColor: block.fill }
                   : { borderColor: block.fill, color: block.fill }
                 : {}),
+              ...radiusCss(block.radius, block.corners),
               ...ctx.textStyle(block.textStyle),
             }}
             disabled={

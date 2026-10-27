@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { CourseDoc, HeadingBlock, TextBlock } from '@/course/doc';
 import { sanitizeHtml } from '@/course/sanitize';
-import { textStyleCss } from '@/course/typography';
+import { boxCss, textStyleCss } from '@/course/typography';
 
 export function InlineText({
   block,
@@ -42,7 +42,10 @@ export function InlineText({
       contentEditable
       suppressContentEditableWarning
       className={`${block.type === 'text' ? 'cp-text' : `cp-h${block.level}`} cp-${block.align} cursor-text outline-none`}
-      style={textStyleCss(block.textStyle, doc)}
+      style={{
+        ...boxCss(block.fill, block.radius, block.corners),
+        ...textStyleCss(block.textStyle, doc),
+      }}
       onBlur={commit}
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {

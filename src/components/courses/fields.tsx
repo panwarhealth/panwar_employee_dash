@@ -1,5 +1,6 @@
 import { useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { uploadMedia } from '@/api/courses';
+import type { Corners } from '@/course/doc';
 import { cn } from '@/lib/utils';
 
 const inputClass =
@@ -26,6 +27,45 @@ export function NumberBox({
       }}
       onBlur={() => setDraft(null)}
     />
+  );
+}
+
+export function RadiusField({
+  value,
+  fallback,
+  corners,
+  onChange,
+}: {
+  value: number | undefined;
+  fallback: number;
+  corners: Corners | undefined;
+  onChange: (radius: number, corners: Corners) => void;
+}) {
+  const r = value ?? fallback;
+  const c = corners ?? 'all';
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Field label="Corner radius (px)">
+        <NumberBox
+          min={0}
+          value={r}
+          onChange={(n) => onChange(Math.max(0, n), c)}
+          className={inputClass}
+        />
+      </Field>
+      <Select
+        label="Round corners"
+        value={c}
+        options={[
+          { value: 'all', label: 'All' },
+          { value: 'top', label: 'Top only' },
+          { value: 'bottom', label: 'Bottom only' },
+          { value: 'left', label: 'Left only' },
+          { value: 'right', label: 'Right only' },
+        ]}
+        onChange={(v) => onChange(r, v)}
+      />
+    </div>
   );
 }
 

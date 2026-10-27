@@ -1,6 +1,6 @@
 import type { Block, ButtonAction, CheckBlock, CourseDoc, Page } from '@/course/doc';
 import { uid } from '@/course/doc';
-import { MediaInput, Select, TextArea, TextInput, Toggle } from './fields';
+import { MediaInput, RadiusField, Select, TextArea, TextInput, Toggle } from './fields';
 import { RichText } from './RichText';
 import { ColourField, TextStyleFields } from './TextStyleFields';
 import {
@@ -73,6 +73,22 @@ export function BlockForm({
             boldByDefault
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />
+          <ColourField
+            label="Background colour"
+            value={block.fill}
+            onChange={(v) => set<typeof block>((b) => (b.fill = v))}
+          />
+          <RadiusField
+            value={block.radius}
+            fallback={0}
+            corners={block.corners}
+            onChange={(radius, corners) =>
+              set<typeof block>((b) => {
+                b.radius = radius;
+                b.corners = corners;
+              })
+            }
+          />
         </>
       );
     case 'text':
@@ -93,6 +109,22 @@ export function BlockForm({
           <TextStyleFields
             value={block.textStyle}
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
+          />
+          <ColourField
+            label="Background colour"
+            value={block.fill}
+            onChange={(v) => set<typeof block>((b) => (b.fill = v))}
+          />
+          <RadiusField
+            value={block.radius}
+            fallback={0}
+            corners={block.corners}
+            onChange={(radius, corners) =>
+              set<typeof block>((b) => {
+                b.radius = radius;
+                b.corners = corners;
+              })
+            }
           />
         </>
       );
@@ -131,6 +163,17 @@ export function BlockForm({
             label="Background colour"
             value={block.fill}
             onChange={(v) => set<typeof block>((b) => (b.fill = v))}
+          />
+          <RadiusField
+            value={block.radius}
+            fallback={0}
+            corners={block.corners}
+            onChange={(radius, corners) =>
+              set<typeof block>((b) => {
+                b.radius = radius;
+                b.corners = corners;
+              })
+            }
           />
         </>
       );
@@ -199,6 +242,17 @@ export function BlockForm({
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
             fill={block.fill}
             onFill={(v) => set<typeof block>((b) => (b.fill = v))}
+          />
+          <RadiusField
+            value={block.radius}
+            fallback={4}
+            corners={block.corners}
+            onChange={(radius, corners) =>
+              set<typeof block>((b) => {
+                b.radius = radius;
+                b.corners = corners;
+              })
+            }
           />
         </>
       );

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { CourseDoc, TextStyle } from './doc';
+import type { CourseDoc, TextStyle, Corners } from './doc';
 
 export const BUILTIN_FONTS: { id: string; label: string; css: string }[] = [
   { id: 'course', label: 'Course default', css: '' },
@@ -41,6 +41,36 @@ export function fontFaces(doc: CourseDoc): string {
 }
 
 export const SIZES = [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72];
+
+const ROUNDED: Record<Corners, [number, number, number, number]> = {
+  all: [1, 1, 1, 1],
+  top: [1, 1, 0, 0],
+  bottom: [0, 0, 1, 1],
+  left: [1, 0, 0, 1],
+  right: [0, 1, 1, 0],
+};
+
+export const radiusCss = (radius: number | undefined, corners: Corners = 'all'): CSSProperties =>
+  radius === undefined
+    ? {}
+    : { borderRadius: ROUNDED[corners].map((on) => `${(on * radius) / 16}em`).join(' ') };
+
+export const boxCss = (
+  fill: string | undefined,
+  radius: number | undefined,
+  corners?: Corners,
+): CSSProperties => ({
+  ...(fill
+    ? {
+        background: fill,
+        padding: '0.4em 0.8em',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+      }
+    : {}),
+  ...radiusCss(radius, corners),
+});
 
 export function textStyleCss(style: TextStyle | undefined, doc: CourseDoc): CSSProperties {
   if (!style) return {};

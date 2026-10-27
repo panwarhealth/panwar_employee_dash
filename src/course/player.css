@@ -345,6 +345,11 @@
 }
 .cp-obj {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+}
+.cp-obj > :first-child {
+  flex: 1 1 auto;
 }
 .cp-obj > :first-child,
 .cp-fit-in,
