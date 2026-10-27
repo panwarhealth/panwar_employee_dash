@@ -245,10 +245,12 @@ export function CanvasEditor({
                 {showUnsafe && (
                   <div
                     title="Clinical Studio's course controls cover this strip on phones. Keep buttons and key text out of it."
-                    className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end border-b border-dashed border-ph-charcoal/25 p-0.5"
+                    className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end border-b border-dashed border-ph-pink/50 bg-ph-pink/[0.06] p-1"
                     style={{ height: `${UNSAFE_TOP[layout]}%` }}
                   >
-                    <span className="text-[9px] text-ph-charcoal/40">LMS controls on phones</span>
+                    <span className="rounded bg-white/70 px-1 text-[10px] font-medium text-ph-pink/80">
+                      LMS controls on phones
+                    </span>
                   </div>
                 )}
                 {guides.x.map((x) => (
