@@ -28,6 +28,7 @@ Building from a course plan (a PowerPoint deck turned into text, with each shape
 - Answers the plan marks as correct, by highlight or in a design note, are the correct options.
 - When a slide's positions matter for the activity, use a canvas page and start from the slide positions. Otherwise use a flow page.
 - Skip slides marked hidden.
+- Pages are white and the editor has no shapes. Shapes listed with a fill and no text are the slide's coloured panels and circles. An image marked "white artwork" is invisible on white: give its image block a fill, using the colour of the filled shape it sits on in the slide, or the course accent.
 - Make at most three put_page calls per response, so each step stays quick and the designer can watch pages appear.
 - When the course is built, reply with a short summary: what you built, and a list of what the designer still has to do by hand (missing assets, anything the editor can't do).
 
@@ -49,15 +50,22 @@ export function deckMessage(
   for (const s of deck.slides) {
     lines.push('', `## Slide ${s.number}${s.hidden ? ' (hidden)' : ''}`);
     for (const sh of s.shapes) {
-      const style = [sh.size && `${sh.size}pt`, sh.bold && 'bold'].filter(Boolean).join(' ');
+      const style = [
+        sh.geometry,
+        sh.fill && `fill ${sh.fill}`,
+        sh.size && `${sh.size}pt`,
+        sh.bold && 'bold',
+      ]
+        .filter(Boolean)
+        .join(', ');
       lines.push(
-        `- shape "${sh.name}" at x${sh.x} y${sh.y} w${sh.w} h${sh.h}${style ? ` (${style})` : ''}${sh.link ? ` links to ${sh.link}` : ''}:`,
-        ...sh.text.split('\n').map((t) => `    ${t}`),
+        `- shape "${sh.name}" at x${sh.x} y${sh.y} w${sh.w} h${sh.h}${style ? ` (${style})` : ''}${sh.link ? ` links to ${sh.link}` : ''}${sh.text ? ':' : ''}`,
+        ...(sh.text ? sh.text.split('\n').map((t) => `    ${t}`) : []),
       );
     }
     for (const img of s.images)
       lines.push(
-        `- image ${img.media} at x${img.x} y${img.y} w${img.w} h${img.h}${img.r ? ` rotated ${img.r}deg` : ''}`,
+        `- image ${img.media} at x${img.x} y${img.y} w${img.w} h${img.h}${img.r ? ` rotated ${img.r}deg` : ''}${img.light ? ' (white artwork)' : ''}`,
       );
     if (s.notes) lines.push('Speaker notes:', ...s.notes.split('\n').map((t) => `    ${t}`));
     if (s.comments.length)

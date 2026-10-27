@@ -2,7 +2,7 @@ import type { Block, ButtonAction, CheckBlock, CourseDoc, Page } from '@/course/
 import { uid } from '@/course/doc';
 import { MediaInput, Select, TextArea, TextInput, Toggle } from './fields';
 import { RichText } from './RichText';
-import { TextStyleFields } from './TextStyleFields';
+import { ColourField, TextStyleFields } from './TextStyleFields';
 import {
   AnimationForm,
   AudioForm,
@@ -126,6 +126,11 @@ export function BlockForm({
             label="Alt text"
             value={block.alt}
             onChange={(v) => set<typeof block>((b) => (b.alt = v))}
+          />
+          <ColourField
+            label="Background colour"
+            value={block.fill}
+            onChange={(v) => set<typeof block>((b) => (b.fill = v))}
           />
         </>
       );

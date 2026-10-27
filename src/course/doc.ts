@@ -155,6 +155,7 @@ export interface ImageBlock extends BlockBase {
   fileName: string;
   alt: string;
   size: 'full' | 'medium' | 'small';
+  fill?: string;
 }
 
 export interface VideoBlock extends BlockBase {

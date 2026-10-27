@@ -45,7 +45,12 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       );
     case 'image':
       return block.src ? (
-        <img className={`cp-img cp-img-${block.size}`} src={block.src} alt={block.alt} />
+        <img
+          className={`cp-img cp-img-${block.size}${block.fill ? ' cp-img-fill' : ''}`}
+          style={block.fill ? { background: block.fill } : undefined}
+          src={block.src}
+          alt={block.alt}
+        />
       ) : (
         <div className="cp-empty">Image</div>
       );

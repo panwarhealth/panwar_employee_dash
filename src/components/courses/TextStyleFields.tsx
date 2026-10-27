@@ -7,7 +7,7 @@ import { Field, Toggle } from './fields';
 const inputClass =
   'w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2 py-1.5 text-sm focus:border-ph-purple focus:outline-none';
 
-function ColourField({
+export function ColourField({
   label,
   value,
   onChange,

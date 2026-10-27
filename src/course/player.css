@@ -355,6 +355,12 @@
   border-radius: 0;
   object-fit: contain;
 }
+.cp-img-fill,
+.cp-obj .cp-img-fill {
+  box-sizing: border-box;
+  padding: 4%;
+  border-radius: 12px;
+}
 .cp-obj .cp-embed {
   aspect-ratio: auto;
 }

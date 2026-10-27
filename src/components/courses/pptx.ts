@@ -7,6 +7,8 @@ export interface DeckShape {
   w: number;
   h: number;
   text: string;
+  fill?: string;
+  geometry?: string;
   size?: number;
   bold?: boolean;
   link?: string;
@@ -19,6 +21,7 @@ export interface DeckImage {
   w: number;
   h: number;
   r: number;
+  light: boolean;
 }
 
 export interface DeckSlide {
@@ -39,6 +42,13 @@ const P = 'http://schemas.openxmlformats.org/presentationml/2006/main';
 const A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
 const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const USABLE_MEDIA = /\.(png|jpe?g|gif|svg)$/i;
+const MIME: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  svg: 'image/svg+xml',
+};
 
 interface Box {
   ox: number;
@@ -92,6 +102,63 @@ function paragraphsText(el: Element): string {
     .join('\n');
 }
 
+const SCHEME_ALIAS: Record<string, string> = { bg1: 'lt1', tx1: 'dk1', bg2: 'lt2', tx2: 'dk2' };
+
+async function readTheme(zip: JSZip, presRels: Awaited<ReturnType<typeof readRels>>) {
+  const colours: Record<string, string> = {};
+  const master = Object.values(presRels).find((r) => r.type.endsWith('/slideMaster'));
+  if (!master) return colours;
+  const theme = Object.values(await readRels(zip, master.target)).find((r) =>
+    r.type.endsWith('/theme'),
+  );
+  const file = theme && zip.file(theme.target);
+  if (!file) return colours;
+  const scheme = parseXml(await file.async('string')).getElementsByTagNameNS(A, 'clrScheme')[0];
+  for (const el of Array.from(scheme?.children ?? [])) {
+    const value = el.firstElementChild;
+    const hex =
+      value?.localName === 'sysClr' ? value.getAttribute('lastClr') : value?.getAttribute('val');
+    if (hex) colours[el.localName] = `#${hex}`;
+  }
+  return colours;
+}
+
+function solidFill(el: Element | undefined, theme: Record<string, string>): string | undefined {
+  const colour =
+    child(child(el, A, 'solidFill'), A, 'srgbClr') ??
+    child(child(el, A, 'solidFill'), A, 'schemeClr');
+  if (!colour) return undefined;
+  const val = colour.getAttribute('val') ?? '';
+  return colour.localName === 'srgbClr' ? `#${val}` : theme[SCHEME_ALIAS[val] ?? val];
+}
+
+async function isLightArtwork(blob: Blob): Promise<boolean> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    ctx.drawImage(img, 0, 0, 48, 48);
+    const data = ctx.getImageData(0, 0, 48, 48).data;
+    let seen = 0;
+    let light = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 128) continue;
+      seen++;
+      if (data[i] > 225 && data[i + 1] > 225 && data[i + 2] > 225) light++;
+    }
+    return seen > 0 && light / seen > 0.9 && seen < 48 * 48 * 0.9;
+  } catch {
+    return false;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function tableText(frame: Element): string {
   return Array.from(frame.getElementsByTagNameNS(A, 'tr'))
     .map(
@@ -118,6 +185,8 @@ export async function readPptx(file: Blob): Promise<Deck> {
   );
 
   const media: Record<string, Blob> = {};
+  const light: Record<string, boolean> = {};
+  const theme = await readTheme(zip, presRels);
   const slides: DeckSlide[] = [];
 
   for (const [i, part] of order.entries()) {
@@ -162,14 +231,18 @@ export async function readPptx(file: Blob): Promise<Deck> {
           });
         } else if (el.localName === 'sp') {
           const text = paragraphsText(el);
-          if (!text.trim()) continue;
+          const spPr = child(el, P, 'spPr');
+          const fill = solidFill(spPr, theme);
+          if (!text.trim() && !fill) continue;
           const run = el.getElementsByTagNameNS(A, 'rPr')[0];
           const linkId = el.getElementsByTagNameNS(A, 'hlinkClick')[0]?.getAttributeNS(R, 'id');
           const link = linkId ? rels[linkId] : undefined;
           shapes.push({
             name,
-            ...place(child(child(el, P, 'spPr'), A, 'xfrm'), box),
+            ...place(child(spPr, A, 'xfrm'), box),
             text,
+            fill,
+            geometry: child(spPr, A, 'prstGeom')?.getAttribute('prst') ?? undefined,
             size: run?.getAttribute('sz') ? num(run, 'sz') / 100 : undefined,
             bold: run?.getAttribute('b') === '1' || undefined,
             link: link?.external ? link.target : undefined,
@@ -188,10 +261,16 @@ export async function readPptx(file: Blob): Promise<Deck> {
           const target = embed ? rels[embed]?.target : undefined;
           if (!target || !USABLE_MEDIA.test(target)) continue;
           const mediaName = target.split('/').pop()!;
-          if (!media[mediaName]) media[mediaName] = await zip.file(target)!.async('blob');
+          if (!media[mediaName]) {
+            media[mediaName] = new Blob([await zip.file(target)!.async('arraybuffer')], {
+              type: MIME[mediaName.split('.').pop()!.toLowerCase()],
+            });
+            light[mediaName] = await isLightArtwork(media[mediaName]);
+          }
           images.push({
             media: mediaName,
             ...place(child(child(el, P, 'spPr'), A, 'xfrm'), box),
+            light: light[mediaName],
           });
         }
       }
