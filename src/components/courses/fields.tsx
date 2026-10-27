@@ -1,9 +1,33 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { uploadMedia } from '@/api/courses';
 import { cn } from '@/lib/utils';
 
 const inputClass =
   'w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 py-2 text-sm text-ph-charcoal focus:border-ph-purple focus:outline-none';
+
+export function NumberBox({
+  value,
+  onChange,
+  ...rest
+}: {
+  value: number;
+  onChange: (n: number) => void;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'>) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      {...rest}
+      type="number"
+      value={draft ?? value}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber))
+          onChange(e.target.valueAsNumber);
+      }}
+      onBlur={() => setDraft(null)}
+    />
+  );
+}
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

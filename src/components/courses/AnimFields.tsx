@@ -1,5 +1,5 @@
 import type { Anim, AnimKind } from '@/course/doc';
-import { Field, Select } from './fields';
+import { Field, NumberBox, Select } from './fields';
 
 const KINDS: { value: AnimKind; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -40,12 +40,11 @@ export function AnimFields({
       </div>
       {a.in !== 'none' && (
         <Field label="Delay before it comes in (seconds)">
-          <input
-            type="number"
+          <NumberBox
             min={0}
             step={0.25}
             value={a.delay}
-            onChange={(e) => onChange({ ...a, delay: Math.max(0, Number(e.target.value) || 0) })}
+            onChange={(n) => onChange({ ...a, delay: Math.max(0, n) })}
             className="w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 py-1.5 text-sm focus:border-ph-purple focus:outline-none"
           />
         </Field>

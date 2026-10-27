@@ -23,7 +23,7 @@ import {
   type WrittenBlock,
 } from '@/course/doc';
 import { blockLabel } from './blockMeta';
-import { Field, MediaInput, Select, TextArea, TextInput, Toggle } from './fields';
+import { Field, MediaInput, NumberBox, Select, TextArea, TextInput, Toggle } from './fields';
 import { RichText } from './RichText';
 import { TextStyleFields } from './TextStyleFields';
 
@@ -92,15 +92,7 @@ function NumberInput({
 }) {
   return (
     <Field label={label}>
-      <input
-        type="number"
-        className={numClass}
-        step={step}
-        value={value}
-        onChange={(e) =>
-          Number.isFinite(Number(e.target.value)) && onChange(Number(e.target.value))
-        }
-      />
+      <NumberBox className={numClass} step={step} value={value} onChange={onChange} />
     </Field>
   );
 }

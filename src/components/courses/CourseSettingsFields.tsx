@@ -1,6 +1,7 @@
 import type { Screens } from '@/course/doc';
 import { labelClass, selectClass } from '@/lib/edm';
 import { cn } from '@/lib/utils';
+import { NumberBox } from './fields';
 
 const SCREENS: {
   value: Screens;
@@ -82,12 +83,11 @@ export function PassMarkField({
         </select>
         {value !== null && (
           <label className="flex items-center gap-2 text-sm text-ph-charcoal/70">
-            <input
-              type="number"
+            <NumberBox
               min={1}
               max={100}
               value={value}
-              onChange={(e) => onChange(Math.min(100, Math.max(1, Number(e.target.value) || 1)))}
+              onChange={(n) => onChange(Math.min(100, Math.max(1, n)))}
               className="h-10 w-20 rounded-md border border-ph-charcoal/20 px-3 text-base"
             />
             %
