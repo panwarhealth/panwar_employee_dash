@@ -1,4 +1,5 @@
 import {
+  isQuestion,
   newBlock,
   uid,
   type Block,
@@ -157,12 +158,31 @@ function pageWarnings(doc: CourseDoc, page: Page): string[] {
     if (b.type === 'pathway')
       for (const c of b.choices) needPage(c.pageId, `Pathway choice "${c.label}"`);
     if (b.type === 'audio') for (const c of b.cues) needBlock(c.blockId, `Audio cue ${c.id}`);
+    if (b.type === 'drag' && b.style === 'targets' && !b.src)
+      warnings.push(
+        `Drag ${b.id} has drop targets but no picture, so the targets show as a plain row and their positions are ignored.`,
+      );
   }
   if (page.kind === 'canvas')
-    for (const layout of layoutsFor(doc.screens) as Layout[])
+    for (const layout of layoutsFor(doc.screens) as Layout[]) {
       for (const b of page.blocks)
         if (!b.frames?.[layout])
           warnings.push(`Canvas block ${b.id} has no ${layout} frame, so it gets a default spot.`);
+      for (const q of page.blocks.filter(isQuestion)) {
+        const qf = q.frames?.[layout];
+        if (!qf) continue;
+        for (const b of page.blocks) {
+          const f = b.frames?.[layout];
+          if (b === q || !f || isQuestion(b)) continue;
+          const w = Math.min(f.x + f.w, qf.x + qf.w) - Math.max(f.x, qf.x);
+          const h = Math.min(f.y + f.h, qf.y + qf.h) - Math.max(f.y, qf.y);
+          if (w > 0 && h > 0 && w * h > 0.2 * Math.min(f.w * f.h, qf.w * qf.h))
+            warnings.push(
+              `${b.type} ${b.id} covers question ${q.id} in the ${layout} layout. Questions draw their own box, so anything placed over one hides its answers.`,
+            );
+        }
+      }
+    }
   return warnings;
 }
 

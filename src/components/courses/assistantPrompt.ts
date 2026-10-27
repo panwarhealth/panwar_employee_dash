@@ -28,6 +28,8 @@ Building from a course plan (a PowerPoint deck turned into text, with each shape
 - Answers the plan marks as correct, by highlight or in a design note, are the correct options.
 - When a slide's positions matter for the activity, use a canvas page and start from the slide positions. Otherwise use a flow page.
 - Skip slides marked hidden.
+- A question block draws its own box with the prompt, answers and Submit inside it, so never place other objects over it. Pictures that belong to an activity go inside it: a drag block's drop targets sit over its own picture (src), at positions in % of that picture, not the slide.
+- Diagrams drawn with PowerPoint shapes (arrows, rings, connectors) don't come across, because the editor has no shapes. When an activity needs one, such as drop targets around a cycle diagram, build the drag block with src "", place its targets in % of the diagram's area of the slide, and leave the slide's icons out of the page. In your summary, tell the designer to export that area of the slide as a picture and drop it into the drag block.
 - Pages are white and the editor has no shapes. Shapes listed with a fill and no text are the slide's coloured panels and circles. An image marked "white artwork" is invisible on white: give its image block a fill, using the colour of the filled shape it sits on in the slide, or the course accent.
 - Make at most three put_page calls per response, so each step stays quick and the designer can watch pages appear.
 - When the course is built, reply with a short summary: what you built, and a list of what the designer still has to do by hand (missing assets, anything the editor can't do).
