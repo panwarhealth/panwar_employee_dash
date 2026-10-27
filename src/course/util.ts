@@ -15,8 +15,8 @@ export function embedUrl(raw: string): string | null {
   if (host === 'youtu.be') return `https://www.youtube.com/embed/${url.pathname.slice(1)}`;
   if (host === 'youtube.com' && url.searchParams.get('v'))
     return `https://www.youtube.com/embed/${url.searchParams.get('v')}`;
-  if (host === 'vimeo.com' && /^\/\d+/.test(url.pathname))
-    return `https://player.vimeo.com/video${url.pathname}`;
+  const vimeo = host === 'vimeo.com' && url.pathname.match(/^\/(\d+)(?:\/([0-9a-f]+))?/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}${vimeo[2] ? `?h=${vimeo[2]}` : ''}`;
   return url.toString();
 }
 
