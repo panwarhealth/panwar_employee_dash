@@ -23,6 +23,7 @@ export function useCourseAssistant(
   const abort = useRef<AbortController | null>(null);
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
   const [undo, setUndo] = useState<CourseDoc | null>(null);
 
   useEffect(() => {
@@ -46,8 +47,10 @@ export function useCourseAssistant(
       const reply = await assistantTurn(
         courseId,
         { system: ASSISTANT_SYSTEM, tools: ASSISTANT_TOOLS, messages: history.current },
+        setStatus,
         controller.signal,
       );
+      setStatus('');
       for (const b of reply.content)
         if (b.type === 'text' && b.text?.trim()) log('assistant', b.text.trim());
       if (reply.stop_reason === 'refusal') {
@@ -85,13 +88,16 @@ export function useCourseAssistant(
     abort.current = controller;
     setBusy(true);
     setUndo(docRef.current);
+    const mark = history.current.length;
     try {
       await work(controller);
     } catch (e) {
+      history.current.length = mark;
       if (controller.signal.aborted) log('activity', 'Stopped');
       else log('error', e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
       setBusy(false);
+      setStatus('');
       abort.current = null;
     }
   }
@@ -120,6 +126,7 @@ export function useCourseAssistant(
   return {
     entries,
     busy,
+    status,
     canUndo: !busy && undo !== null,
     send,
     buildFromDeck,

@@ -283,6 +283,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           <AssistantPanel
             entries={assistant.entries}
             busy={assistant.busy}
+            status={assistant.status}
             canUndo={assistant.canUndo}
             onSend={(text) => void assistant.send(text)}
             onDeck={(file) => void assistant.buildFromDeck(file)}

@@ -64,12 +64,43 @@ export interface AssistantReply {
   stop_reason: string | null;
 }
 
-export const assistantTurn = (
+interface AssistantJob {
+  status: 'running' | 'done' | 'failed' | 'unknown';
+  message: string | null;
+  reply: AssistantReply | null;
+  error: string | null;
+}
+
+const wait = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(t);
+      reject(new DOMException('Aborted', 'AbortError'));
+    });
+  });
+
+export async function assistantTurn(
   id: string,
   body: { system: string; tools: unknown[]; messages: AssistantMessage[] },
+  onStatus: (message: string) => void,
   signal?: AbortSignal,
-): Promise<AssistantReply> =>
-  apiFetch(`/courses/${id}/assistant`, { method: 'POST', body, signal });
+): Promise<AssistantReply> {
+  const { jobId } = await apiFetch<{ jobId: string }>(`/courses/${id}/assistant`, {
+    method: 'POST',
+    body,
+    signal,
+  });
+  for (;;) {
+    await wait(1500, signal);
+    const job = await apiFetch<AssistantJob>(`/courses/${id}/assistant/${jobId}`, { signal });
+    if (job.status === 'done' && job.reply) return job.reply;
+    if (job.status === 'failed') throw new Error(job.error ?? 'The AI request failed.');
+    if (job.status === 'unknown')
+      throw new Error('The server lost track of this request. Try again.');
+    if (job.message) onStatus(job.message);
+  }
+}
 
 export const importMedia = (id: string, url: string): Promise<{ url: string }> =>
   apiFetch(`/courses/${id}/media/import`, { method: 'POST', body: { url } });

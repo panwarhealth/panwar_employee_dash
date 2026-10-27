@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 export function AssistantPanel({
   entries,
   busy,
+  status,
   canUndo,
   onSend,
   onDeck,
@@ -16,6 +17,7 @@ export function AssistantPanel({
 }: {
   entries: ChatEntry[];
   busy: boolean;
+  status: string;
   canUndo: boolean;
   onSend: (text: string) => void;
   onDeck: (file: File) => void;
@@ -90,8 +92,8 @@ export function AssistantPanel({
         ))}
         {busy && (
           <div className="flex items-center gap-2 text-xs text-ph-charcoal/50">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Working
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+            {status || 'Working'}
           </div>
         )}
         <div ref={end} />
