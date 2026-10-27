@@ -343,7 +343,7 @@
   height: 100%;
 }
 .cp-fit-in {
-  transform-origin: top left;
+  transform-origin: top center;
 }
 .cp-obj .cp-h1 {
   font-size: 2em;

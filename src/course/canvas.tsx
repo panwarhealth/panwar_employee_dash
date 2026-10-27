@@ -31,23 +31,16 @@ function Fit({ children }: { children: ReactNode }) {
     const inner = outer?.firstElementChild as HTMLElement | null;
     const content = inner?.firstElementChild as HTMLElement | null;
     if (!outer || !inner || !content) return;
-    const apply = (s: number) => {
-      inner.style.width = s < 1 ? `${100 / s}%` : '';
-      inner.style.height = s < 1 ? `${100 / s}%` : '';
-      inner.style.transform = s < 1 ? `scale(${s})` : '';
-    };
     const fit = () => {
-      let s = 1;
-      apply(s);
-      for (let i = 0; i < 12; i++) {
-        const ratio = Math.min(
-          content.clientHeight / content.scrollHeight,
-          content.clientWidth / content.scrollWidth,
-        );
-        if (!(ratio < 0.99)) break;
-        s = Math.max(0.25, s * ratio);
-        apply(s);
-      }
+      inner.style.height = '';
+      inner.style.transform = '';
+      const s = Math.min(
+        content.clientHeight / content.scrollHeight,
+        content.clientWidth / content.scrollWidth,
+      );
+      if (!(s < 0.99)) return;
+      inner.style.height = `${100 / s}%`;
+      inner.style.transform = `scale(${s})`;
     };
     fit();
     const resize = new ResizeObserver(fit);
