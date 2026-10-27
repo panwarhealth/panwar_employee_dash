@@ -5,11 +5,11 @@ import { frameFor, frameStyle, UNSAFE_TOP } from '@/course/canvasLayout';
 import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
 
-const UNSAFE_KEY = 'course-editor.show-unsafe';
+const SAFE_ZONE_KEY = 'course-editor.show-safe-zone';
 
-function readUnsafe(): boolean {
+function readSafeZone(): boolean {
   try {
-    return localStorage.getItem(UNSAFE_KEY) !== '0';
+    return localStorage.getItem(SAFE_ZONE_KEY) !== '0';
   } catch {
     return true;
   }
@@ -70,7 +70,7 @@ export function CanvasEditor({
   const [drag, setDrag] = useState<Drag | null>(null);
   const [live, setLive] = useState<Frame | null>(null);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
-  const [showUnsafe, setShowUnsafe] = useState(readUnsafe);
+  const [showSafeZone, setShowSafeZone] = useState(readSafeZone);
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
 
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
@@ -189,6 +189,21 @@ export function CanvasEditor({
           Drag them into place, or copy positions from the other layout.
         </p>
       )}
+      <label className="flex items-center gap-1.5 text-xs text-ph-charcoal/50">
+        <input
+          type="checkbox"
+          checked={showSafeZone}
+          onChange={(e) => {
+            setShowSafeZone(e.target.checked);
+            try {
+              localStorage.setItem(SAFE_ZONE_KEY, e.target.checked ? '1' : '0');
+            } catch {
+              return;
+            }
+          }}
+        />
+        Show safe zone
+      </label>
       <div
         ref={stage}
         className={cn('cp w-full', layout === 'phone' ? 'max-w-[360px]' : 'max-w-[960px]')}
@@ -242,14 +257,14 @@ export function CanvasEditor({
             }}
             overlay={
               <>
-                {showUnsafe && (
+                {showSafeZone && (
                   <div
                     title="Clinical Studio's course controls cover this strip on phones. Keep buttons and key text out of it."
                     className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-end border-b border-dashed border-ph-pink/50 bg-ph-pink/[0.06] p-1"
                     style={{ height: `${UNSAFE_TOP[layout]}%` }}
                   >
                     <span className="rounded bg-white/70 px-1 text-[10px] font-medium text-ph-pink/80">
-                      LMS controls on phones
+                      Outside safe zone: LMS controls on phones
                     </span>
                   </div>
                 )}
@@ -276,21 +291,6 @@ export function CanvasEditor({
         Drag to move, corners to resize, top handle to rotate. Arrow keys nudge, Shift for bigger
         steps, hold Alt to stop snapping.
       </p>
-      <label className="flex items-center gap-1.5 text-xs text-ph-charcoal/50">
-        <input
-          type="checkbox"
-          checked={showUnsafe}
-          onChange={(e) => {
-            setShowUnsafe(e.target.checked);
-            try {
-              localStorage.setItem(UNSAFE_KEY, e.target.checked ? '1' : '0');
-            } catch {
-              return;
-            }
-          }}
-        />
-        Show the strip LMS controls cover on phones
-      </label>
     </div>
   );
 }
