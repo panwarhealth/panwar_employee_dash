@@ -62,6 +62,7 @@ export interface AssistantMessage {
 export interface AssistantReply {
   content: AssistantBlock[];
   stop_reason: string | null;
+  usage?: { cost_usd?: number | null };
 }
 
 interface AssistantJob {

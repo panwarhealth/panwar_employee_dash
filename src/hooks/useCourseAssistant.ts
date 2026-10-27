@@ -24,6 +24,7 @@ export function useCourseAssistant(
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
+  const [cost, setCost] = useState(0);
   const [undo, setUndo] = useState<CourseDoc | null>(null);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function useCourseAssistant(
         controller.signal,
       );
       setStatus('');
+      setCost((c) => c + (reply.usage?.cost_usd ?? 0));
       for (const b of reply.content)
         if (b.type === 'text' && b.text?.trim()) log('assistant', b.text.trim());
       if (reply.stop_reason === 'refusal') {
@@ -127,6 +129,7 @@ export function useCourseAssistant(
     entries,
     busy,
     status,
+    cost,
     canUndo: !busy && undo !== null,
     send,
     buildFromDeck,

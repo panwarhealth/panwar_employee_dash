@@ -284,6 +284,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             entries={assistant.entries}
             busy={assistant.busy}
             status={assistant.status}
+            cost={assistant.cost}
             canUndo={assistant.canUndo}
             onSend={(text) => void assistant.send(text)}
             onDeck={(file) => void assistant.buildFromDeck(file)}

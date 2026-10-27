@@ -8,6 +8,7 @@ export function AssistantPanel({
   entries,
   busy,
   status,
+  cost,
   canUndo,
   onSend,
   onDeck,
@@ -18,6 +19,7 @@ export function AssistantPanel({
   entries: ChatEntry[];
   busy: boolean;
   status: string;
+  cost: number;
   canUndo: boolean;
   onSend: (text: string) => void;
   onDeck: (file: File) => void;
@@ -41,6 +43,14 @@ export function AssistantPanel({
     <div className="fixed bottom-5 right-5 z-40 flex h-[560px] max-h-[calc(100vh-6rem)] w-[400px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-[20px] border border-ph-charcoal/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
       <div className="flex items-center gap-2 border-b border-ph-charcoal/10 px-5 py-3">
         <strong className="text-sm font-semibold text-ph-charcoal">AI assistant</strong>
+        {cost > 0 && (
+          <span
+            title="Claude usage cost for this session, in US dollars"
+            className="text-xs text-ph-charcoal/50"
+          >
+            US${cost.toFixed(2)}
+          </span>
+        )}
         {canUndo && (
           <button
             type="button"
