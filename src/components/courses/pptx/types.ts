@@ -79,6 +79,15 @@ export interface DeckArea {
   h: number;
 }
 
+export interface DeckDrawing {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  r: number;
+  svg: string;
+}
+
 export interface DeckSlide {
   number: number;
   hidden: boolean;
@@ -86,7 +95,8 @@ export interface DeckSlide {
   diagrams: DeckArea[];
   shapes: DeckShape[];
   images: DeckImage[];
-  order: ({ kind: 'shape'; index: number } | { kind: 'image'; index: number })[];
+  drawings: DeckDrawing[];
+  order: { kind: 'shape' | 'image' | 'drawing'; index: number }[];
   notes: string;
   comments: string[];
 }

@@ -127,6 +127,23 @@ function slideItems(
       items.push({ kind: 'shape', shape, block: shapeBlock(shape, id, pxPerPt) });
       continue;
     }
+    if (entry.kind === 'drawing') {
+      const drawing = slide.drawings[entry.index];
+      items.push({
+        kind: 'image',
+        image: { ...drawing, light: false },
+        block: {
+          id: makeId('shape'),
+          type: 'image',
+          src: `data:image/svg+xml;utf8,${encodeURIComponent(drawing.svg)}`,
+          fileName: 'shape.svg',
+          alt: '',
+          size: 'full',
+          stretch: true,
+        },
+      });
+      continue;
+    }
     const image = slide.images[entry.index];
     const src = mediaUrls[image.media];
     if (!src) continue;

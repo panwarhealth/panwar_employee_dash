@@ -4,7 +4,17 @@ import { isLightArtwork } from './artwork';
 import { inheritedChain, placeholderOf } from './placeholders';
 import { readText, VALIGN, type TextStyles } from './text';
 import { borderOf, colourOf, fillOf } from './theme';
-import type { DeckArea, DeckBorder, DeckImage, DeckRun, DeckShape, DeckSlide } from './types';
+import type {
+  DeckArea,
+  DeckBorder,
+  DeckDrawing,
+  DeckImage,
+  DeckRun,
+  DeckShape,
+  DeckSlide,
+} from './types';
+import { drawingSvg, shapePaths } from './geometry';
+import { presetGeometry } from './presets';
 import { A, child, EMU_PER_PT, externalLink, num, P, paragraphsText, R, type Part } from './xml';
 
 const DRAWABLE =
@@ -32,6 +42,7 @@ export interface SlideContext {
   shapes: DeckShape[];
   images: DeckImage[];
   diagrams: DeckArea[];
+  drawings: DeckDrawing[];
   order: DeckSlide['order'];
 }
 
@@ -73,6 +84,42 @@ function radiusOf(ctx: SlideContext, geom: Element | undefined, at: Placed) {
     ?.getAttribute('fmla')
     ?.match(/val (\d+)/)?.[1];
   return Math.round((Number(adj ?? 16667) / 100000) * shortSide);
+}
+
+function addDrawing(ctx: SlideContext, drawing: DeckDrawing) {
+  ctx.order.push({ kind: 'drawing', index: ctx.drawings.length });
+  ctx.drawings.push(drawing);
+}
+
+function drawShape(
+  ctx: SlideContext,
+  spPr: Element | undefined,
+  at: Placed,
+  t: Transform,
+  fill: string | undefined,
+  border: DeckBorder | undefined,
+): boolean {
+  const custom = child(spPr, A, 'custGeom');
+  const preset = child(spPr, A, 'prstGeom');
+  const geometry = custom ?? presetGeometry(preset?.getAttribute('prst') ?? '');
+  if (!geometry) return false;
+  const xfrm = child(spPr, A, 'xfrm');
+  const ext = child(xfrm, A, 'ext');
+  const size = { w: num(ext, 'cx') * t.sx, h: num(ext, 'cy') * t.sy };
+  if (!size.w || !size.h) return false;
+  const svg = drawingSvg(
+    shapePaths(geometry, custom ? undefined : child(preset, A, 'avLst'), size.w, size.h),
+    size,
+    {
+      fill,
+      stroke: border?.colour,
+      strokeWidth: (border?.width ?? 0) * EMU_PER_PT,
+      flipH: xfrm?.getAttribute('flipH') === '1',
+      flipV: xfrm?.getAttribute('flipV') === '1',
+    },
+  );
+  addDrawing(ctx, { ...at, svg });
+  return true;
 }
 
 function addShape(ctx: SlideContext, shape: DeckShape) {
@@ -146,8 +193,35 @@ function readLine(
         Math.round(thick * 1.5),
         fromLayout,
       );
-    else ctx.diagrams.push(toFrame(end.x, end.y, thick * 4, thick * 4, 0));
+    else
+      addDrawing(
+        ctx,
+        arrowHead(
+          toFrame,
+          end,
+          thick,
+          border.colour,
+          end.x === x0 ? { x: x1, y: y1 } : { x: x0, y: y0 },
+        ),
+      );
   }
+}
+
+function arrowHead(
+  toFrame: (cx: number, cy: number, w: number, h: number, r: number) => Placed,
+  tip: { x: number; y: number },
+  thick: number,
+  colour: string,
+  from: { x: number; y: number },
+): DeckDrawing {
+  const size = thick * 4;
+  const angle = Math.round((Math.atan2(tip.y - from.y, tip.x - from.x) * 180) / Math.PI);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" preserveAspectRatio="none"><path d="M10 5 L0 0 L0 10 Z" fill="${colour}"/></svg>`;
+  const back = {
+    x: tip.x - (Math.cos((angle * Math.PI) / 180) * size) / 2,
+    y: tip.y - (Math.sin((angle * Math.PI) / 180) * size) / 2,
+  };
+  return { ...toFrame(back.x, back.y, size, size, angle), svg };
 }
 
 function readShape(ctx: SlideContext, el: Element, t: Transform, owner: Part, fromLayout: boolean) {
@@ -173,7 +247,7 @@ function readShape(ctx: SlideContext, el: Element, t: Transform, owner: Part, fr
   if (!at.w || !at.h) return;
   const drawable = DRAWABLE.test(prst);
   if (!drawable) {
-    if (fill || border) ctx.diagrams.push(at);
+    if ((fill || border) && !drawShape(ctx, spPr, at, t, fill, border)) ctx.diagrams.push(at);
     if (text.trim().length < 3) return;
   }
   const read = readText(el, owner, phChain, ctx.styles);

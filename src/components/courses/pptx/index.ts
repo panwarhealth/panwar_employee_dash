@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { loadPresets } from './presets';
 import { IDENTITY, walkTree, type SlideContext } from './shapes';
 import { colourOf, fillOf, readTheme, type Theme } from './theme';
 import type { Deck, DeckSlide } from './types';
@@ -54,6 +55,7 @@ const spTree = (p: Part) => p.xml.getElementsByTagNameNS(P, 'spTree')[0];
 
 export async function readPptx(file: Blob): Promise<Deck> {
   const zip = await JSZip.loadAsync(file);
+  await loadPresets();
   const presPart = 'ppt/presentation.xml';
   const pres = parseXml(await zip.file(presPart)!.async('string'));
   const size = pres.getElementsByTagNameNS(P, 'sldSz')[0];
@@ -105,6 +107,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
       shapes: [],
       images: [],
       diagrams: [],
+      drawings: [],
       order: [],
     };
     if (master && showsMaster(layout) && showsMaster(slide))
@@ -119,6 +122,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
       diagrams: ctx.diagrams,
       shapes: ctx.shapes,
       images: ctx.images,
+      drawings: ctx.drawings,
       order: ctx.order,
       ...(await readNotes(zip, slide)),
     });

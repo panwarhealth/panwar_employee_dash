@@ -82,6 +82,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
             ...(block.fill ? { background: block.fill } : {}),
             ...radiusCss(block.radius, block.corners),
             ...borderCss(block.border),
+            ...(block.stretch ? { objectFit: 'fill' } : {}),
           }}
           src={block.src}
           alt={block.alt}

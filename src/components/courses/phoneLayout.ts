@@ -144,11 +144,14 @@ export function phoneClusters(page: Page): Cluster[] {
   const containerOf = (ids: string[]) =>
     ids.find((id) => {
       const b = byId.get(id)!;
-      if (b.type !== 'text' || hasText(b) || isRound(b) || !boxed(b)) return false;
+      const card = b.type === 'image' && !!b.stretch && desk(id).w >= 40;
+      const panel = b.type === 'text' && !hasText(b) && boxed(b);
+      if ((!card && !panel) || isRound(b)) return false;
       if (desk(id).w < 10 || desk(id).h < 10) return false;
       const others = ids.filter((o) => o !== id);
-      const held = others.filter((o) => inside(id, o)).length;
-      return held >= 2 && held >= others.length * 0.6;
+      const held = others.filter((o) => inside(id, o));
+      const holdsText = held.some((o) => hasText(byId.get(o)!));
+      return (held.length >= 2 || (card && holdsText)) && held.length >= others.length * 0.6;
     });
   const build = (ids: string[]): Cluster[] => {
     const groups = overlapGroups(ids.map((id) => ({ id, frame: desk(id) }))).map((g) => ({

@@ -190,6 +190,7 @@ export interface ImageBlock extends BlockBase {
   corners?: Corners;
   border?: Border;
   crop?: [number, number, number, number];
+  stretch?: boolean;
 }
 
 export interface VideoBlock extends BlockBase {
