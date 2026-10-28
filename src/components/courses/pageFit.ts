@@ -24,7 +24,6 @@ async function settle(host: HTMLElement) {
     Promise.all(pending.map((img) => new Promise((done) => (img.onload = img.onerror = done)))),
     new Promise((done) => setTimeout(done, 4000)),
   ]);
-  await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 }
 
 async function offscreen<T>(

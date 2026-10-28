@@ -19,6 +19,8 @@ const DESIGN = { desktop: { w: 960, h: 540 }, phone: { w: 360, h: 640 } };
 const PHONE = { left: 6, width: 88, top: 7, bottom: 97, gap: 2 };
 const PHONE_BODY_PX = 15;
 const PHONE_TITLE_PX = 24;
+const MIN_CARD_SCALE = 0.7;
+const MAX_UNIT_HEIGHT = 0.42;
 
 type Item =
   | { kind: 'shape'; shape: DeckShape; block: HeadingBlock | TextBlock }
@@ -28,7 +30,10 @@ export interface Cluster {
   ids: string[];
   footer: boolean;
   title: boolean;
-  text: boolean;
+  flow: boolean;
+  row: number;
+  container?: string;
+  children?: Cluster[];
 }
 
 export interface TableCell {
@@ -148,7 +153,7 @@ function textStyleOf(base: Base, pxPerPt: number, lineHeight: number | undefined
     color: base.colour,
     weight: base.bold ? 700 : 400,
     font: fontIdFor(base.font),
-    ...(lineHeight ? { lineHeight } : {}),
+    lineHeight: lineHeight ?? 1.2,
   };
 }
 
@@ -207,7 +212,7 @@ const overlap = (a: Frame, b: Frame) =>
   Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) &&
   Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y);
 
-const isBackdrop = (f: Frame) => f.w * f.h > 70 * 70;
+const isBackdrop = (f: { w: number; h: number }) => f.w >= 90 && f.h >= 85;
 
 const isFooter = (f: Frame) => f.y >= 85;
 
@@ -282,16 +287,50 @@ function bounds(frames: Frame[]) {
   };
 }
 
-function readingOrder(groups: { ids: string[]; box: ReturnType<typeof bounds> }[]) {
-  const sorted = [...groups].sort((a, b) => a.box.y - b.box.y);
-  const rows: (typeof sorted)[] = [];
-  for (const g of sorted) {
-    const row = rows[rows.length - 1];
-    const rowBottom = row ? Math.max(...row.map((r) => r.box.y + r.box.h)) : -Infinity;
-    if (row && g.box.y < rowBottom - g.box.h * 0.3) row.push(g);
-    else rows.push([g]);
+function bands<G>(list: G[], lo: (g: G) => number, hi: (g: G) => number): G[][] {
+  const out: { items: G[]; end: number }[] = [];
+  for (const g of [...list].sort((a, b) => lo(a) - lo(b))) {
+    const last = out[out.length - 1];
+    if (last && lo(g) < last.end - 0.5) {
+      last.items.push(g);
+      last.end = Math.max(last.end, hi(g));
+    } else out.push({ items: [g], end: hi(g) });
   }
-  return rows.flatMap((row) => row.sort((a, b) => a.box.x - b.box.x));
+  return out.map((b) => b.items);
+}
+
+function readingOrder<G extends { box: ReturnType<typeof bounds> }>(groups: G[]) {
+  const out: (G & { row: number })[] = [];
+  let next = 0;
+  const cut = (list: G[], row: number) => {
+    if (list.length === 1) {
+      out.push({ ...list[0], row });
+      return;
+    }
+    const rows = bands(
+      list,
+      (g) => g.box.y,
+      (g) => g.box.y + g.box.h,
+    );
+    if (rows.length > 1) {
+      for (const r of rows) cut(r, next++);
+      return;
+    }
+    const cols = bands(
+      list,
+      (g) => g.box.x,
+      (g) => g.box.x + g.box.w,
+    );
+    if (cols.length > 1) {
+      const shared = next++;
+      for (const c of cols) cut(c, c.length === 1 ? shared : next++);
+      return;
+    }
+    for (const g of [...list].sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x))
+      out.push({ ...g, row: next++ });
+  };
+  cut(groups, next++);
+  return out;
 }
 
 export function slideToPage(
@@ -408,15 +447,60 @@ export function slideToPage(
     .filter((i) => isBackdrop(desktop.get(i.block.id)!))
     .map((i) => i.block.id);
   const content = items.filter((i) => !backdrops.includes(i.block.id));
-  const groups = clustersOf(
-    content.map((i) => ({ id: i.block.id, frame: desktop.get(i.block.id)! })),
-  ).map((ids) => ({ ids, box: bounds(ids.map((id) => desktop.get(id)!)) }));
-  const clusters: Cluster[] = readingOrder(groups).map((g) => ({
-    ids: content.filter((i) => g.ids.includes(i.block.id)).map((i) => i.block.id),
-    footer: g.ids.every((id) => isFooter(desktop.get(id)!)),
-    title: g.ids.some((id) => titleIds.has(id)),
-    text: g.ids.length === 1 && hasText(content.find((i) => i.block.id === g.ids[0])!.block),
-  }));
+  const itemOf = (id: string) => content.find((i) => i.block.id === id)!;
+  const reflows = (id: string) => {
+    const item = itemOf(id);
+    if (item.kind !== 'shape' || !hasText(item.block)) return false;
+    const boxed = item.shape.fill || item.shape.border;
+    const w = desktop.get(id)!.w;
+    if (!boxed) return w >= 20 || item.shape.text.length > 40;
+    return item.shape.geometry !== 'ellipse' && w >= 40;
+  };
+  const inside = (outer: string, id: string) => {
+    const f = desktop.get(id)!;
+    return contains(desktop.get(outer)!, f.x + f.w / 2, f.y + f.h / 2);
+  };
+  const containerOf = (ids: string[]) =>
+    ids.find((id) => {
+      const item = itemOf(id);
+      if (item.kind !== 'shape' || hasText(item.block) || item.shape.geometry === 'ellipse')
+        return false;
+      if (!item.shape.fill && !item.shape.border) return false;
+      const box = desktop.get(id)!;
+      if (box.w < 10 || box.h < 10) return false;
+      const others = ids.filter((o) => o !== id);
+      const held = others.filter((o) => inside(id, o)).length;
+      return held >= 2 && held >= others.length * 0.6;
+    });
+  const buildClusters = (ids: string[]): Cluster[] => {
+    const groups = clustersOf(ids.map((id) => ({ id, frame: desktop.get(id)! }))).map((g) => ({
+      ids: g,
+      box: bounds(g.map((id) => desktop.get(id)!)),
+    }));
+    const out: Cluster[] = [];
+    for (const g of readingOrder(groups)) {
+      const ordered = ids.filter((id) => g.ids.includes(id));
+      const container = containerOf(ordered);
+      const held = container
+        ? ordered.filter((id) => id === container || inside(container, id))
+        : ordered;
+      out.push({
+        ids: held,
+        footer: held.every((id) => isFooter(desktop.get(id)!)),
+        title: held.some((id) => titleIds.has(id)),
+        flow: held.length === 1 && reflows(held[0]),
+        row: g.row,
+        ...(container
+          ? { container, children: buildClusters(held.filter((id) => id !== container)) }
+          : {}),
+      });
+      const rest = ordered.filter((id) => !held.includes(id));
+      if (rest.length)
+        out.push(...buildClusters(rest).map((c) => ({ ...c, row: -1 - out.length })));
+    }
+    return out;
+  };
+  const clusters = buildClusters(content.map((i) => i.block.id));
 
   const blocks: Block[] = items.map((item) => {
     const frames: Partial<Record<Layout, Frame>> = {};
@@ -491,7 +575,9 @@ export async function fitPhone(doc: CourseDoc, converted: ConvertedPage): Promis
   for (let attempt = 0; attempt < 6; attempt++) {
     stackPhone(page, clusters, new Map(), scale, shrink);
     const measured = await measureHeights(doc, page, 'phone');
-    const textIds = new Set(clusters.filter((c) => c.text).flatMap((c) => c.ids));
+    const flowIds = (list: Cluster[]): string[] =>
+      list.flatMap((c) => (c.children ? flowIds(c.children) : c.flow ? c.ids : []));
+    const textIds = new Set(flowIds(clusters));
     used = stackPhone(
       page,
       clusters,
@@ -533,59 +619,167 @@ export function stackPhone(
 ) {
   const byId = new Map(page.blocks.map((b) => [b.id, b]));
   const desk = (id: string) => byId.get(id)!.frames!.desktop!;
-  const widthPx = (PHONE.width / 100) * DESIGN.phone.w;
-  const placeCluster = (c: Cluster, top: number): number => {
-    if (c.text) {
-      const b = byId.get(c.ids[0])!;
-      const s = round1((textScale.get(b.id) ?? 1) * shrink * 100) / 100;
-      const estimate = measured.get(b.id) ?? estimateHeight(b, s, widthPx);
-      b.frames!.phone = {
-        x: PHONE.left,
-        y: round1(top),
-        w: PHONE.width,
-        h: round1(estimate),
-        r: 0,
-        s,
-      };
-      return estimate;
-    }
-    const box = bounds(c.ids.map(desk));
-    const boxPx = { w: (box.w / 100) * DESIGN.desktop.w, h: (box.h / 100) * DESIGN.desktop.h };
-    const k = Math.min(widthPx / boxPx.w, 1.4) * shrink;
-    const offset = (widthPx - boxPx.w * k) / 2;
-    for (const id of c.ids) {
-      const f = desk(id);
-      const xPx = ((f.x - box.x) / 100) * DESIGN.desktop.w * k + offset;
-      const yPx = ((f.y - box.y) / 100) * DESIGN.desktop.h * k;
-      byId.get(id)!.frames!.phone = {
-        x: round1(PHONE.left + (xPx / DESIGN.phone.w) * 100),
-        y: round1(top + (yPx / DESIGN.phone.h) * 100),
-        w: round1((((f.w / 100) * DESIGN.desktop.w * k) / DESIGN.phone.w) * 100),
-        h: round1((((f.h / 100) * DESIGN.desktop.h * k) / DESIGN.phone.h) * 100),
-        r: f.r,
-        s: Math.round(k * 100) / 100,
-      };
-    }
-    return ((boxPx.h * k) / DESIGN.phone.h) * 100;
+  const H = DESIGN.phone.h;
+  const gapPx = (PHONE.gap / 100) * H;
+  const pad = 10;
+  const pxBox = (c: Cluster) => {
+    const b = bounds(c.ids.map(desk));
+    return { ...b, wPx: (b.w / 100) * DESIGN.desktop.w, hPx: (b.h / 100) * DESIGN.desktop.h };
+  };
+  const setFrame = (id: string, xPx: number, yPx: number, wPx: number, hPx: number, s: number) => {
+    byId.get(id)!.frames!.phone = {
+      x: round1((xPx / DESIGN.phone.w) * 100),
+      y: round1((yPx / H) * 100),
+      w: round1((wPx / DESIGN.phone.w) * 100),
+      h: round1((hPx / H) * 100),
+      r: desk(id).r,
+      s: Math.round(s * 100) / 100,
+    };
   };
 
-  let top = PHONE.top;
-  for (const c of clusters.filter((c) => !c.footer)) {
-    top += placeCluster(c, top) + PHONE.gap;
-    for (const id of c.ids) byId.get(id)!.frames!.phone!.a = c.title ? 't' : 'c';
-  }
-  let bottom = PHONE.bottom;
-  for (const c of [...clusters.filter((c) => c.footer)].reverse()) {
-    const height = placeCluster(c, 0);
-    bottom -= height;
+  const placeFlow = (c: Cluster, left: number, width: number, top: number) => {
+    const b = byId.get(c.ids[0])!;
+    const s = (textScale.get(b.id) ?? 1) * shrink;
+    const hPx = ((measured.get(b.id) ?? estimateHeight(b, s, width)) / 100) * H;
+    setFrame(b.id, left, top, width, hPx, s);
+    byId.get(b.id)!.frames!.phone!.r = 0;
+    return hPx;
+  };
+
+  const placeScaled = (c: Cluster, left: number, top: number, k: number) => {
+    const box = pxBox(c);
     for (const id of c.ids) {
-      const f = byId.get(id)!.frames!.phone!;
-      f.y = round1(f.y + bottom);
-      f.a = 'b';
+      const f = desk(id);
+      setFrame(
+        id,
+        left + ((f.x - box.x) / 100) * DESIGN.desktop.w * k,
+        top + ((f.y - box.y) / 100) * DESIGN.desktop.h * k,
+        (f.w / 100) * DESIGN.desktop.w * k,
+        (f.h / 100) * DESIGN.desktop.h * k,
+        k,
+      );
     }
-    bottom -= PHONE.gap;
+  };
+
+  const placeUnit = (
+    unit: Cluster[],
+    left: number,
+    width: number,
+    top: number,
+    align: 'left' | 'center' | 'right',
+  ) => {
+    const boxes = unit.map(pxBox);
+    if (unit.length > 1) {
+      const all = bounds(unit.flatMap((c) => c.ids.map(desk)));
+      const rowW = (all.w / 100) * DESIGN.desktop.w;
+      const rowH = (all.h / 100) * DESIGN.desktop.h;
+      const kRow = Math.min(1, width / rowW, (MAX_UNIT_HEIGHT * H) / rowH);
+      if (kRow >= 0.5) {
+        const whole: Cluster = { ...unit[0], ids: unit.flatMap((c) => c.ids) };
+        const k = kRow * shrink;
+        placeScaled(whole, left + (width - rowW * k) / 2, top, k);
+        return rowH * k;
+      }
+    }
+    const maxW = Math.max(...boxes.map((b) => b.wPx));
+    const maxH = Math.max(...boxes.map((b) => b.hPx));
+    const cols =
+      unit.length === 1
+        ? 1
+        : Math.max(
+            1,
+            Math.min(unit.length, Math.floor((width + gapPx) / (maxW * MIN_CARD_SCALE + gapPx))),
+          );
+    const k =
+      Math.min(1, (width - (cols - 1) * gapPx) / (cols * maxW), (MAX_UNIT_HEIGHT * H) / maxH) *
+      shrink;
+    const cellW = maxW * k;
+    const gridW = cols * cellW + (cols - 1) * gapPx;
+    const startX =
+      left + (align === 'left' ? 0 : align === 'right' ? width - gridW : (width - gridW) / 2);
+    let y = top;
+    for (let r = 0; r < unit.length; r += cols) {
+      const row = unit.slice(r, r + cols);
+      const rowH = Math.max(...row.map((c) => pxBox(c).hPx * k));
+      row.forEach((c, i) => {
+        const b = pxBox(c);
+        placeScaled(
+          c,
+          startX + i * (cellW + gapPx) + (cellW - b.wPx * k) / 2,
+          y + (rowH - b.hPx * k) / 2,
+          k,
+        );
+      });
+      y += rowH + gapPx;
+    }
+    return y - gapPx - top;
+  };
+
+  const units = (list: Cluster[]) => {
+    const out: Cluster[][] = [];
+    for (const c of list) {
+      const last = out[out.length - 1];
+      const scaled = (x: Cluster) => !x.flow && !x.children;
+      if (last && scaled(c) && scaled(last[0]) && last[0].row === c.row) last.push(c);
+      else out.push([c]);
+    }
+    return out;
+  };
+
+  const placeAny = (
+    unit: Cluster[],
+    left: number,
+    width: number,
+    top: number,
+    align: 'left' | 'center' | 'right',
+  ): number => {
+    const first = unit[0];
+    if (first.children) {
+      const inner = column(first.children, left + pad, width - 2 * pad, top + pad);
+      const hPx = inner + 2 * pad;
+      setFrame(first.container!, left, top, width, hPx, 1);
+      byId.get(first.container!)!.frames!.phone!.r = 0;
+      return hPx;
+    }
+    if (first.flow) return placeFlow(first, left, width, top);
+    return placeUnit(unit, left, width, top, align);
+  };
+
+  const column = (list: Cluster[], left: number, width: number, top: number) => {
+    let y = top;
+    for (const unit of units(list)) y += placeAny(unit, left, width, y, 'center') + gapPx;
+    return Math.max(0, y - gapPx - top);
+  };
+
+  const alignOf = (unit: Cluster[]): 'left' | 'center' | 'right' => {
+    if (unit.length > 1) return 'center';
+    const b = pxBox(unit[0]);
+    const centre = b.x + b.w / 2;
+    return centre < 100 / 3 ? 'left' : centre > 200 / 3 ? 'right' : 'center';
+  };
+
+  const left = (PHONE.left / 100) * DESIGN.phone.w;
+  const width = (PHONE.width / 100) * DESIGN.phone.w;
+  let top = (PHONE.top / 100) * H;
+  for (const unit of units(clusters.filter((c) => !c.footer))) {
+    top += placeAny(unit, left, width, top, 'center') + gapPx;
+    for (const c of unit)
+      for (const id of c.ids) byId.get(id)!.frames!.phone!.a = c.title ? 't' : 'c';
   }
-  return (top - PHONE.gap - PHONE.top + (PHONE.bottom - bottom)) / (PHONE.bottom - PHONE.top);
+  let bottom = (PHONE.bottom / 100) * H;
+  for (const unit of units(clusters.filter((c) => c.footer)).reverse()) {
+    const height = placeAny(unit, left, width, 0, alignOf(unit));
+    bottom -= height;
+    for (const c of unit)
+      for (const id of c.ids) {
+        const f = byId.get(id)!.frames!.phone!;
+        f.y = round1(f.y + (bottom / H) * 100);
+        f.a = 'b';
+      }
+    bottom -= gapPx;
+  }
+  const used = top - gapPx - (PHONE.top / 100) * H + ((PHONE.bottom / 100) * H - bottom);
+  return used / (((PHONE.bottom - PHONE.top) / 100) * H);
 }
 
 function estimateHeight(b: Block, s: number, widthPx: number): number {

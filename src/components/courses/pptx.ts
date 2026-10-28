@@ -627,7 +627,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
           const prst =
             geom?.getAttribute('prst') ?? (child(spPr, A, 'custGeom') ? 'custom' : 'rect');
           const pushBox = (
-            f: { x: number; y: number; w: number; h: number },
+            f: { x: number; y: number; w: number; h: number; r?: number },
             colour: string,
             round: number | undefined,
           ) => {
@@ -635,7 +635,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
             shapes.push({
               name,
               ...f,
-              r: 0,
+              r: f.r ?? 0,
               text: '',
               paras: [],
               valign: 'top',
@@ -647,27 +647,40 @@ export async function readPptx(file: Blob): Promise<Deck> {
             });
           };
           if (STRAIGHT_LINE.test(prst)) {
-            if (!border || (at.w && at.h)) {
-              if (border)
-                diagrams.push({ geometry: 'diagonal line', x: at.x, y: at.y, w: at.w, h: at.h });
-              continue;
-            }
+            if (!border) continue;
             const ln = child(spPr, A, 'ln');
-            const xPct = (pt: number) => (pt / (slideW / EMU_PER_PT)) * 100;
-            const yPct = (pt: number) => (pt / (slideH / EMU_PER_PT)) * 100;
-            const t = border.width;
-            const round = ln?.getAttribute('cap') === 'rnd' ? Math.round(t / 2) : undefined;
-            const flat = !at.h;
+            const lineXfrm = child(spPr, A, 'xfrm');
+            const pxX = (pct: number) => (pct / 100) * 960;
+            const pxY = (pct: number) => (pct / 100) * ((960 * slideH) / slideW);
+            const flipH = lineXfrm?.getAttribute('flipH') === '1';
+            const flipV = lineXfrm?.getAttribute('flipV') === '1';
+            const x0 = pxX(flipH ? at.x + at.w : at.x);
+            const x1 = pxX(flipH ? at.x : at.x + at.w);
+            const y0 = pxY(flipV ? at.y + at.h : at.y);
+            const y1 = pxY(flipV ? at.y : at.y + at.h);
+            const thick = border.width * (960 / (slideW / EMU_PER_PT));
+            const length = Math.hypot(x1 - x0, y1 - y0);
+            const toFrame = (cx: number, cy: number, w: number, h: number, r: number) => ({
+              x: round1(((cx - w / 2) / 960) * 100),
+              y: round1(((cy - h / 2) / pxY(100)) * 100),
+              w: round1((w / 960) * 100),
+              h: round1((h / pxY(100)) * 100),
+              r,
+            });
             pushBox(
-              flat
-                ? { x: at.x, y: round1(at.y - yPct(t) / 2), w: at.w, h: round1(yPct(t)) }
-                : { x: round1(at.x - xPct(t) / 2), y: at.y, w: round1(xPct(t)), h: at.h },
+              toFrame(
+                (x0 + x1) / 2,
+                (y0 + y1) / 2,
+                length,
+                thick,
+                Math.round((Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI),
+              ),
               border.colour,
-              round,
+              ln?.getAttribute('cap') === 'rnd' ? Math.round(thick / 2) : undefined,
             );
             const ends = [
-              { el: child(ln, A, 'headEnd'), at: 0 },
-              { el: child(ln, A, 'tailEnd'), at: 1 },
+              { el: child(ln, A, 'headEnd'), x: x0, y: y0 },
+              { el: child(ln, A, 'tailEnd'), x: x1, y: y1 },
             ];
             for (const end of ends) {
               const type = end.el?.getAttribute('type');
@@ -675,25 +688,14 @@ export async function readPptx(file: Blob): Promise<Deck> {
               if (type !== 'oval') {
                 diagrams.push({
                   geometry: `${type} line end`,
-                  x: at.x,
-                  y: at.y,
-                  w: at.w || 1,
-                  h: at.h || 1,
+                  ...toFrame(end.x, end.y, thick * 4, thick * 4, 0),
                 });
                 continue;
               }
-              const d = t * 3;
-              const cx = flat ? at.x + at.w * end.at : at.x;
-              const cy = flat ? at.y : at.y + at.h * end.at;
               pushBox(
-                {
-                  x: round1(cx - xPct(d) / 2),
-                  y: round1(cy - yPct(d) / 2),
-                  w: round1(xPct(d)),
-                  h: round1(yPct(d)),
-                },
+                toFrame(end.x, end.y, thick * 3, thick * 3, 0),
                 border.colour,
-                Math.round(d),
+                Math.round(thick * 1.5),
               );
             }
             continue;
@@ -702,7 +704,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
           if (!DRAWABLE.test(prst)) {
             if (fill || border)
               diagrams.push({ geometry: prst, x: at.x, y: at.y, w: at.w, h: at.h });
-            if (!text.trim()) continue;
+            if (text.trim().length < 3) continue;
           }
           const drawable = DRAWABLE.test(prst);
           const { paras, insets, valign } = readText(el, owner, phChain);

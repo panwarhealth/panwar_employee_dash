@@ -151,7 +151,10 @@ export function useCourseAssistant(
         .filter((slide) => !slide.hidden)
         .map((slide) => slideToPage(deck, slide, urls, doc, taken));
       for (const c of converted) while (pageIds.has(c.page.id)) c.page.id = `${c.page.id}-new`;
-      for (const c of converted) await fitTables(doc, c);
+      for (const [i, c] of converted.entries()) {
+        setStatus(`Fitting tables (${i + 1} of ${converted.length})`);
+        await fitTables(doc, c);
+      }
       const crowded: string[] = [];
       if (layoutsFor(doc.screens).includes('phone'))
         for (const [i, c] of converted.entries()) {
