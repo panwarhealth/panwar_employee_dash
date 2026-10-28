@@ -101,7 +101,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
         />
 
         <div className="flex min-w-0 flex-1 flex-col bg-[#eceaef]">
-          <div className="flex items-center gap-3 border-b border-ph-charcoal/10 bg-white px-4 py-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-ph-charcoal/10 bg-white px-4 py-2 text-sm">
             <Link
               to="/app/courses"
               className="flex items-center gap-1 text-ph-charcoal/60 hover:text-ph-purple"
@@ -128,7 +128,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                     ? 'Not saved, retrying on next change'
                     : 'Unsaved'}
             </span>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
               <div className="flex gap-1">
                 <SegButton
                   on={!isCanvas}
