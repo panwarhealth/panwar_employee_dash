@@ -177,8 +177,14 @@ export function useCourseAssistant(
       await run(deckPrompt, controller);
       setDeckPrompt(null);
       setStatus('Laying out the phone pages again');
-      apply(await relayoutPhones(docRef.current));
+      const relaid = await relayoutPhones(docRef.current);
+      apply(relaid.doc);
       log('activity', 'Laid out the phone pages again around the new questions');
+      if (relaid.crowded.length)
+        log(
+          'error',
+          `These pages still don't fit on phones, and have a note saying so: ${relaid.crowded.map((p) => p.title).join(', ')}.`,
+        );
     });
 
   return {

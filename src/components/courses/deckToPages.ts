@@ -1,3 +1,4 @@
+import { uid } from '@/course/doc';
 import type {
   Anchor,
   Block,
@@ -319,14 +320,23 @@ export async function importDeck(
   if (layoutsFor(doc.screens).includes('phone'))
     for (const [i, c] of converted.entries()) {
       onStatus(`Fitting the phone layout (${i + 1} of ${converted.length})`);
-      if ((await fitPhone(doc, c.page)) > 1) crowded.push(c.page);
+      if (!(await fitPhone(doc, c.page))) crowded.push(c.page);
     }
   return { pages: converted.map((c) => c.page), crowded, missingFonts: missingFonts(deck) };
 }
 
-export async function relayoutPhones(doc: CourseDoc): Promise<CourseDoc> {
+export const DOES_NOT_FIT_NOTE =
+  "This page doesn't fit on a phone screen. Split it across more pages, or put its sections in a tabs block.";
+
+export async function relayoutPhones(doc: CourseDoc): Promise<{ doc: CourseDoc; crowded: Page[] }> {
   const next = structuredClone(doc);
-  if (!layoutsFor(next.screens).includes('phone')) return next;
-  for (const page of next.pages) await fitPhone(next, page);
-  return next;
+  const crowded: Page[] = [];
+  if (!layoutsFor(next.screens).includes('phone')) return { doc: next, crowded };
+  for (const page of next.pages) {
+    if (await fitPhone(next, page)) continue;
+    crowded.push(page);
+    if (!page.notes?.some((n) => n.text === DOES_NOT_FIT_NOTE))
+      page.notes = [...(page.notes ?? []), { id: uid(), text: DOES_NOT_FIT_NOTE }];
+  }
+  return { doc: next, crowded };
 }

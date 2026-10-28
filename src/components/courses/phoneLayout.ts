@@ -21,6 +21,7 @@ const MIN_CARD_SCALE = 0.7;
 const MAX_UNIT_HEIGHT = 0.42;
 const MIN_PICTURE_SHRINK = 0.4;
 const MIN_TEXT_SHRINK = 0.7;
+const MIN_LABEL_PX = 10;
 const CONTAINER_PAD = 10;
 
 const FLOWING = new Set<Block['type']>([
@@ -208,6 +209,7 @@ function estimateHeight(b: Block, s: number, widthPx: number): number {
 class PhoneStack {
   private readonly byId: Map<string, Block>;
   private readonly gap = (PHONE.gap / 100) * PHONE.h;
+  unreadable = false;
 
   constructor(
     page: Page,
@@ -240,7 +242,10 @@ class PhoneStack {
 
   private placeFlow(c: Cluster, left: number, width: number, top: number): number {
     const b = this.byId.get(c.ids[0])!;
-    const s = (this.textScale.get(b.id) ?? 1) * this.shrink.text;
+    const s = Math.max(
+      (this.textScale.get(b.id) ?? 1) * this.shrink.text,
+      this.readableScale(c.ids),
+    );
     const h = ((this.measured.get(b.id) ?? estimateHeight(b, s, width)) / 100) * PHONE.h;
     this.setFrame(b.id, left, top, width, h, s, 0);
     return h;
@@ -261,11 +266,27 @@ class PhoneStack {
     }
   }
 
+  private readableScale(ids: string[]): number {
+    const sizes = ids
+      .map((id) => this.byId.get(id)!)
+      .filter((b) => (b.type === 'text' || b.type === 'heading') && hasText(b))
+      .map((b) => (b as HeadingBlock | TextBlock).textStyle?.size ?? 16);
+    return sizes.length ? Math.min(1, MIN_LABEL_PX / Math.min(...sizes)) : 0;
+  }
+
+  private scaleFor(ids: string[], fitWidth: number, fitHeight: number): number {
+    const readable = this.readableScale(ids);
+    if (readable > fitWidth + 0.001) this.unreadable = true;
+    const shrunk = Math.min(1, fitWidth, fitHeight) * this.shrink.pictures;
+    return Math.max(shrunk, Math.min(1, fitWidth, readable));
+  }
+
   private placeRow(unit: Cluster[], left: number, width: number, top: number): number | null {
-    const row = this.pxBox(unit.flatMap((c) => c.ids));
+    const ids = unit.flatMap((c) => c.ids);
+    const row = this.pxBox(ids);
     const k = Math.min(1, width / row.wPx, (MAX_UNIT_HEIGHT * PHONE.h) / row.hPx);
     if (k < 0.5) return null;
-    const scaled = k * this.shrink.pictures;
+    const scaled = this.scaleFor(ids, width / row.wPx, (MAX_UNIT_HEIGHT * PHONE.h) / row.hPx);
     this.placeScaled(
       unit.flatMap((c) => c.ids),
       left + (width - row.wPx * scaled) / 2,
@@ -281,12 +302,11 @@ class PhoneStack {
     const maxH = Math.max(...boxes.map((b) => b.hPx));
     const fit = Math.floor((width + this.gap) / (maxW * MIN_CARD_SCALE + this.gap));
     const cols = unit.length === 1 ? 1 : Math.max(1, Math.min(unit.length, fit));
-    const k =
-      Math.min(
-        1,
-        (width - (cols - 1) * this.gap) / (cols * maxW),
-        (MAX_UNIT_HEIGHT * PHONE.h) / maxH,
-      ) * this.shrink.pictures;
+    const k = this.scaleFor(
+      unit.flatMap((c) => c.ids),
+      (width - (cols - 1) * this.gap) / (cols * maxW),
+      (MAX_UNIT_HEIGHT * PHONE.h) / maxH,
+    );
     const cellW = maxW * k;
     const gridW = cols * cellW + (cols - 1) * this.gap;
     const startX =
@@ -389,14 +409,16 @@ export function stackPhone(
   measured: Map<string, number> = new Map(),
   textScale: Map<string, number> = phoneTextScale(page),
   shrink: Shrink = { text: 1, pictures: 1 },
-): number {
-  return new PhoneStack(page, measured, textScale, shrink).run(clusters);
+): { used: number; unreadable: boolean } {
+  const stack = new PhoneStack(page, measured, textScale, shrink);
+  const used = stack.run(clusters);
+  return { used, unreadable: stack.unreadable };
 }
 
 const flowIds = (list: Cluster[]): string[] =>
   list.flatMap((c) => (c.children ? flowIds(c.children) : c.flow ? c.ids : []));
 
-export async function fitPhone(doc: CourseDoc, page: Page): Promise<number> {
+export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
   for (const b of page.blocks)
     if (b.frames?.desktop && isBackdrop(b.frames.desktop))
       b.frames.phone = { ...b.frames.desktop, a: 'c' };
@@ -404,17 +426,18 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<number> {
   const scale = phoneTextScale(page);
   const flowing = new Set(flowIds(clusters));
   const shrink: Shrink = { text: 1, pictures: 1 };
-  let used = 1;
+  let result = { used: 1, unreadable: false };
   for (let attempt = 0; attempt < 8; attempt++) {
     stackPhone(page, clusters, new Map(), scale, shrink);
     const measured = await measureHeights(doc, page, 'phone');
-    used = stackPhone(
+    result = stackPhone(
       page,
       clusters,
       new Map([...measured].filter(([id]) => flowing.has(id))),
       scale,
       shrink,
     );
+    const used = result.used;
     if (used <= 1) break;
     const step = Math.max(0.75, 0.98 / used);
     if (shrink.pictures > MIN_PICTURE_SHRINK)
@@ -423,5 +446,5 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<number> {
       shrink.text = Math.max(MIN_TEXT_SHRINK, shrink.text * step);
     else break;
   }
-  return used;
+  return result.used <= 1 && !result.unreadable;
 }
