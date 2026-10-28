@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import { SortableList } from './SortableList';
 
 function pageTag(page: Page, last: boolean): string {
-  if (page.kind === 'canvas') return 'canvas';
   if (page.blocks.some((b) => b.type === 'check')) return 'quiz';
   return last ? 'end' : '';
 }

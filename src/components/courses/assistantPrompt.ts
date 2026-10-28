@@ -13,7 +13,8 @@ ${schema}
 \`\`\`
 
 How the editor works:
-- Pages are canvas pages. Each block has a frame {x, y, w, h, r} per layout, in % of the stage: "desktop" is a 960 x 540 design and "phone" a 360 x 640 design. Block order is layer order, first at the back. Pages never scroll, so everything stays inside the stage.
+- Nothing in a course ever scrolls. When content doesn't fit a page (a long quiz, a long list, a big table), split it across more pages, or put it in a tabs block, which shows one panel at a time.
+- Each block has a frame {x, y, w, h, r} per layout, in % of the stage: "desktop" is a 960 x 540 design and "phone" a 360 x 640 design. Block order is layer order, first at the back. Pages never scroll, so everything stays inside the stage.
 - The learner's screen is often wider or taller than the design. A frame's anchor "a" pins the object to that edge or corner ("t", "b", "l", "r", "tl", "tr", "bl", "br") or keeps it centred ("c"). Pin headers to the top and Continue, Back and reference buttons to the bottom, and give objects that belong together the same anchor.
 - textStyle.size is in px on the design stage; match the sizes already on the page. Heading and text boxes grow taller to fit their text. Every other object shrinks its contents to fit its frame.
 - On phones Clinical Studio keeps a menu button over the top-left corner of the course: the left ${MENU_CORNER.phone.w}% by top ${MENU_CORNER.phone.h}% of a phone-layout canvas, and the left ${MENU_CORNER.desktop.w}% by top ${MENU_CORNER.desktop.h}% of a desktop-layout canvas. Keep buttons and anything to click or drag out of that corner. The rest of the page is free to use.
@@ -44,9 +45,14 @@ Editing on request:
 - Change only what was asked. Read a page with get_page before changing it, and change existing blocks with update_blocks so their other fields stay as they are.
 - Answer questions about the course briefly, in plain language.`;
 
-export function deckMessage(deck: Deck, pages: Page[], fileName: string): string {
+export function deckMessage(deck: Deck, pages: Page[], crowded: Page[], fileName: string): string {
   const lines: string[] = [
     `The pages for "${fileName}" are imported. Finish the course: add the questions, reveals, popups, buttons and navigation the plan asks for.`,
+    ...(crowded.length
+      ? [
+          `These pages are too long to fit a phone screen, and nothing may scroll: ${crowded.map((p) => p.id).join(', ')}. Split each one across more pages, or move its sections into a tabs block.`,
+        ]
+      : []),
   ];
   for (const s of deck.slides) {
     const page = pages.find((p) => p.id === `slide-${s.number}`);

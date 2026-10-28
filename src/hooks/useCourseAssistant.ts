@@ -163,8 +163,11 @@ export function useCourseAssistant(
           `The deck uses fonts the course doesn't have yet: ${imported.missingFonts.join(', ')}. Upload them in Course settings so the text matches.`,
         );
       if (imported.crowded.length)
-        log('error', `These pages are still crowded on phones: ${imported.crowded.join(', ')}.`);
-      setDeckPrompt(deckMessage(deck, imported.pages, file.name));
+        log(
+          'error',
+          `These pages don't fit on phones yet: ${imported.crowded.map((p) => p.title).join(', ')}. The assistant will split them.`,
+        );
+      setDeckPrompt(deckMessage(deck, imported.pages, imported.crowded, file.name));
     });
 
   const finishDeck = () =>

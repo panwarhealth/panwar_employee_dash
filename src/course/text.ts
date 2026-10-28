@@ -20,7 +20,7 @@ export const htmlLines = (html: string) =>
 
 export function blockText(b: Block): string {
   if (b.type === 'heading') return b.text;
-  if (b.type === 'text' || b.type === 'scroll') return htmlLines(b.html).join('\n');
+  if (b.type === 'text') return htmlLines(b.html).join('\n');
   return '';
 }
 

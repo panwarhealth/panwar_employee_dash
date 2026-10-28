@@ -35,7 +35,6 @@ const FLOWING = new Set<Block['type']>([
   'accordion',
   'tabs',
   'pathway',
-  'scroll',
 ]);
 
 export interface Cluster {

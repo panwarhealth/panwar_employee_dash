@@ -109,7 +109,7 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'add_page',
     description:
-      'Create a new page, such as a results page. Send the whole page: id, title, kind "canvas", blocks with frames for every layout, and triggers. It goes after after_page_id, or at the end.',
+      'Create a new page, such as a results page. Send the whole page: id, title, blocks with desktop frames, and triggers. It goes after after_page_id, or at the end.',
     input_schema: obj(
       {
         page: { type: 'object', description: 'A Page as defined in the schema.' },
@@ -191,7 +191,6 @@ function toPage(raw: Record<string, unknown>): Page | string {
     ...raw,
     id: typeof raw.id === 'string' && raw.id ? raw.id : uid(),
     title: typeof raw.title === 'string' ? raw.title : 'Untitled',
-    kind: raw.kind === 'flow' ? 'flow' : 'canvas',
     blocks,
     triggers: Array.isArray(raw.triggers)
       ? (raw.triggers as Trigger[]).map((t) => ({ ...t, conditions: t.conditions ?? [] }))
@@ -212,7 +211,6 @@ export function courseOutline(doc: CourseDoc): string {
     pages: doc.pages.map((p) => ({
       id: p.id,
       title: p.title,
-      kind: p.kind,
       blocks: p.blocks.map((b) => `${b.id} ${b.type}: ${blockLabel(b).slice(0, 60)}`),
     })),
   });

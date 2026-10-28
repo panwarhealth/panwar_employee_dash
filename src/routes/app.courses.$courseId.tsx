@@ -12,7 +12,6 @@ import { Inspector } from '@/components/courses/Inspector';
 import { PageList } from '@/components/courses/PageList';
 import { PreviewModal } from '@/components/courses/PreviewModal';
 import { SettingsModal } from '@/components/courses/SettingsModal';
-import { Stage } from '@/components/courses/Stage';
 import { VariablesModal } from '@/components/courses/VariablesModal';
 import { frameFor, newFrame } from '@/course/canvasLayout';
 import { newBlock, newPage, normalizeDoc, type CourseDoc, type Layout } from '@/course/doc';
@@ -60,7 +59,6 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const layout: Layout = doc.screens === 'both' ? (phone ? 'phone' : 'desktop') : doc.screens;
   const otherLayout: Layout | null =
     doc.screens === 'both' ? (layout === 'phone' ? 'desktop' : 'phone') : null;
-  const isCanvas = page.kind === 'canvas';
   const selectedBlock = page.blocks.find((b) => b.id === blockId) ?? null;
   const setFrame = (id: string, frame: Parameters<typeof ops.setFrame>[4]) =>
     setDoc((d) => ops.setFrame(d, page.id, id, layout, frame));
@@ -129,18 +127,6 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                     : 'Unsaved'}
             </span>
             <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-              <div className="flex gap-1">
-                <SegButton
-                  on={!isCanvas}
-                  onClick={() => setDoc((d) => ops.setPageKind(d, page.id, 'flow'))}
-                  label="Flow"
-                />
-                <SegButton
-                  on={isCanvas}
-                  onClick={() => setDoc((d) => ops.setPageKind(d, page.id, 'canvas'))}
-                  label="Canvas"
-                />
-              </div>
               {doc.screens === 'both' && (
                 <div className="flex gap-1">
                   <SegButton
@@ -191,35 +177,25 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               </Button>
             </div>
           </div>
-          {isCanvas ? (
-            <div className="flex flex-1 justify-center overflow-auto p-6">
-              <CanvasEditor
-                doc={doc}
-                page={page}
-                layout={layout}
-                selectedId={blockId}
-                onSelect={setBlockId}
-                onFrame={setFrame}
-                onRemove={removeBlock}
-                onText={(id, value) =>
-                  setDoc((d) =>
-                    ops.updateBlock(d, page.id, id, (b) => {
-                      if (b.type === 'text') b.html = value;
-                      if (b.type === 'heading') b.text = value;
-                    }),
-                  )
-                }
-              />
-            </div>
-          ) : (
-            <Stage
+          <div className="flex flex-1 justify-center overflow-auto p-6">
+            <CanvasEditor
               doc={doc}
               page={page}
-              phone={layout === 'phone'}
+              layout={layout}
               selectedId={blockId}
               onSelect={setBlockId}
+              onFrame={setFrame}
+              onRemove={removeBlock}
+              onText={(id, value) =>
+                setDoc((d) =>
+                  ops.updateBlock(d, page.id, id, (b) => {
+                    if (b.type === 'text') b.html = value;
+                    if (b.type === 'heading') b.text = value;
+                  }),
+                )
+              }
             />
-          )}
+          </div>
         </div>
 
         <Inspector
@@ -238,18 +214,14 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             setBlockId(copy.id);
           }}
           onRemoveBlock={removeBlock}
-          canvas={
-            isCanvas
-              ? {
-                  layout,
-                  otherLayout,
-                  frame: selectedBlock ? frameFor(page, selectedBlock, layout) : null,
-                  onFrame: (f) => selectedBlock && setFrame(selectedBlock.id, f),
-                  onCopyLayout: () =>
-                    otherLayout && setDoc((d) => ops.copyLayout(d, page.id, otherLayout, layout)),
-                }
-              : null
-          }
+          canvas={{
+            layout,
+            otherLayout,
+            frame: selectedBlock ? frameFor(page, selectedBlock, layout) : null,
+            onFrame: (f) => selectedBlock && setFrame(selectedBlock.id, f),
+            onCopyLayout: () =>
+              otherLayout && setDoc((d) => ops.copyLayout(d, page.id, otherLayout, layout)),
+          }}
         />
 
         <AddBlockMenu
@@ -259,9 +231,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             const b = newBlock(type);
             setDoc((d) => {
               const next = ops.insertBlock(d, page.id, blockId, b);
-              return isCanvas
-                ? ops.setFrame(next, page.id, b.id, layout, newFrame(type, layout))
-                : next;
+              return ops.setFrame(next, page.id, b.id, layout, newFrame(type, layout));
             });
             setBlockId(b.id);
             setModal(null);

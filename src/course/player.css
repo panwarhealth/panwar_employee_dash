@@ -519,9 +519,6 @@
   opacity: 0;
   pointer-events: none;
 }
-.cp-blk {
-  transition: opacity 0.4s;
-}
 
 .cp-audio {
   display: flex;
@@ -560,15 +557,6 @@
 .cp-obj .cp-lottie {
   min-height: 0;
 }
-.cp-scroll {
-  overflow-y: auto;
-  padding: 1em;
-  border: 1px solid var(--cp-line);
-  border-radius: 6px;
-}
-.cp-obj .cp-scroll {
-  max-height: none !important;
-}
 
 .cp-layer {
   position: fixed;
@@ -587,11 +575,16 @@
   gap: 0.8em;
   width: min(100%, 560px);
   max-height: calc(var(--cp-vh, 100vh) * 0.9);
-  overflow-y: auto;
+  overflow: hidden;
   padding: 1.6em;
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 1em 3em rgba(0, 0, 0, 0.3);
+}
+.cp-layer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
 }
 .cp-layer-x {
   position: absolute;

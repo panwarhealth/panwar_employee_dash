@@ -64,9 +64,6 @@ export const removeBlock = (doc: CourseDoc, pageId: string, blockId: string) =>
 export const moveBlock = (doc: CourseDoc, pageId: string, from: number, to: number) =>
   updatePage(doc, pageId, (p) => moveItem(p.blocks, from, to));
 
-export const setPageKind = (doc: CourseDoc, pageId: string, kind: Page['kind']) =>
-  updatePage(doc, pageId, (p) => (p.kind = kind));
-
 export const setFrame = (
   doc: CourseDoc,
   pageId: string,

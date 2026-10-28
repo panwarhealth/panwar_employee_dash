@@ -10,7 +10,6 @@ import {
   type TriggerEvent,
 } from './doc';
 import type { Lms, PlayState } from './scorm';
-import { BlockView } from './blocks';
 import type { BlockContext } from './context';
 import { accentStyle } from './util';
 import { CanvasStage } from './canvas';
@@ -19,7 +18,7 @@ import { pickBlocks, pickStatus, togglePick } from './picks';
 import { choosePool, computeResults, cueHidden, resultsSettings } from './grading';
 import { PopupLayer } from './interactive';
 import { fontFaces, textStyleCss } from './typography';
-import { animClass, animStyle, hasExit, OUT_MS } from './anim';
+import { hasExit, OUT_MS } from './anim';
 import { applySet, eventMatches, initialVars, mergeText, passes, type Vars } from './logic';
 
 function PickFeedback({
@@ -65,39 +64,24 @@ function PageBody({
   leaving: boolean;
   onRetryPicks: () => void;
 }) {
-  if (page.kind === 'canvas') {
-    const status = pickStatus(page, ctx.picked);
-    const feedback = status.done && (
-      <PickFeedback page={page} correct={status.correct} ctx={ctx} onRetry={onRetryPicks} />
-    );
-    return page.pick?.showAs === 'text' ? (
-      <div className="cp-canvascol">
-        <CanvasStage page={page} layout={layout} ctx={ctx} hidden={hidden} leaving={leaving} />
-        {feedback}
-      </div>
-    ) : (
-      <CanvasStage
-        page={page}
-        layout={layout}
-        ctx={ctx}
-        hidden={hidden}
-        leaving={leaving}
-        overlay={feedback}
-      />
-    );
-  }
-  return (
-    <div className="cp-flow">
-      {page.blocks.map((b) => (
-        <div
-          key={b.id}
-          className={`cp-blk ${animClass(b, leaving, hidden.has(b.id))}`}
-          style={animStyle(b)}
-        >
-          <BlockView block={b} ctx={ctx} />
-        </div>
-      ))}
+  const status = pickStatus(page, ctx.picked);
+  const feedback = status.done && (
+    <PickFeedback page={page} correct={status.correct} ctx={ctx} onRetry={onRetryPicks} />
+  );
+  return page.pick?.showAs === 'text' ? (
+    <div className="cp-canvascol">
+      <CanvasStage page={page} layout={layout} ctx={ctx} hidden={hidden} leaving={leaving} />
+      {feedback}
     </div>
+  ) : (
+    <CanvasStage
+      page={page}
+      layout={layout}
+      ctx={ctx}
+      hidden={hidden}
+      leaving={leaving}
+      overlay={feedback}
+    />
   );
 }
 
@@ -350,7 +334,7 @@ export function Player({
         key={page.id}
         className={[
           'cp-main',
-          page.kind === 'canvas' && 'cp-main-canvas',
+          'cp-main-canvas',
           page.transition && page.transition !== 'none' && `cp-tr-${page.transition}`,
         ]
           .filter(Boolean)

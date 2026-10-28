@@ -17,7 +17,6 @@ import {
   type PopupBlock,
   type QuestionBase,
   type ResultsBlock,
-  type ScrollBlock,
   type SliderBlock,
   type TabsBlock,
   type WrittenBlock,
@@ -25,7 +24,6 @@ import {
 import { blockLabel } from './blockMeta';
 import { Field, MediaInput, NumberBox, Select, TextArea, TextInput, Toggle } from './fields';
 import { RichText } from './RichText';
-import { TextStyleFields } from './TextStyleFields';
 
 type Edit<B> = (fn: (b: B) => void) => void;
 
@@ -216,25 +214,6 @@ export function AnimationForm({
         }
       />
       <Toggle label="Loop" checked={block.loop} onChange={(v) => set((b) => (b.loop = v))} />
-    </>
-  );
-}
-
-export function ScrollForm({ block, set }: { block: ScrollBlock; set: Edit<ScrollBlock> }) {
-  return (
-    <>
-      <RichText
-        key={block.id}
-        label="Text"
-        html={block.html}
-        onChange={(v) => set((b) => (b.html = v))}
-      />
-      <NumberInput
-        label="Box height on flow pages (px)"
-        value={block.height}
-        onChange={(n) => set((b) => (b.height = Math.max(80, n)))}
-      />
-      <TextStyleFields value={block.textStyle} onChange={(v) => set((b) => (b.textStyle = v))} />
     </>
   );
 }

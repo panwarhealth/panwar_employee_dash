@@ -16,7 +16,6 @@ export const BLOCKS: BlockMeta[] = [
   { type: 'embed', name: 'Embed', detail: 'YouTube, Vimeo, web page', group: 'Content' },
   { type: 'audio', name: 'Audio', detail: 'Narration with reveal cue points', group: 'Content' },
   { type: 'animation', name: 'Animation', detail: 'Lottie or GIF', group: 'Content' },
-  { type: 'scroll', name: 'Scrolling panel', detail: 'Long text in a fixed box', group: 'Content' },
   { type: 'divider', name: 'Divider', group: 'Content' },
   { type: 'popup', name: 'Pop-up', detail: 'Button that opens a layer', group: 'Interactive' },
   { type: 'accordion', name: 'Accordion', group: 'Interactive' },
@@ -71,7 +70,6 @@ function labelText(b: Block): string {
   switch (b.type) {
     case 'heading':
     case 'text':
-    case 'scroll':
       return blockText(b).replace(/\s+/g, ' ');
     case 'image':
     case 'video':

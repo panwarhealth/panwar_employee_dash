@@ -17,7 +17,6 @@ import {
   PathwayForm,
   PopupForm,
   ResultsForm,
-  ScrollForm,
   WrittenForm,
 } from './MoreForms';
 
@@ -294,8 +293,6 @@ export function BlockForm({
       return <AudioForm block={block} page={page} courseId={courseId} set={set<typeof block>} />;
     case 'animation':
       return <AnimationForm block={block} courseId={courseId} set={set<typeof block>} />;
-    case 'scroll':
-      return <ScrollForm block={block} set={set<typeof block>} />;
     case 'popup':
       return <PopupForm block={block} courseId={courseId} set={set<typeof block>} />;
     case 'accordion':

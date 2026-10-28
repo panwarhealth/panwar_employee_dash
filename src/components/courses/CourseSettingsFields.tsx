@@ -12,8 +12,7 @@ const SCREENS: {
   {
     value: 'both',
     name: 'Desktop and phone',
-    detail:
-      'Two layouts per canvas page: 16:9 for desktop and tablet, 9:16 for phones. Flow pages reflow on their own.',
+    detail: 'Two layouts per page: 16:9 for desktop and tablet, 9:16 for phones.',
     ratio: '16:9 + 9:16',
   },
   {

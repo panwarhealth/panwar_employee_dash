@@ -96,9 +96,7 @@ export function preflight(doc: CourseDoc): Check[] {
     });
 
   for (const layout of layoutsFor(doc.screens)) {
-    const unset = doc.pages.filter(
-      (p) => p.kind === 'canvas' && p.blocks.some((b) => !b.frames?.[layout]),
-    );
+    const unset = doc.pages.filter((p) => p.blocks.some((b) => !b.frames?.[layout]));
     if (unset.length)
       checks.push({
         ok: false,

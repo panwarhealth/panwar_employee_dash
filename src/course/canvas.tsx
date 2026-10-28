@@ -88,7 +88,7 @@ export function CanvasStage({
         {page.blocks.map((b) => {
           const frame = frameFor(page, b, layout);
           const view = <BlockView block={b} ctx={ctx} />;
-          const content = b.type === 'scroll' || growsToFit(b) ? view : <Fit>{view}</Fit>;
+          const content = growsToFit(b) ? view : <Fit>{view}</Fit>;
           if (renderObject) return renderObject(b, frame, content);
           const clickable = b.type !== 'button' && ctx.clickable.has(b.id);
           return (

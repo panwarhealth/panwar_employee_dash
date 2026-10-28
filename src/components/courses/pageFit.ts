@@ -77,7 +77,7 @@ const measure = (doc: CourseDoc, page: Page, layout: Layout) =>
       const s = scaled?.match(/scale\(([\d.]+)\)/)?.[1];
       if (s && Number(s) < 0.5)
         out.push(
-          `${where} has more content than its frame and is shrunk to ${Math.round(Number(s) * 100)}% to fit. Give it a bigger frame.`,
+          `${where} has more content than its frame and is shrunk to ${Math.round(Number(s) * 100)}% to fit. Nothing may scroll: give it more room, or split the content across pages or into a tabs block.`,
         );
     });
     return out;

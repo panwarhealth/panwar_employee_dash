@@ -120,15 +120,6 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
     }
     case 'divider':
       return <hr className="cp-divider" />;
-    case 'scroll':
-      return (
-        <div
-          className="cp-text cp-scroll"
-          style={{ maxHeight: block.height, ...ctx.textStyle(block.textStyle) }}
-          tabIndex={0}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
-        />
-      );
     case 'button':
       return (
         <div className="cp-btnrow">

@@ -16,9 +16,6 @@ export function AddBlockMenu({
   return (
     <Modal open={open} onClose={onClose} title="Add a block" className="max-w-2xl">
       <div className="px-6 py-5">
-        <p className="mb-4 text-sm text-ph-charcoal/60">
-          Blocks stack top to bottom and reflow on phones.
-        </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {GROUPS.map((g) => (
             <div key={g} className="contents">

@@ -45,7 +45,7 @@ interface ConvertedPage {
 
 export interface ImportedDeck {
   pages: Page[];
-  crowded: string[];
+  crowded: Page[];
   missingFonts: string[];
 }
 
@@ -252,7 +252,6 @@ function slideToPage(
   const page: Page = {
     id: `slide-${slide.number}`,
     title: pageTitle(items, slide),
-    kind: 'canvas',
     blocks,
     triggers: [],
     ...(slide.background && slide.background.toUpperCase() !== '#FFFFFF'
@@ -316,11 +315,11 @@ export async function importDeck(
     onStatus(`Fitting tables (${i + 1} of ${converted.length})`);
     await fitTables(doc, c);
   }
-  const crowded: string[] = [];
+  const crowded: Page[] = [];
   if (layoutsFor(doc.screens).includes('phone'))
     for (const [i, c] of converted.entries()) {
       onStatus(`Fitting the phone layout (${i + 1} of ${converted.length})`);
-      if ((await fitPhone(doc, c.page)) > 1) crowded.push(c.page.title);
+      if ((await fitPhone(doc, c.page)) > 1) crowded.push(c.page);
     }
   return { pages: converted.map((c) => c.page), crowded, missingFonts: missingFonts(deck) };
 }
@@ -328,6 +327,6 @@ export async function importDeck(
 export async function relayoutPhones(doc: CourseDoc): Promise<CourseDoc> {
   const next = structuredClone(doc);
   if (!layoutsFor(next.screens).includes('phone')) return next;
-  for (const page of next.pages) if (page.kind === 'canvas') await fitPhone(next, page);
+  for (const page of next.pages) await fitPhone(next, page);
   return next;
 }

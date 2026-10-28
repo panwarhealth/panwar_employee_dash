@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type {
   AccordionBlock,
   FlipBlock,
@@ -30,10 +30,40 @@ export function PopupTrigger({ block, ctx }: { block: PopupBlock; ctx: BlockCont
   );
 }
 
+function useShrinkToFit() {
+  const card = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const c = card.current;
+      const b = body.current;
+      if (!c || !b) return;
+      b.style.zoom = '';
+      const style = getComputedStyle(c);
+      const room =
+        parseFloat(style.maxHeight) -
+        parseFloat(style.paddingTop) -
+        parseFloat(style.paddingBottom);
+      if (b.scrollHeight > room) b.style.zoom = String(room / b.scrollHeight);
+    };
+    fit();
+    const b = body.current;
+    window.addEventListener('resize', fit);
+    b?.addEventListener('load', fit, true);
+    return () => {
+      window.removeEventListener('resize', fit);
+      b?.removeEventListener('load', fit, true);
+    };
+  }, []);
+  return { card, body };
+}
+
 export function PopupLayer({ block, onClose }: { block: PopupBlock; onClose: () => void }) {
+  const { card, body } = useShrinkToFit();
   return (
     <div className="cp-layer" onClick={onClose}>
       <div
+        ref={card}
         className="cp-layer-card"
         role="dialog"
         aria-modal="true"
@@ -43,9 +73,11 @@ export function PopupLayer({ block, onClose }: { block: PopupBlock; onClose: () 
         <button type="button" className="cp-layer-x" onClick={onClose} aria-label="Close">
           ×
         </button>
-        {block.title && <h2 className="cp-h2">{block.title}</h2>}
-        {block.src && <img className="cp-img cp-img-full" src={block.src} alt="" />}
-        <Html html={block.html} />
+        <div ref={body} className="cp-layer-body">
+          {block.title && <h2 className="cp-h2">{block.title}</h2>}
+          {block.src && <img className="cp-img cp-img-full" src={block.src} alt="" />}
+          <Html html={block.html} />
+        </div>
       </div>
     </div>
   );

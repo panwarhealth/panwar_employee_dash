@@ -83,7 +83,6 @@ export interface Trigger {
 export interface Page {
   id: string;
   title: string;
-  kind: 'flow' | 'canvas';
   blocks: Block[];
   triggers: Trigger[];
   pick?: PickRule;
@@ -266,13 +265,6 @@ export interface AnimationBlock extends BlockBase {
   loop: boolean;
 }
 
-export interface ScrollBlock extends BlockBase {
-  type: 'scroll';
-  html: string;
-  height: number;
-  textStyle?: TextStyle;
-}
-
 export interface Panel {
   id: string;
   title: string;
@@ -429,7 +421,6 @@ export type Block =
   | CheckBlock
   | AudioBlock
   | AnimationBlock
-  | ScrollBlock
   | PopupBlock
   | AccordionBlock
   | TabsBlock
@@ -464,7 +455,7 @@ export function newDoc(title: string, screens: Screens, passMark: number | null)
 }
 
 export function newPage(title: string): Page {
-  return { id: uid(), title, kind: 'flow', blocks: [], triggers: [] };
+  return { id: uid(), title, blocks: [], triggers: [] };
 }
 
 export function newBlock(type: BlockType): Block {
@@ -510,8 +501,6 @@ export function newBlock(type: BlockType): Block {
       return { id, type, src: '', fileName: '', mode: 'narration', cues: [] };
     case 'animation':
       return { id, type, src: '', fileName: '', loop: true };
-    case 'scroll':
-      return { id, type, html: '<p>Long text goes here.</p>', height: 240 };
     case 'popup':
       return {
         id,
@@ -671,12 +660,25 @@ export const NO_INTERACTION: Interaction = {
   correct: false,
 };
 
+function upgradeBlock(b: Block): Block {
+  if ((b as { type: string }).type !== 'scroll') return b;
+  const text = { ...b, type: 'text', align: 'left' } as Block & { height?: number };
+  delete text.height;
+  return text;
+}
+
+function upgradePage(p: Page): Page {
+  const page = { ...p, triggers: p.triggers ?? [], blocks: p.blocks.map(upgradeBlock) };
+  delete (page as Page & { kind?: string }).kind;
+  return page;
+}
+
 export function normalizeDoc(doc: CourseDoc): CourseDoc {
   return {
     ...doc,
     variables: doc.variables ?? [],
     fonts: doc.fonts ?? [],
-    pages: doc.pages.map((p) => ({ ...p, triggers: p.triggers ?? [] })),
+    pages: doc.pages.map(upgradePage),
   };
 }
 

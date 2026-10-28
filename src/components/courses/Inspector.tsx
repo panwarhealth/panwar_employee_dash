@@ -45,13 +45,12 @@ export function Inspector({
   onChangeBlock: (id: string, update: (b: Block) => void) => void;
   onDuplicateBlock: (id: string) => void;
   onRemoveBlock: (id: string) => void;
-  canvas: CanvasControls | null;
+  canvas: CanvasControls;
 }) {
   const block = page.blocks.find((b) => b.id === selectedId) ?? null;
   const last = page.blocks.length - 1;
-  const items = canvas ? [...page.blocks].reverse() : page.blocks;
-  const move = (from: number, to: number) =>
-    canvas ? onMoveBlock(last - from, last - to) : onMoveBlock(from, to);
+  const items = [...page.blocks].reverse();
+  const move = (from: number, to: number) => onMoveBlock(last - from, last - to);
   const index = block ? page.blocks.indexOf(block) : -1;
 
   return (
@@ -85,37 +84,33 @@ export function Inspector({
             onChange={(t) => onPage((p) => (p.transition = t))}
           />
         </div>
-        {canvas && (
-          <div className="mt-2">
-            <ColourField
-              label="Page background"
-              value={page.background}
-              onChange={(v) => onPage((p) => (p.background = v))}
-            />
-          </div>
-        )}
+        <div className="mt-2">
+          <ColourField
+            label="Page background"
+            value={page.background}
+            onChange={(v) => onPage((p) => (p.background = v))}
+          />
+        </div>
       </div>
 
       <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
-        {canvas ? 'Objects on this canvas' : 'Blocks on this page'}
+        Objects on this page
       </h4>
-      {canvas && (
-        <p className="-mt-1 mb-2 text-xs font-semibold text-ph-purple">
-          Editing the {canvas.layout === 'phone' ? 'phone 9:16' : 'desktop 16:9'} layout
-          {canvas.otherLayout && (
-            <>
-              {' · '}
-              <button
-                type="button"
-                onClick={canvas.onCopyLayout}
-                className="underline underline-offset-2"
-              >
-                copy positions from {canvas.otherLayout}
-              </button>
-            </>
-          )}
-        </p>
-      )}
+      <p className="-mt-1 mb-2 text-xs font-semibold text-ph-purple">
+        Editing the {canvas.layout === 'phone' ? 'phone 9:16' : 'desktop 16:9'} layout
+        {canvas.otherLayout && (
+          <>
+            {' · '}
+            <button
+              type="button"
+              onClick={canvas.onCopyLayout}
+              className="underline underline-offset-2"
+            >
+              copy positions from {canvas.otherLayout}
+            </button>
+          </>
+        )}
+      </p>
       <SortableList items={items} onMove={move}>
         {(b) => (
           <button
@@ -141,9 +136,9 @@ export function Inspector({
         onClick={onAddBlock}
         className="mt-2 w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white py-2 font-medium text-ph-charcoal hover:border-ph-purple hover:text-ph-purple"
       >
-        {canvas ? '+ Add object' : '+ Add block'}
+        + Add object
       </button>
-      {canvas && hasPicks(page) && (
+      {hasPicks(page) && (
         <PickRuleFields
           rule={page.pick ?? newPickRule()}
           correctCount={
@@ -173,7 +168,7 @@ export function Inspector({
             courseId={courseId}
             onChange={(update) => onChangeBlock(block.id, update)}
           />
-          {canvas?.frame && (
+          {canvas.frame && (
             <>
               <FrameFields frame={canvas.frame} onChange={canvas.onFrame} />
               <InteractionFields
