@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
 import { frameFor, frameStyle, growsToFit, MENU_CORNER } from '@/course/canvasLayout';
@@ -24,6 +30,14 @@ interface Drag {
   startX: number;
   startY: number;
   orig: Frame;
+}
+
+interface SelectionBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  transform: string;
 }
 
 interface Guides {
@@ -78,6 +92,31 @@ export function CanvasEditor({
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
 
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
+  const [box, setBox] = useState<SelectionBox | null>(null);
+
+  useLayoutEffect(() => {
+    const el = selectedId
+      ? stage.current?.querySelector<HTMLElement>(`[data-obj="${CSS.escape(selectedId)}"]`)
+      : null;
+    const measure = () => {
+      const next = el
+        ? {
+            left: el.offsetLeft,
+            top: el.offsetTop,
+            width: el.offsetWidth,
+            height: el.offsetHeight,
+            transform: el.style.transform,
+          }
+        : null;
+      setBox((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    };
+    measure();
+    if (!el) return;
+    const resize = new ResizeObserver(measure);
+    resize.observe(el);
+    resize.observe(stage.current!);
+    return () => resize.disconnect();
+  }, [selectedId, live, page, layout, editing]);
 
   useEffect(() => {
     if (!selected) return;
@@ -186,14 +225,14 @@ export function CanvasEditor({
   return (
     <div className="flex w-full flex-col items-center gap-2">
       {missing > 0 && (
-        <p className="rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
+        <p className="relative z-30 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
           {missing === page.blocks.length
             ? `Nothing is placed in the ${layout} layout yet.`
             : `${missing} ${missing === 1 ? "object isn't" : "objects aren't"} placed in the ${layout} layout yet.`}{' '}
           Drag them into place, or copy positions from the other layout.
         </p>
       )}
-      <label className="flex items-center gap-1.5 text-xs text-ph-charcoal/50">
+      <label className="relative z-30 flex items-center gap-1.5 text-xs text-ph-charcoal/50">
         <input
           type="checkbox"
           checked={showSafeZone}
@@ -210,7 +249,10 @@ export function CanvasEditor({
       </label>
       <div
         ref={stage}
-        className={cn('cp w-full', layout === 'phone' ? 'max-w-[360px]' : 'max-w-[960px]')}
+        className={cn(
+          'cp w-full [&_.cp-stage]:overflow-visible',
+          layout === 'phone' ? 'max-w-[360px]' : 'max-w-[960px]',
+        )}
         onPointerMove={move}
         onPointerUp={end}
         onPointerDown={() => onSelect(null)}
@@ -228,6 +270,7 @@ export function CanvasEditor({
               return (
                 <div
                   key={b.id}
+                  data-obj={b.id}
                   className={cn(
                     'cp-obj',
                     !typing &&
@@ -262,33 +305,46 @@ export function CanvasEditor({
                       {notes.length}
                     </button>
                   )}
-                  {on && (
-                    <>
-                      <i className="pointer-events-none absolute -inset-[3px] rounded-[2px] border-2 border-ph-purple" />
-                      {(['nw', 'ne', 'sw', 'se'] as const).map((m) => (
-                        <i
-                          key={m}
-                          onPointerDown={(e) => begin(e, b.id, m)}
-                          className={cn(
-                            'absolute h-2.5 w-2.5 rounded-[2px] border-2 border-ph-purple bg-white',
-                            m[0] === 'n' ? '-top-[7px]' : '-bottom-[7px]',
-                            m[1] === 'w' ? '-left-[7px]' : '-right-[7px]',
-                            m === 'nw' || m === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize',
-                          )}
-                        />
-                      ))}
-                      <i
-                        title="Rotate"
-                        onPointerDown={(e) => begin(e, b.id, 'rotate')}
-                        className="absolute -top-6 left-1/2 h-3 w-3 -translate-x-1/2 cursor-grab rounded-full border-2 border-ph-purple bg-white"
-                      />
-                    </>
-                  )}
                 </div>
               );
             }}
             overlay={
               <>
+                <div
+                  className="pointer-events-none absolute inset-0 z-20"
+                  style={{ boxShadow: '0 0 0 2000px rgba(236, 233, 240, 0.72)' }}
+                />
+                {selected && box && (
+                  <div
+                    className="pointer-events-none absolute z-30"
+                    style={{
+                      left: box.left,
+                      top: box.top,
+                      width: box.width,
+                      height: box.height,
+                      transform: box.transform || undefined,
+                    }}
+                  >
+                    <i className="absolute -inset-[3px] rounded-[2px] border-2 border-ph-purple" />
+                    {(['nw', 'ne', 'sw', 'se'] as const).map((m) => (
+                      <i
+                        key={m}
+                        onPointerDown={(e) => begin(e, selected.id, m)}
+                        className={cn(
+                          'pointer-events-auto absolute h-2.5 w-2.5 rounded-[2px] border-2 border-ph-purple bg-white',
+                          m[0] === 'n' ? '-top-[7px]' : '-bottom-[7px]',
+                          m[1] === 'w' ? '-left-[7px]' : '-right-[7px]',
+                          m === 'nw' || m === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize',
+                        )}
+                      />
+                    ))}
+                    <i
+                      title="Rotate"
+                      onPointerDown={(e) => begin(e, selected.id, 'rotate')}
+                      className="pointer-events-auto absolute -top-6 left-1/2 h-3 w-3 -translate-x-1/2 cursor-grab rounded-full border-2 border-ph-purple bg-white"
+                    />
+                  </div>
+                )}
                 {showSafeZone && (
                   <div
                     title="Clinical Studio's menu button sits over this corner on phones. Keep buttons out of it."
@@ -320,7 +376,7 @@ export function CanvasEditor({
           />
         </div>
       </div>
-      <p className="text-xs text-ph-charcoal/50">
+      <p className="relative z-30 text-xs text-ph-charcoal/50">
         Drag to move, corners to resize, top handle to rotate. Arrow keys nudge, Shift for bigger
         steps, hold Alt to stop snapping.
       </p>
