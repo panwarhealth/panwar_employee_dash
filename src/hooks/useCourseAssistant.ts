@@ -159,7 +159,7 @@ export function useCourseAssistant(
       if (layoutsFor(doc.screens).includes('phone'))
         for (const [i, c] of converted.entries()) {
           setStatus(`Fitting the phone layout (${i + 1} of ${converted.length})`);
-          if ((await fitPhone(doc, c)) > 1) crowded.push(c.page.title);
+          if ((await fitPhone(doc, c.page)) > 1) crowded.push(c.page.title);
         }
       const pages = converted.map((c) => c.page);
       const blank = doc.pages.length === 1 && doc.pages[0].blocks.length === 0;
@@ -191,6 +191,13 @@ export function useCourseAssistant(
       log('user', 'Add the questions, popups and buttons');
       await run(deckPrompt, controller);
       setDeckPrompt(null);
+      const doc = docRef.current;
+      if (!layoutsFor(doc.screens).includes('phone')) return;
+      setStatus('Laying out the phone pages again');
+      const next = structuredClone(doc);
+      for (const page of next.pages) if (page.kind === 'canvas') await fitPhone(next, page);
+      apply(next);
+      log('activity', 'Laid out the phone pages again around the new questions');
     });
 
   return {

@@ -106,7 +106,9 @@ export function CheckView({ block, ctx }: { block: CheckBlock; ctx: BlockContext
       onReset={() => setSelected([])}
     >
       {({ locked, submitted }) => (
-        <div className="cp-opts">
+        <div
+          className={`cp-opts${options.every((o) => o.text.length <= 20) ? ' cp-opts-short' : ''}`}
+        >
           {options.map((o) => {
             const on = selected.includes(o.id);
             const mark = submitted && on ? (o.correct ? ' cp-right' : ' cp-wrong') : '';

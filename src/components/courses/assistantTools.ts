@@ -250,7 +250,7 @@ function pageWarnings(doc: CourseDoc, page: Page): string[] {
       );
   }
   if (page.kind === 'canvas')
-    for (const layout of layoutsFor(doc.screens) as Layout[]) {
+    for (const layout of layoutsFor(doc.screens).filter((l) => l === 'desktop') as Layout[]) {
       for (const b of page.blocks)
         if (!b.frames?.[layout])
           warnings.push(`Canvas block ${b.id} has no ${layout} frame, so it gets a default spot.`);
@@ -259,7 +259,7 @@ function pageWarnings(doc: CourseDoc, page: Page): string[] {
         if (!qf) continue;
         for (const b of page.blocks.slice(page.blocks.indexOf(q) + 1)) {
           const f = b.frames?.[layout];
-          if (!f || isQuestion(b)) continue;
+          if (!f || isQuestion(b) || hidden(b)) continue;
           const w = Math.min(f.x + f.w, qf.x + qf.w) - Math.max(f.x, qf.x);
           const h = Math.min(f.y + f.h, qf.y + qf.h) - Math.max(f.y, qf.y);
           if (w > 0 && h > 0 && w * h > 0.2 * Math.min(f.w * f.h, qf.w * qf.h))
@@ -286,6 +286,32 @@ export function courseOutline(doc: CourseDoc): string {
       blocks: p.blocks.map((b) => `${b.id} ${b.type}: ${blockLabel(b).slice(0, 60)}`),
     })),
   });
+}
+
+const centreIn = (outer: Frame, f: Frame) => {
+  const x = f.x + f.w / 2;
+  const y = f.y + f.h / 2;
+  return x >= outer.x && x <= outer.x + outer.w && y >= outer.y && y <= outer.y + outer.h;
+};
+
+const hidden = (b: Block) => b.type === 'popup' && !b.showButton;
+
+function enclosingBox(page: Page, named: Block[]): Block | undefined {
+  const frame = (b: Block) => b.frames?.desktop;
+  const boxes = page.blocks.filter((c) => {
+    const f = frame(c);
+    if (!f || named.includes(c) || c.type !== 'text' || (f.w >= 90 && f.h >= 85)) return false;
+    if (!c.fill && !c.border) return false;
+    if (c.html.replace(/<[^>]+>/g, '').trim()) return false;
+    if (!named.every((b) => frame(b) && centreIn(f, frame(b)!))) return false;
+    const area = f.w * f.h;
+    return page.blocks.every((o) => {
+      const of = frame(o);
+      if (o === c || named.includes(o) || hidden(o) || !of || of.w * of.h >= area) return true;
+      return !centreIn(f, of);
+    });
+  });
+  return boxes.sort((a, b) => frame(a)!.w * frame(a)!.h - frame(b)!.w * frame(b)!.h)[0];
 }
 
 function takenIds(doc: CourseDoc): Set<string> {
@@ -318,7 +344,7 @@ async function checked(
   activity: string,
 ): Promise<ToolOutcome> {
   const page = next.pages.find((p) => p.id === pageId)!;
-  const fit = touched.size ? await pageFitWarnings(next, page) : [];
+  const fit = touched.size ? await pageFitWarnings(next, page, ['desktop']) : [];
   const warnings = [
     ...pageWarnings(next, page),
     ...fit.filter((w) => [...touched].some((id) => w.includes(` ${id} `))),
@@ -422,16 +448,22 @@ export async function runTool(
         touched.add(block.id);
         const current = next.pages.find((p) => p.id === page.id)!;
         if (Array.isArray(inPlaceOf) && inPlaceOf.length) {
-          const replaced = current.blocks.filter((b) => inPlaceOf.includes(b.id));
-          if (replaced.length !== inPlaceOf.length)
+          const named = current.blocks.filter((b) => inPlaceOf.includes(b.id));
+          if (named.length !== inPlaceOf.length)
             return fail('in_place_of names blocks that are not on this page.');
-          block.frames = unionFrames(replaced);
+          const taken = [...named];
+          for (let box = enclosingBox(current, taken); box; box = enclosingBox(current, taken))
+            taken.push(box);
+          const gone = new Set(taken.map((b) => b.id));
+          block.frames = unionFrames(current.blocks.filter((b) => gone.has(b.id)));
           next = ops.updatePage(next, page.id, (p) => {
-            const at = p.blocks.findIndex((b) => inPlaceOf.includes(b.id));
-            p.blocks = p.blocks.filter((b) => !inPlaceOf.includes(b.id));
+            const at = p.blocks.findIndex((b) => gone.has(b.id));
+            p.blocks = p.blocks.filter((b) => !gone.has(b.id));
             p.blocks.splice(at, 0, block);
           });
         } else {
+          if (block.frames?.desktop && !block.frames.phone)
+            block.frames = { ...block.frames, phone: { ...block.frames.desktop } };
           next = ops.insertBlock(next, page.id, after, block);
           after = block.id;
         }

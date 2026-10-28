@@ -209,6 +209,14 @@
   gap: 8px;
   width: 100%;
 }
+.cp-opts-short {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.cp-opts-short .cp-opt {
+  flex: 1 1 8em;
+  width: auto;
+}
 .cp-opt {
   display: flex;
   align-items: center;

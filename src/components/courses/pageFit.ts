@@ -46,7 +46,11 @@ export const measureHeights = (doc: CourseDoc, page: Page, layout: Layout) =>
     const out = new Map<string, number>();
     page.blocks.forEach((b, i) => {
       const el = objects[i];
-      if (el) out.set(b.id, (el.getBoundingClientRect().height / stage.height) * 100);
+      if (!el) return;
+      const content = el.querySelector<HTMLElement>(':scope > .cp-fit > .cp-fit-in > :first-child');
+      if (content) content.style.height = 'auto';
+      const height = content ? content.offsetHeight : el.getBoundingClientRect().height;
+      out.set(b.id, (height / stage.height) * 100);
     });
     return out;
   });
@@ -72,12 +76,16 @@ const measure = (doc: CourseDoc, page: Page, layout: Layout) =>
     return out;
   });
 
-export async function pageFitWarnings(doc: CourseDoc, page: Page): Promise<string[]> {
+export async function pageFitWarnings(
+  doc: CourseDoc,
+  page: Page,
+  layouts: Layout[] = layoutsFor(doc.screens),
+): Promise<string[]> {
   if (page.kind !== 'canvas')
     return [
       `Page ${page.id} is a flow page, which scrolls. Build it as a canvas page so it fits the screen.`,
     ];
   const out: string[] = [];
-  for (const layout of layoutsFor(doc.screens)) out.push(...(await measure(doc, page, layout)));
+  for (const layout of layouts) out.push(...(await measure(doc, page, layout)));
   return out;
 }

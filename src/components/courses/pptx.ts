@@ -707,7 +707,11 @@ export async function readPptx(file: Blob): Promise<Deck> {
             if (text.trim().length < 3) continue;
           }
           const drawable = DRAWABLE.test(prst);
-          const { paras, insets, valign } = readText(el, owner, phChain);
+          const read = readText(el, owner, phChain);
+          const { insets, valign } = read;
+          const visible = (r: DeckRun) => !r.br && r.text.trim() && r.colour !== fill;
+          const invisible = read.paras.every((p) => !p.runs.some(visible));
+          const paras = invisible ? [] : read.paras;
           const runs = paras.flatMap((p) => p.runs).filter((r) => !r.br && r.text.trim());
           const linkId = el.getElementsByTagNameNS(A, 'hlinkClick')[0]?.getAttributeNS(R, 'id');
           const link = linkId ? owner.rels[linkId] : undefined;
@@ -715,7 +719,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
           shapes.push({
             name,
             ...at,
-            text,
+            text: invisible ? '' : text,
             paras,
             valign,
             insets,
