@@ -22,14 +22,16 @@ async function readNotes(zip: JSZip, slide: Part) {
   let notes = '';
   const comments: string[] = [];
   for (const rel of Object.values(slide.rels)) {
-    if (rel.external || !zip.file(rel.target)) continue;
+    const isNotes = rel.type.endsWith('/notesSlide');
+    const isComments = rel.type.endsWith('/comments');
+    if (rel.external || (!isNotes && !isComments) || !zip.file(rel.target)) continue;
     const xml = parseXml(await zip.file(rel.target)!.async('string'));
-    if (rel.type.endsWith('/notesSlide')) {
+    if (isNotes) {
       notes = paragraphsText(xml.documentElement)
         .split('\n')
         .filter((line) => !/^\d+$/.test(line.trim()))
         .join('\n');
-    } else if (rel.type.endsWith('/comments')) {
+    } else {
       for (const body of Array.from(xml.getElementsByTagName('*')).filter(
         (e) => e.localName === 'txBody' || e.localName === 'text',
       ))

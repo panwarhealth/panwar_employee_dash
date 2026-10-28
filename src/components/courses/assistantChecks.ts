@@ -80,6 +80,9 @@ export async function checkedOutcome(
   const desktop = page.kind === 'canvas' && layoutsFor(next.screens).includes('desktop');
   const fit = desktop && touched.size ? await pageFitWarnings(next, page, ['desktop']) : [];
   const warnings = [
+    ...(page.kind === 'canvas'
+      ? []
+      : [`Page ${page.id} is a flow page, which scrolls. Pages must be canvas pages.`]),
     ...linkWarnings(next, page),
     ...(desktop ? desktopWarnings(page) : []),
     ...fit.filter((w) => [...touched].some((id) => w.includes(` ${id} `))),
