@@ -232,6 +232,23 @@
 .cp-opt.cp-on {
   border-color: var(--cp-accent);
 }
+.cp-stage-phone .cp-check {
+  gap: 0.5em;
+  padding: 0.75em;
+}
+.cp-stage-phone .cp-opts {
+  gap: 0.35em;
+}
+.cp-stage-phone .cp-opt {
+  min-height: 0;
+  gap: 0.5em;
+  padding: 0.45em 0.6em;
+  line-height: 1.25;
+}
+.cp-stage-phone .cp-check .cp-btn {
+  min-height: 40px;
+  padding: 8px 18px;
+}
 .cp-opt.cp-right {
   border-color: var(--cp-ok);
   background: #eef8f2;

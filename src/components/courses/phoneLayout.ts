@@ -22,6 +22,7 @@ const MAX_UNIT_HEIGHT = 0.42;
 const MIN_PICTURE_SHRINK = 0.4;
 const MIN_TEXT_SHRINK = 0.7;
 const MIN_LABEL_PX = 10;
+const QUESTION_PX = 14;
 const CONTAINER_PAD = 10;
 
 const FLOWING = new Set<Block['type']>([
@@ -272,8 +273,13 @@ class PhoneStack {
   private readableScale(ids: string[]): number {
     const sizes = ids
       .map((id) => this.byId.get(id)!)
-      .filter((b) => (b.type === 'text' || b.type === 'heading') && hasText(b))
-      .map((b) => (b as HeadingBlock | TextBlock).textStyle?.size ?? 16);
+      .flatMap((b) =>
+        (b.type === 'text' || b.type === 'heading') && hasText(b)
+          ? [b.textStyle?.size ?? 16]
+          : FLOWING.has(b.type)
+            ? [QUESTION_PX]
+            : [],
+      );
     return sizes.length ? Math.min(1, MIN_LABEL_PX / Math.min(...sizes)) : 0;
   }
 
@@ -418,6 +424,9 @@ export function stackPhone(
   return { used, unreadable: stack.unreadable };
 }
 
+const hasPictures = (list: Cluster[]): boolean =>
+  list.some((c) => (c.children ? hasPictures(c.children) : !c.flow));
+
 const flowIds = (list: Cluster[]): string[] =>
   list.flatMap((c) => (c.children ? flowIds(c.children) : c.flow ? c.ids : []));
 
@@ -428,9 +437,9 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
   const clusters = phoneClusters(page);
   const scale = phoneTextScale(page);
   const flowing = new Set(flowIds(clusters));
-  const shrink: Shrink = { text: 1, pictures: 1 };
+  const shrink: Shrink = { text: 1, pictures: hasPictures(clusters) ? 1 : MIN_PICTURE_SHRINK };
   let result = { used: 1, unreadable: false };
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 16; attempt++) {
     stackPhone(page, clusters, new Map(), scale, shrink);
     const measured = await measureHeights(doc, page, 'phone');
     result = stackPhone(
