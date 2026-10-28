@@ -248,9 +248,9 @@ function pageWarnings(doc: CourseDoc, page: Page): string[] {
       for (const q of page.blocks.filter(isQuestion)) {
         const qf = q.frames?.[layout];
         if (!qf) continue;
-        for (const b of page.blocks) {
+        for (const b of page.blocks.slice(page.blocks.indexOf(q) + 1)) {
           const f = b.frames?.[layout];
-          if (b === q || !f || isQuestion(b)) continue;
+          if (!f || isQuestion(b)) continue;
           const w = Math.min(f.x + f.w, qf.x + qf.w) - Math.max(f.x, qf.x);
           const h = Math.min(f.y + f.h, qf.y + qf.h) - Math.max(f.y, qf.y);
           if (w > 0 && h > 0 && w * h > 0.2 * Math.min(f.w * f.h, qf.w * qf.h))
