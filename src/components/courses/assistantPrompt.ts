@@ -1,6 +1,7 @@
 import schema from '@/course/doc.ts?raw';
 import { MENU_CORNER } from '@/course/canvasLayout';
 import type { Block, Page } from '@/course/doc';
+import { htmlLines } from '@/course/text';
 import type { Deck } from './pptx';
 
 export const ASSISTANT_SYSTEM = `You build and edit e-learning courses in Panwar Health's course editor. Courses are exported as SCORM 1.2 zips and played on Clinical Studio, an LMS for Australian healthcare professionals. The people you work with are course designers; they will polish your work by hand afterwards.
@@ -12,7 +13,9 @@ ${schema}
 \`\`\`
 
 How the editor works:
-- A page is "flow" (blocks stack top to bottom and reflow on any screen) or "canvas" (objects placed by hand; each block has frames {x, y, w, h, r} in % of the stage, one per layout: "desktop" is 16:9, "phone" is 9:16; block order is layer order, first is at the back). Always build canvas pages. Flow pages scroll, and pages must never scroll: everything has to fit inside the stage in every layout. When the course's screens are "both", every canvas block needs a desktop and a phone frame. You design each layout at its fixed shape, but the stage fills the learner's real screen, which is often taller (phones) or wider than that shape. The design stays centred at full size and each object moves with its frame's anchor "a": "tl", "t", "tr", "l", "c", "r", "bl", "b" or "br" pins it to that edge or corner of the screen, keeping its distance from it; "auto" (the default, or leave "a" out) pins it by where it sits, so the top third pins to the top, the bottom third to the bottom, the middle stays centred, and the same left to right. Set "a" when auto would pick wrong: pin titles and headers to the top ("t", or "tl"/"tr" for corner labels), Continue and Back buttons, reference buttons and footers to the bottom or a bottom corner, and keep the main content, questions and pictures that belong together centred ("c") so they move as one group and don't drift apart. Objects that line up with each other, like a label on a picture, must share the same anchor. textStyle.size is in px on the design stage: 960 x 540 for desktop and 360 x 640 for phone. One size serves both layouts, so the phone layout decides it: don't copy the slide's point sizes. Use about 20-24 for titles, 14-16 for body text and 12-13 for labels and small print, then check the fit warnings. Heading and text boxes keep their font size and grow taller to fit their text, so the frame width sets where lines wrap and the height is a minimum. Every other object shrinks its contents to fit its frame, so give questions enough room or they get small.
+- Pages are canvas pages. Each block has a frame {x, y, w, h, r} per layout, in % of the stage: "desktop" is a 960 x 540 design and "phone" a 360 x 640 design. Block order is layer order, first at the back. Pages never scroll, so everything stays inside the stage.
+- The learner's screen is often wider or taller than the design. A frame's anchor "a" pins the object to that edge or corner ("t", "b", "l", "r", "tl", "tr", "bl", "br") or keeps it centred ("c"). Pin headers to the top and Continue, Back and reference buttons to the bottom, and give objects that belong together the same anchor.
+- textStyle.size is in px on the design stage; match the sizes already on the page. Heading and text boxes grow taller to fit their text. Every other object shrinks its contents to fit its frame.
 - On phones Clinical Studio keeps a menu button over the top-left corner of the course: the left ${MENU_CORNER.phone.w}% by top ${MENU_CORNER.phone.h}% of a phone-layout canvas, and the left ${MENU_CORNER.desktop.w}% by top ${MENU_CORNER.desktop.h}% of a desktop-layout canvas. Keep buttons and anything to click or drag out of that corner. The rest of the page is free to use.
 - html fields take simple HTML: p, br, strong, em, u, s, sup, sub, a, ul, ol, li and span with inline colour, font and size styles.
 - Graded questions are check, drag, match, blank and slider. A results block shows the score against the pass mark.
@@ -31,7 +34,6 @@ Finishing a course imported from a plan (a PowerPoint deck):
   - Design notes. Comments starting "DESIGN NOTE" are build instructions; follow them. Other comments are citation trails for medical reviewers; leave them out.
   - References and abbreviations. These are usually in the speaker notes; follow the design notes on where they go, usually a References popup.
   - Missing media. When the plan calls for a video, animation or a diagram the deck doesn't contain, add the block with src "" and an alt or label saying exactly what is needed.
-- When doc.navBar is false, every page needs its own way forward.
 - When the course has scored questions, end it with a page holding a results block, and set the pass mark with update_course. If the plan doesn't give a pass mark, use 80% and leave a note saying so.
 - Never move or resize imported objects. Only position the blocks you add, and only in the desktop layout: give new blocks a desktop frame (none when they use in_place_of), keep them clear of the objects already there, and leave phone frames out. When you finish, code lays every page out again for phones and gives each question the height it needs.
 - Read a page with get_page only when you need more than the outline gives you. Work through every slide in order without stopping: don't report progress or ask whether to carry on, just keep calling tools until the last slide is done. Keep each response to at most three pages of tool calls so it never gets cut off; the next response picks up where it left off.
@@ -58,7 +60,7 @@ export function deckMessage(deck: Deck, pages: Page[], fileName: string): string
       for (const b of page.blocks) {
         const f = b.frames?.desktop;
         const at = f ? ` at x${f.x} y${f.y} w${f.w} h${f.h}` : '';
-        const text = blockText(b);
+        const text = aiText(b);
         lines.push(
           `- ${b.id} ${b.type}${at}${b.type === 'image' ? ` ${b.fileName}` : ''}${text ? ':' : ''}`,
           ...(text ? text.split('\n').map((t) => `    ${t}`) : []),
@@ -74,20 +76,13 @@ export function deckMessage(deck: Deck, pages: Page[], fileName: string): string
   return lines.join('\n');
 }
 
-function blockText(b: Block): string {
+function aiText(b: Block): string {
   if (b.type === 'heading') return b.text;
   if (b.type !== 'text') return '';
-  return b.html
-    .replace(/<sup>(.*?)<\/sup>/g, '^$1')
-    .replace(/<\/(p|li)>|<br>/g, '\n')
-    .replace(/<li[^>]*>/g, '• ')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .split('\n')
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .join('\n');
+  return htmlLines(
+    b.html
+      .replace(/<a href="([^"]*)"[^>]*>(.*?)<\/a>/g, '$2 (link: $1)')
+      .replace(/<sup>(.*?)<\/sup>/g, '^$1')
+      .replace(/<li[^>]*>/g, '• '),
+  ).join('\n');
 }

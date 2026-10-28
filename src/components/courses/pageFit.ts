@@ -45,11 +45,18 @@ export const measureHeights = (doc: CourseDoc, page: Page, layout: Layout) =>
   offscreen(doc, page, layout, (stage, objects) => {
     const out = new Map<string, number>();
     page.blocks.forEach((b, i) => {
-      const el = objects[i];
+      const el = objects[i] as HTMLElement | undefined;
       if (!el) return;
       const content = el.querySelector<HTMLElement>(':scope > .cp-fit > .cp-fit-in > :first-child');
-      if (content) content.style.height = 'auto';
-      const height = content ? content.offsetHeight : el.getBoundingClientRect().height;
+      let height: number;
+      if (content) {
+        content.style.height = 'auto';
+        const scale = content.parentElement?.style.transform.match(/scale\(([\d.]+)\)/)?.[1];
+        height = content.getBoundingClientRect().height / Number(scale ?? 1);
+      } else {
+        el.style.minHeight = '0';
+        height = el.getBoundingClientRect().height;
+      }
       out.set(b.id, (height / stage.height) * 100);
     });
     return out;
@@ -81,10 +88,6 @@ export async function pageFitWarnings(
   page: Page,
   layouts: Layout[] = layoutsFor(doc.screens),
 ): Promise<string[]> {
-  if (page.kind !== 'canvas')
-    return [
-      `Page ${page.id} is a flow page, which scrolls. Build it as a canvas page so it fits the screen.`,
-    ];
   const out: string[] = [];
   for (const layout of layouts) out.push(...(await measure(doc, page, layout)));
   return out;

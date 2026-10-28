@@ -1,3 +1,4 @@
+import { blockText } from '@/course/text';
 import type { Block, BlockType } from '@/course/doc';
 
 export interface BlockMeta {
@@ -66,15 +67,12 @@ export const BLOCKS: BlockMeta[] = [
 
 export const blockName = (type: BlockType) => BLOCKS.find((b) => b.type === type)?.name ?? type;
 
-const plain = (html: string) => html.replace(/<[^>]+>/g, ' ');
-
 function labelText(b: Block): string {
   switch (b.type) {
     case 'heading':
-      return b.text;
     case 'text':
     case 'scroll':
-      return plain(b.html);
+      return blockText(b).replace(/\s+/g, ' ');
     case 'image':
     case 'video':
     case 'audio':

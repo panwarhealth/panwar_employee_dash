@@ -4,8 +4,7 @@ import { uid, type CourseDoc } from '@/course/doc';
 import { ASSISTANT_SYSTEM, deckMessage } from '@/components/courses/assistantPrompt';
 import { ASSISTANT_TOOLS, courseOutline, runTool } from '@/components/courses/assistantTools';
 import { readPptx } from '@/components/courses/pptx';
-import { fitPhone, fitTables, fontIdFor, slideToPage } from '@/components/courses/deckToPages';
-import { layoutsFor } from '@/course/canvasLayout';
+import { importDeck, relayoutPhones } from '@/components/courses/deckToPages';
 import { updateCourse } from '@/course/edit';
 
 export interface ChatEntry {
@@ -132,7 +131,7 @@ export function useCourseAssistant(
       await run(text, controller);
     });
 
-  const importDeck = (file: File) =>
+  const importFile = (file: File) =>
     start(async () => {
       log('user', `Import ${file.name}`);
       setStatus('Reading the deck');
@@ -145,44 +144,27 @@ export function useCourseAssistant(
         urls[name] = (await uploadMedia(courseId, new File([blob], name, { type: blob.type }))).url;
       }
       const doc = docRef.current;
-      const taken = new Set(doc.pages.flatMap((p) => p.blocks.map((b) => b.id)));
-      const pageIds = new Set(doc.pages.map((p) => p.id));
-      const converted = deck.slides
-        .filter((slide) => !slide.hidden)
-        .map((slide) => slideToPage(deck, slide, urls, doc, taken));
-      for (const c of converted) while (pageIds.has(c.page.id)) c.page.id = `${c.page.id}-new`;
-      for (const [i, c] of converted.entries()) {
-        setStatus(`Fitting tables (${i + 1} of ${converted.length})`);
-        await fitTables(doc, c);
-      }
-      const crowded: string[] = [];
-      if (layoutsFor(doc.screens).includes('phone'))
-        for (const [i, c] of converted.entries()) {
-          setStatus(`Fitting the phone layout (${i + 1} of ${converted.length})`);
-          if ((await fitPhone(doc, c.page)) > 1) crowded.push(c.page.title);
-        }
-      const pages = converted.map((c) => c.page);
+      const imported = await importDeck(deck, urls, doc, setStatus);
       const blank = doc.pages.length === 1 && doc.pages[0].blocks.length === 0;
-      apply(updateCourse(doc, (d) => (d.pages = blank ? pages : [...d.pages, ...pages])));
+      apply(
+        updateCourse(
+          doc,
+          (d) => (d.pages = blank ? imported.pages : [...d.pages, ...imported.pages]),
+        ),
+      );
+      const hidden = deck.slides.length - imported.pages.length;
       log(
         'activity',
-        `Imported ${pages.length} slides as pages${deck.slides.length > pages.length ? `, skipping ${deck.slides.length - pages.length} hidden` : ''}. Text, colours, pictures and positions come straight from the deck.`,
+        `Imported ${imported.pages.length} slides as pages${hidden ? `, skipping ${hidden} hidden` : ''}. Text, colours, pictures and positions come straight from the deck.`,
       );
-      const fonts = [
-        ...new Set(
-          deck.slides.flatMap((sl) =>
-            sl.shapes.flatMap((sh) => sh.paras.flatMap((p) => p.runs.map((r) => r.font))),
-          ),
-        ),
-      ].filter((f): f is string => !!f && !fontIdFor(f));
-      if (fonts.length)
+      if (imported.missingFonts.length)
         log(
           'activity',
-          `The deck uses fonts the course doesn't have yet: ${fonts.join(', ')}. Upload them in Course settings so the text matches.`,
+          `The deck uses fonts the course doesn't have yet: ${imported.missingFonts.join(', ')}. Upload them in Course settings so the text matches.`,
         );
-      if (crowded.length)
-        log('error', `These pages are still crowded on phones: ${crowded.join(', ')}.`);
-      setDeckPrompt(deckMessage(deck, pages, file.name));
+      if (imported.crowded.length)
+        log('error', `These pages are still crowded on phones: ${imported.crowded.join(', ')}.`);
+      setDeckPrompt(deckMessage(deck, imported.pages, file.name));
     });
 
   const finishDeck = () =>
@@ -191,12 +173,8 @@ export function useCourseAssistant(
       log('user', 'Add the questions, popups and buttons');
       await run(deckPrompt, controller);
       setDeckPrompt(null);
-      const doc = docRef.current;
-      if (!layoutsFor(doc.screens).includes('phone')) return;
       setStatus('Laying out the phone pages again');
-      const next = structuredClone(doc);
-      for (const page of next.pages) if (page.kind === 'canvas') await fitPhone(next, page);
-      apply(next);
+      apply(await relayoutPhones(docRef.current));
       log('activity', 'Laid out the phone pages again around the new questions');
     });
 
@@ -207,7 +185,7 @@ export function useCourseAssistant(
     cost,
     canUndo: !busy && undo !== null,
     send,
-    importDeck,
+    importDeck: importFile,
     canFinishDeck: !busy && deckPrompt !== null,
     finishDeck,
     stop: () => abort.current?.abort(),

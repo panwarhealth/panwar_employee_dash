@@ -644,6 +644,8 @@ const panel = (n: number) => ({
   html: '<p>Type the content here.</p>',
 });
 
+export const isHiddenPopup = (b: Block) => b.type === 'popup' && !b.showButton;
+
 export const isQuestion = (b: Block): b is GradedBlock =>
   b.type === 'check' ||
   b.type === 'drag' ||

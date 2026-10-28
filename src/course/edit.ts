@@ -8,6 +8,7 @@ import {
   type Page,
 } from './doc';
 import { frameFor } from './canvasLayout';
+import { round1 } from './geometry';
 
 function draft(doc: CourseDoc, fn: (d: CourseDoc) => void): CourseDoc {
   const next = structuredClone(doc);
@@ -84,13 +85,11 @@ export const copyLayout = (doc: CourseDoc, pageId: string, from: Layout, to: Lay
     }),
   );
 
-const round = (n: number) => Math.round(n * 10) / 10;
-
 const roundFrame = (f: Frame): Frame => ({
-  x: round(f.x),
-  y: round(f.y),
-  w: round(f.w),
-  h: round(f.h),
+  x: round1(f.x),
+  y: round1(f.y),
+  w: round1(f.w),
+  h: round1(f.h),
   r: Math.round(f.r),
   ...(f.a && f.a !== 'auto' ? { a: f.a } : {}),
   ...(f.s && f.s !== 1 ? { s: f.s } : {}),
