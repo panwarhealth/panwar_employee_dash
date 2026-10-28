@@ -27,7 +27,12 @@ async function settle(host: HTMLElement) {
   await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 }
 
-async function measure(doc: CourseDoc, page: Page, layout: Layout): Promise<string[]> {
+async function offscreen<T>(
+  doc: CourseDoc,
+  page: Page,
+  layout: Layout,
+  read: (stage: DOMRect, objects: Element[]) => T,
+): Promise<T> {
   const host = document.createElement('div');
   host.className = 'cp';
   host.style.cssText = `position:fixed;left:-20000px;top:0;width:${STAGE_WIDTH[layout]}px;visibility:hidden;pointer-events:none`;
@@ -39,7 +44,25 @@ async function measure(doc: CourseDoc, page: Page, layout: Layout): Promise<stri
     );
     await settle(host);
     const stage = host.querySelector('.cp-stage')!.getBoundingClientRect();
-    const objects = Array.from(host.querySelectorAll('.cp-stage > .cp-obj'));
+    return read(stage, Array.from(host.querySelectorAll('.cp-stage > .cp-obj')));
+  } finally {
+    root.unmount();
+    host.remove();
+  }
+}
+
+export const measureHeights = (doc: CourseDoc, page: Page, layout: Layout) =>
+  offscreen(doc, page, layout, (stage, objects) => {
+    const out = new Map<string, number>();
+    page.blocks.forEach((b, i) => {
+      const el = objects[i];
+      if (el) out.set(b.id, (el.getBoundingClientRect().height / stage.height) * 100);
+    });
+    return out;
+  });
+
+const measure = (doc: CourseDoc, page: Page, layout: Layout) =>
+  offscreen(doc, page, layout, (stage, objects) => {
     const out: string[] = [];
     page.blocks.forEach((b, i) => {
       const el = objects[i];
@@ -64,11 +87,7 @@ async function measure(doc: CourseDoc, page: Page, layout: Layout): Promise<stri
         );
     });
     return out;
-  } finally {
-    root.unmount();
-    host.remove();
-  }
-}
+  });
 
 export async function pageFitWarnings(doc: CourseDoc, page: Page): Promise<string[]> {
   if (page.kind !== 'canvas')

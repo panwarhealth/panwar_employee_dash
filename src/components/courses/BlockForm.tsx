@@ -2,7 +2,7 @@ import type { Block, ButtonAction, CheckBlock, CourseDoc, Page } from '@/course/
 import { uid } from '@/course/doc';
 import { MediaInput, RadiusField, Select, TextArea, TextInput, Toggle } from './fields';
 import { RichText } from './RichText';
-import { ColourField, TextStyleFields } from './TextStyleFields';
+import { BorderField, ColourField, TextStyleFields } from './TextStyleFields';
 import {
   AnimationForm,
   AudioForm,
@@ -77,6 +77,38 @@ export function BlockForm({
             label="Background colour"
             value={block.fill}
             onChange={(v) => set<typeof block>((b) => (b.fill = v))}
+          />
+          <BorderField
+            value={block.border}
+            onChange={(v) => set<typeof block>((b) => (b.border = v))}
+          />
+          <Select
+            label="Vertical align"
+            value={block.valign ?? (block.fill ? 'middle' : 'top')}
+            options={[
+              { value: 'top', label: 'Top' },
+              { value: 'middle', label: 'Middle' },
+              { value: 'bottom', label: 'Bottom' },
+            ]}
+            onChange={(v) => set<typeof block>((b) => (b.valign = v))}
+          />
+          <BorderField
+            value={block.border}
+            onChange={(v) => set<typeof block>((b) => (b.border = v))}
+          />
+          <Select
+            label="Vertical align"
+            value={block.valign ?? (block.fill ? 'middle' : 'top')}
+            options={[
+              { value: 'top', label: 'Top' },
+              { value: 'middle', label: 'Middle' },
+              { value: 'bottom', label: 'Bottom' },
+            ]}
+            onChange={(v) => set<typeof block>((b) => (b.valign = v))}
+          />
+          <BorderField
+            value={block.border}
+            onChange={(v) => set<typeof block>((b) => (b.border = v))}
           />
           <RadiusField
             value={block.radius}

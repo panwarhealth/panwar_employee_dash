@@ -43,7 +43,7 @@ export function InlineText({
       suppressContentEditableWarning
       className={`${block.type === 'text' ? 'cp-text' : `cp-h${block.level}`} cp-${block.align} cursor-text outline-none`}
       style={{
-        ...boxCss(block.fill, block.radius, block.corners),
+        ...boxCss(block),
         ...textStyleCss(block.textStyle, doc),
       }}
       onBlur={commit}

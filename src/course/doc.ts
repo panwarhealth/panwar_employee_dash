@@ -88,6 +88,7 @@ export interface Page {
   triggers: Trigger[];
   pick?: PickRule;
   transition?: Transition;
+  background?: string;
 }
 
 export type Transition = 'none' | 'fade' | 'slide';
@@ -129,7 +130,15 @@ export interface Frame {
   h: number;
   r: number;
   a?: Anchor;
+  s?: number;
 }
+
+export interface Border {
+  colour: string;
+  width: number;
+}
+
+export type VAlign = 'top' | 'middle' | 'bottom';
 
 export interface BlockBase {
   id: string;
@@ -148,6 +157,8 @@ export interface HeadingBlock extends BlockBase {
   fill?: string;
   radius?: number;
   corners?: Corners;
+  border?: Border;
+  valign?: VAlign;
 }
 
 export interface TextBlock extends BlockBase {
@@ -158,6 +169,8 @@ export interface TextBlock extends BlockBase {
   fill?: string;
   radius?: number;
   corners?: Corners;
+  border?: Border;
+  valign?: VAlign;
 }
 
 export interface ImageBlock extends BlockBase {
@@ -169,6 +182,8 @@ export interface ImageBlock extends BlockBase {
   fill?: string;
   radius?: number;
   corners?: Corners;
+  border?: Border;
+  crop?: [number, number, number, number];
 }
 
 export interface VideoBlock extends BlockBase {

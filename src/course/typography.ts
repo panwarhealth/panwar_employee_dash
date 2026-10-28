@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { CourseDoc, TextStyle, Corners } from './doc';
+import type { Border, CourseDoc, TextStyle, Corners, VAlign } from './doc';
 
 export const BUILTIN_FONTS: { id: string; label: string; css: string }[] = [
   { id: 'course', label: 'Course default', css: '' },
@@ -50,27 +50,36 @@ const ROUNDED: Record<Corners, [number, number, number, number]> = {
   right: [0, 1, 1, 0],
 };
 
+const px = (n: number) => `calc(${n} * var(--px, 1px))`;
+
 export const radiusCss = (radius: number | undefined, corners: Corners = 'all'): CSSProperties =>
   radius === undefined
     ? {}
-    : { borderRadius: ROUNDED[corners].map((on) => `${(on * radius) / 16}em`).join(' ') };
+    : { borderRadius: ROUNDED[corners].map((on) => px(on * radius)).join(' ') };
 
-export const boxCss = (
-  fill: string | undefined,
-  radius: number | undefined,
-  corners?: Corners,
-): CSSProperties => ({
-  ...(fill
-    ? {
-        background: fill,
-        padding: '0.4em 0.8em',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-      }
-    : {}),
-  ...radiusCss(radius, corners),
-});
+export const borderCss = (border: Border | undefined): CSSProperties =>
+  border ? { border: `${px(border.width)} solid ${border.colour}`, boxSizing: 'border-box' } : {};
+
+const JUSTIFY: Record<VAlign, string> = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+
+export function boxCss(box: {
+  fill?: string;
+  radius?: number;
+  corners?: Corners;
+  border?: Border;
+  valign?: VAlign;
+}): CSSProperties {
+  const valign = box.valign ?? (box.fill ? 'middle' : undefined);
+  return {
+    ...(box.fill ? { background: box.fill } : {}),
+    ...(box.fill || box.border ? { padding: `${px(3.6)} ${px(7.2)}` } : {}),
+    ...(valign
+      ? { display: 'flex', flexDirection: 'column', justifyContent: JUSTIFY[valign] }
+      : {}),
+    ...radiusCss(box.radius, box.corners),
+    ...borderCss(box.border),
+  };
+}
 
 export function textStyleCss(style: TextStyle | undefined, doc: CourseDoc): CSSProperties {
   if (!style) return {};

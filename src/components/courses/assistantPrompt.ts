@@ -1,5 +1,6 @@
 import schema from '@/course/doc.ts?raw';
 import { MENU_CORNER } from '@/course/canvasLayout';
+import type { Block, Page } from '@/course/doc';
 import type { Deck } from './pptx';
 
 export const ASSISTANT_SYSTEM = `You build and edit e-learning courses in Panwar Health's course editor. Courses are exported as SCORM 1.2 zips and played on Clinical Studio, an LMS for Australian healthcare professionals. The people you work with are course designers; they will polish your work by hand afterwards.
@@ -20,62 +21,72 @@ How the editor works:
 - When doc.navBar is false there is no Back/Continue bar, so every page needs its own way forward, usually a button with action {kind: "next"}.
 - Only use media URLs you were given or got back from import_media. When an asset is missing, add the block with src "" and an alt or label saying exactly what is needed, so the designer can drop it in.
 
-Building from a course plan (a PowerPoint deck turned into text, with each shape's position in % of the slide):
-- One slide usually becomes one page. A slide that only reveals the answer to the slide before it belongs to that earlier page: the answer becomes the question's feedback or reveal.
-- Comments starting "DESIGN NOTE" are build instructions; follow them. Other comments are citation trails for medical reviewers; leave them out of the course.
-- Speaker notes usually hold abbreviations and references. Follow the design notes on where these go.
-- Keep the plan's wording exactly. Do not rewrite, shorten or add clinical content. Keep citation numbers and show them as superscript.
-- Answers the plan marks as correct, by highlight or in a design note, are the correct options.
-- Every slide becomes a canvas page. Start the desktop layout from the slide positions, then lay the phone layout out again for a tall narrow screen: stack things top to bottom, full width, and shrink pictures so it all fits.
-- Skip slides marked hidden.
-- A question block draws its own box with the prompt, answers and Submit inside it, so never place other objects over it. Pictures that belong to an activity go inside it: a drag block's drop targets sit over its own picture (src), at positions in % of that picture, not the slide.
-- Diagrams drawn with PowerPoint shapes (arrows, rings, connectors) don't come across, because the editor has no shapes. When an activity needs one, such as drop targets around a cycle diagram, build the drag block with src "", place its targets in % of the diagram's area of the slide, and leave the slide's icons out of the page. In your summary, tell the designer to export that area of the slide as a picture and drop it into the drag block.
-- Match the slide's look. Give text, headings and buttons the slide's text colour in textStyle.color. When a heading or text sits on a filled shape on the slide (a coloured title bar, a coloured label or box), set the block's fill to that shape's colour, its radius to the shape's corner radius and corners to "top" when only the top corners are rounded (a tab), and size its frame to the shape. Buttons get the shape's fill and radius too. Corners: only round a block when the slide shape it comes from lists a corner radius, and use exactly that number. A shape with no corner radius listed has square corners, so set radius 0 on its block (buttons and images are slightly rounded by default). Never invent or guess a radius.
-- Pages are white and the editor has no shapes. Shapes listed with a fill and no text are the slide's coloured panels and circles. An image marked "white artwork" is invisible on white: give its image block a fill, using the colour of the filled shape it sits on in the slide, or the course accent.
-- After every put_page, read its warnings: they come from laying the page out at real size in both layouts. Fix every one (smaller font, bigger frame, smaller picture) with another put_page before building the next page.
-- Make at most two put_page calls per response, so each step stays quick and the designer can watch pages appear.
-- When the course is built, reply with a short summary: what you built, and a list of what the designer still has to do by hand (missing assets, anything the editor can't do).
+Finishing a course imported from a plan (a PowerPoint deck):
+- Code has already turned every visible slide into a canvas page with id "slide-N". Its objects keep the slide's exact wording, colours, fills, borders, corners, pictures and positions in both layouts, and their anchors are set. Never retype, restyle or move them, unless a design note asks for it. Every change goes through update_blocks, add_blocks, remove_blocks, make_button and update_page, which leave everything you don't name untouched.
+- Your job is what code can't work out from a slide:
+  - Questions. When a slide asks a question, replace its question and answer boxes with a graded block (check, drag, match, blank or slider) using add_blocks with in_place_of, so it takes their place in both layouts. Keep the wording exactly. Answers the plan marks as correct, by highlight or in a design note, are the correct options.
+  - Reveals. A slide that only reveals the answer to the slide before it belongs to that question: put its text in the question's feedback or a popup, then delete its page.
+  - Click to reveal. When a slide says to click cards, tabs or icons to learn more, add a popup block for each (showButton false, its html holding the hidden text, from a hidden slide, a design note or the speaker notes) and a "popup" trigger on a click of the object that opens it.
+  - Buttons. Use make_button on shapes that act as Continue, Next, Back or References buttons, or that link somewhere.
+  - Design notes. Comments starting "DESIGN NOTE" are build instructions; follow them. Other comments are citation trails for medical reviewers; leave them out.
+  - References and abbreviations. These are usually in the speaker notes; follow the design notes on where they go, usually a References popup.
+  - Missing media. When the plan calls for a video, animation or a diagram the deck doesn't contain, add the block with src "" and an alt or label saying exactly what is needed.
+- When doc.navBar is false, every page needs its own way forward.
+- New blocks need frames for every layout unless they use in_place_of. Keep them clear of the objects already there.
+- Read a page with get_page only when you need more than the outline gives you. Work through the slides in order, finishing at most three pages per response.
+- Fix the warnings tools return before moving on.
+- When the course is done, reply with a short summary: what you added, and a list of what the designer still has to do by hand (missing assets, anything the editor can't do).
 
 Editing on request:
-- Change only what was asked. Read a page with get_page before changing it, because put_page replaces the whole page.
+- Change only what was asked. Read a page with get_page before changing it, and change existing blocks with update_blocks so their other fields stay as they are.
 - Answer questions about the course briefly, in plain language.`;
 
-export function deckMessage(
-  deck: Deck,
-  mediaUrls: Record<string, string>,
-  fileName: string,
-): string {
+export function deckMessage(deck: Deck, pages: Page[], fileName: string): string {
   const lines: string[] = [
-    `Build this course from the attached plan "${fileName}". It has ${deck.slides.length} slides.`,
-    '',
-    'Images from the deck, already uploaded:',
-    ...Object.entries(mediaUrls).map(([name, url]) => `- ${name}: ${url}`),
+    `The pages for "${fileName}" are imported. Finish the course: add the questions, reveals, popups, buttons and navigation the plan asks for.`,
   ];
   for (const s of deck.slides) {
-    lines.push('', `## Slide ${s.number}${s.hidden ? ' (hidden)' : ''}`);
-    for (const sh of s.shapes) {
-      const style = [
-        sh.geometry,
-        sh.radius && `${sh.corners ? `${sh.corners} corners` : 'corner'} radius ${sh.radius}px`,
-        sh.fill && `fill ${sh.fill}`,
-        sh.text && sh.colour && `text ${sh.colour}`,
-        sh.size && `${sh.size}pt`,
-        sh.bold && 'bold',
-      ]
-        .filter(Boolean)
-        .join(', ');
-      lines.push(
-        `- shape "${sh.name}" at x${sh.x} y${sh.y} w${sh.w} h${sh.h}${style ? ` (${style})` : ''}${sh.link ? ` links to ${sh.link}` : ''}${sh.text ? ':' : ''}`,
-        ...(sh.text ? sh.text.split('\n').map((t) => `    ${t}`) : []),
-      );
-    }
-    for (const img of s.images)
-      lines.push(
-        `- image ${img.media} at x${img.x} y${img.y} w${img.w} h${img.h}${img.r ? ` rotated ${img.r}deg` : ''}${img.light ? ' (white artwork)' : ''}`,
-      );
+    const page = pages.find((p) => p.id === `slide-${s.number}`);
+    lines.push(
+      '',
+      page
+        ? `## Slide ${s.number}: page ${page.id}`
+        : `## Slide ${s.number} (hidden, not imported)`,
+    );
+    if (page)
+      for (const b of page.blocks) {
+        const f = b.frames?.desktop;
+        const at = f ? ` at x${f.x} y${f.y} w${f.w} h${f.h}` : '';
+        const text = blockText(b);
+        lines.push(
+          `- ${b.id} ${b.type}${at}${b.type === 'image' ? ` ${b.fileName}` : ''}${text ? ':' : ''}`,
+          ...(text ? text.split('\n').map((t) => `    ${t}`) : []),
+        );
+      }
+    else
+      for (const sh of s.shapes.filter((x) => x.text.trim() && !x.fromLayout))
+        lines.push(...sh.text.split('\n').map((t) => `    ${t}`));
     if (s.notes) lines.push('Speaker notes:', ...s.notes.split('\n').map((t) => `    ${t}`));
     if (s.comments.length)
       lines.push('Comments:', ...s.comments.map((c) => `    - ${c.replace(/\n/g, ' / ')}`));
   }
   return lines.join('\n');
+}
+
+function blockText(b: Block): string {
+  if (b.type === 'heading') return b.text;
+  if (b.type !== 'text') return '';
+  return b.html
+    .replace(/<sup>(.*?)<\/sup>/g, '^$1')
+    .replace(/<\/(p|li)>|<br>/g, '\n')
+    .replace(/<li[^>]*>/g, '• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .split('\n')
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .join('\n');
 }

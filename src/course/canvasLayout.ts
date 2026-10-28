@@ -51,7 +51,8 @@ export const frameStyle = (f: Frame, grow = false): CSSProperties => {
     width: `calc(${f.w / 100} * var(--dw))`,
     [grow ? 'minHeight' : 'height']: `calc(${f.h / 100} * var(--dh))`,
     transform: f.r ? `rotate(${f.r}deg)` : undefined,
-  };
+    ...(f.s && f.s !== 1 ? { '--ts': f.s } : {}),
+  } as CSSProperties;
 };
 
 export function useCanvasLayout(screens: Screens): Layout {

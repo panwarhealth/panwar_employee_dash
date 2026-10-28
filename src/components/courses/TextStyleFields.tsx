@@ -1,8 +1,8 @@
 import { useContext } from 'react';
-import type { TextStyle } from '@/course/doc';
+import type { Border, TextStyle } from '@/course/doc';
 import { SIZES } from '@/course/typography';
 import { FontOptions } from './fontContext';
-import { Field, Toggle } from './fields';
+import { Field, NumberBox, Toggle } from './fields';
 
 const inputClass =
   'w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2 py-1.5 text-sm focus:border-ph-purple focus:outline-none';
@@ -38,6 +38,35 @@ export function ColourField({
         )}
       </span>
     </Field>
+  );
+}
+
+export function BorderField({
+  value,
+  onChange,
+}: {
+  value: Border | undefined;
+  onChange: (v: Border | undefined) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <ColourField
+        label="Border colour"
+        value={value?.colour}
+        onChange={(colour) => onChange(colour ? { colour, width: value?.width ?? 1 } : undefined)}
+      />
+      <Field label="Border width (px)">
+        <NumberBox
+          min={0}
+          step={0.5}
+          value={value?.width ?? 0}
+          onChange={(n) =>
+            onChange(n > 0 ? { colour: value?.colour ?? '#2f3030', width: n } : undefined)
+          }
+          className={inputClass}
+        />
+      </Field>
+    </div>
   );
 }
 

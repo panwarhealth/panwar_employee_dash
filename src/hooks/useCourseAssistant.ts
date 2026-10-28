@@ -4,6 +4,9 @@ import { uid, type CourseDoc } from '@/course/doc';
 import { ASSISTANT_SYSTEM, deckMessage } from '@/components/courses/assistantPrompt';
 import { ASSISTANT_TOOLS, courseOutline, runTool } from '@/components/courses/assistantTools';
 import { readPptx } from '@/components/courses/pptx';
+import { fitPhone, fitTables, fontIdFor, slideToPage } from '@/components/courses/deckToPages';
+import { layoutsFor } from '@/course/canvasLayout';
+import { updateCourse } from '@/course/edit';
 
 export interface ChatEntry {
   id: string;
@@ -26,6 +29,7 @@ export function useCourseAssistant(
   const [status, setStatus] = useState('');
   const [cost, setCost] = useState(0);
   const [undo, setUndo] = useState<CourseDoc | null>(null);
+  const [deckPrompt, setDeckPrompt] = useState<string | null>(null);
 
   useEffect(() => {
     docRef.current = doc;
@@ -69,7 +73,7 @@ export function useCourseAssistant(
       if (reply.stop_reason === 'max_tokens') {
         const nudge = {
           type: 'text',
-          text: 'Your last reply was too long and got cut off, so none of it was used. Do less in each reply: one put_page call at a time.',
+          text: 'Your last reply was too long and got cut off, so none of it was used. Do less in each reply: one page at a time.',
         };
         const blocks = userBlocks()!;
         if (blocks.some((b) => b.type === 'text' && b.text === nudge.text)) {
@@ -128,19 +132,62 @@ export function useCourseAssistant(
       await run(text, controller);
     });
 
-  const buildFromDeck = (file: File) =>
-    start(async (controller) => {
-      log('user', `Build the course from ${file.name}`);
-      log('activity', 'Reading the deck');
+  const importDeck = (file: File) =>
+    start(async () => {
+      log('user', `Import ${file.name}`);
+      setStatus('Reading the deck');
       const deck = await readPptx(file);
       const names = Object.keys(deck.media);
       const urls: Record<string, string> = {};
-      log('activity', `Uploading ${names.length} images`);
-      for (const name of names) {
+      for (const [i, name] of names.entries()) {
+        setStatus(`Uploading pictures (${i + 1} of ${names.length})`);
         const blob = deck.media[name];
         urls[name] = (await uploadMedia(courseId, new File([blob], name, { type: blob.type }))).url;
       }
-      await run(deckMessage(deck, urls, file.name), controller);
+      const doc = docRef.current;
+      const taken = new Set(doc.pages.flatMap((p) => p.blocks.map((b) => b.id)));
+      const pageIds = new Set(doc.pages.map((p) => p.id));
+      const converted = deck.slides
+        .filter((slide) => !slide.hidden)
+        .map((slide) => slideToPage(deck, slide, urls, doc, taken));
+      for (const c of converted) while (pageIds.has(c.page.id)) c.page.id = `${c.page.id}-new`;
+      for (const c of converted) await fitTables(doc, c);
+      const crowded: string[] = [];
+      if (layoutsFor(doc.screens).includes('phone'))
+        for (const [i, c] of converted.entries()) {
+          setStatus(`Fitting the phone layout (${i + 1} of ${converted.length})`);
+          if ((await fitPhone(doc, c)) > 1) crowded.push(c.page.title);
+        }
+      const pages = converted.map((c) => c.page);
+      const blank = doc.pages.length === 1 && doc.pages[0].blocks.length === 0;
+      apply(updateCourse(doc, (d) => (d.pages = blank ? pages : [...d.pages, ...pages])));
+      log(
+        'activity',
+        `Imported ${pages.length} slides as pages${deck.slides.length > pages.length ? `, skipping ${deck.slides.length - pages.length} hidden` : ''}. Text, colours, pictures and positions come straight from the deck.`,
+      );
+      const fonts = [
+        ...new Set(
+          deck.slides.flatMap((sl) =>
+            sl.shapes.flatMap((sh) => sh.paras.flatMap((p) => p.runs.map((r) => r.font))),
+          ),
+        ),
+      ].filter((f): f is string => !!f && !fontIdFor(f));
+      if (fonts.length)
+        log(
+          'activity',
+          `The deck uses fonts the course doesn't have yet: ${fonts.join(', ')}. Upload them in Course settings so the text matches.`,
+        );
+      if (crowded.length)
+        log('error', `These pages are still crowded on phones: ${crowded.join(', ')}.`);
+      setDeckPrompt(deckMessage(deck, pages, file.name));
+    });
+
+  const finishDeck = () =>
+    start(async (controller) => {
+      if (!deckPrompt) return;
+      log('user', 'Add the questions, popups and buttons');
+      await run(deckPrompt, controller);
+      setDeckPrompt(null);
     });
 
   return {
@@ -150,7 +197,9 @@ export function useCourseAssistant(
     cost,
     canUndo: !busy && undo !== null,
     send,
-    buildFromDeck,
+    importDeck,
+    canFinishDeck: !busy && deckPrompt !== null,
+    finishDeck,
     stop: () => abort.current?.abort(),
     undo: () => {
       if (!undo) return;

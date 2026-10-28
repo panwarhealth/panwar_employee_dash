@@ -17,6 +17,7 @@ import { InteractionFields, PickRuleFields } from './InteractionFields';
 import { TriggersPanel } from './TriggersPanel';
 import { Select, TextInput, Toggle } from './fields';
 import { SortableList } from './SortableList';
+import { ColourField } from './TextStyleFields';
 
 export function Inspector({
   doc,
@@ -72,6 +73,15 @@ export function Inspector({
             onChange={(t) => onPage((p) => (p.transition = t))}
           />
         </div>
+        {canvas && (
+          <div className="mt-2">
+            <ColourField
+              label="Page background"
+              value={page.background}
+              onChange={(v) => onPage((p) => (p.background = v))}
+            />
+          </div>
+        )}
       </div>
 
       <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">

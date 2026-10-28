@@ -1,7 +1,7 @@
 import type { Block } from './doc';
 import type { BlockContext } from './context';
 import { sanitizeHtml } from './sanitize';
-import { boxCss, radiusCss } from './typography';
+import { borderCss, boxCss, radiusCss } from './typography';
 import { embedUrl } from './util';
 import { AnimationView, AudioView } from './media';
 import {
@@ -31,7 +31,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
         <Tag
           className={`cp-h${block.level} cp-${block.align}`}
           style={{
-            ...boxCss(block.fill, block.radius, block.corners),
+            ...boxCss(block),
             ...ctx.textStyle(block.textStyle),
           }}
         >
@@ -44,19 +44,44 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
         <div
           className={`cp-text cp-${block.align}`}
           style={{
-            ...boxCss(block.fill, block.radius, block.corners),
+            ...boxCss(block),
             ...ctx.textStyle(block.textStyle),
           }}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
         />
       );
     case 'image':
+      if (block.src && block.crop) {
+        const [t, r, b, l] = block.crop;
+        return (
+          <div
+            className="cp-crop"
+            style={{
+              ...radiusCss(block.radius, block.corners),
+              ...borderCss(block.border),
+              ...(block.fill ? { background: block.fill } : {}),
+            }}
+          >
+            <img
+              src={block.src}
+              alt={block.alt}
+              style={{
+                left: `${(-l / (100 - l - r)) * 100}%`,
+                top: `${(-t / (100 - t - b)) * 100}%`,
+                width: `${(100 / (100 - l - r)) * 100}%`,
+                height: `${(100 / (100 - t - b)) * 100}%`,
+              }}
+            />
+          </div>
+        );
+      }
       return block.src ? (
         <img
           className={`cp-img cp-img-${block.size}${block.fill ? ' cp-img-fill' : ''}`}
           style={{
             ...(block.fill ? { background: block.fill } : {}),
             ...radiusCss(block.radius, block.corners),
+            ...borderCss(block.border),
           }}
           src={block.src}
           alt={block.alt}

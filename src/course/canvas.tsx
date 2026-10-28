@@ -81,7 +81,10 @@ export function CanvasStage({
 }) {
   return (
     <div className={`cp-stagewrap cp-stagewrap-${layout}`}>
-      <div className={`cp-stage cp-stage-${layout}`}>
+      <div
+        className={`cp-stage cp-stage-${layout}`}
+        style={page.background ? { background: page.background } : undefined}
+      >
         {page.blocks.map((b) => {
           const frame = frameFor(page, b, layout);
           const view = <BlockView block={b} ctx={ctx} />;

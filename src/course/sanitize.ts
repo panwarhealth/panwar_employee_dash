@@ -38,6 +38,8 @@ const STYLES: Record<string, RegExp> = {
   'text-align': /^(left|center|right|justify|start|end)$/,
   'line-height': /^\d{1,2}(\.\d{1,3})?(em)?$/,
   'letter-spacing': /^-?\d{1,2}(\.\d{1,4})?(em|px)$/,
+  'margin-top': /^\d{1,2}(\.\d{1,3})?em$/,
+  'margin-bottom': /^\d{1,2}(\.\d{1,3})?em$/,
 };
 
 function cleanStyle(style: CSSStyleDeclaration): string {

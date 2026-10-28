@@ -4,7 +4,10 @@ import {
   uid,
   type Block,
   type BlockType,
+  type ButtonAction,
+  type ButtonBlock,
   type CourseDoc,
+  type Frame,
   type Layout,
   type Page,
   type Trigger,
@@ -39,9 +42,74 @@ export const ASSISTANT_TOOLS = [
     input_schema: obj({ page_id: { type: 'string' } }, ['page_id']),
   },
   {
-    name: 'put_page',
+    name: 'update_blocks',
     description:
-      'Create a page, or replace an existing page with the same id. Send the whole page: id, title, kind, blocks, triggers and optional pick and transition. Missing block fields fall back to the editor defaults. New pages go after after_page_id, or at the end when it is left out.',
+      'Change fields on existing blocks. Only the fields you send change; everything else, including colours, fills and positions, stays as it is. frames merge per layout, so {"frames": {"phone": {"y": 40}}} moves only the phone y. Send null to clear a field. A block\'s type can\'t change: use make_button, or add_blocks with in_place_of.',
+    input_schema: obj(
+      {
+        page_id: { type: 'string' },
+        changes: {
+          type: 'array',
+          items: { type: 'object', description: 'id plus the fields to change' },
+        },
+      },
+      ['page_id', 'changes'],
+    ),
+  },
+  {
+    name: 'add_blocks',
+    description:
+      "Add blocks to a page. Give a block in_place_of (a list of block ids) to put it exactly where those blocks are in every layout and remove them, for example a check question replacing the slide's question and answer text boxes. Otherwise give it frames for every layout; it goes on top, or straight after after_block_id.",
+    input_schema: obj(
+      {
+        page_id: { type: 'string' },
+        blocks: { type: 'array', items: { type: 'object' } },
+        after_block_id: { type: 'string' },
+      },
+      ['page_id', 'blocks'],
+    ),
+  },
+  {
+    name: 'remove_blocks',
+    description: 'Remove blocks from a page.',
+    input_schema: obj(
+      { page_id: { type: 'string' }, block_ids: { type: 'array', items: { type: 'string' } } },
+      ['page_id', 'block_ids'],
+    ),
+  },
+  {
+    name: 'make_button',
+    description:
+      'Turn a text or heading block, such as a slide\'s Continue or Next shape, into a button that keeps its look and position. action is {"kind":"next"}, {"kind":"page","pageId":...} or {"kind":"link","url":...}.',
+    input_schema: obj(
+      {
+        page_id: { type: 'string' },
+        block_id: { type: 'string' },
+        action: { type: 'object' },
+        label: { type: 'string' },
+      },
+      ['page_id', 'block_id', 'action'],
+    ),
+  },
+  {
+    name: 'update_page',
+    description:
+      "Change a page's title, triggers, pick rule or transition. triggers replaces the whole trigger list.",
+    input_schema: obj(
+      {
+        page_id: { type: 'string' },
+        title: { type: 'string' },
+        triggers: { type: 'array', items: { type: 'object' } },
+        pick: { type: ['object', 'null'] },
+        transition: { type: 'string' },
+      },
+      ['page_id'],
+    ),
+  },
+  {
+    name: 'add_page',
+    description:
+      'Create a new page, such as a results page. Send the whole page: id, title, kind "canvas", blocks with frames for every layout, and triggers. It goes after after_page_id, or at the end.',
     input_schema: obj(
       {
         page: { type: 'object', description: 'A Page as defined in the schema.' },
@@ -103,13 +171,21 @@ function fillIds(value: unknown): void {
   }
 }
 
+function toBlock(raw: Record<string, unknown>): Block | string {
+  if (!BLOCK_TYPES.has(String(raw?.type)))
+    return `Unknown block type "${String(raw?.type)}". Use one of: ${[...BLOCK_TYPES].join(', ')}.`;
+  const block = { ...newBlock(raw.type as BlockType), ...raw } as Block;
+  fillIds([block]);
+  return block;
+}
+
 function toPage(raw: Record<string, unknown>): Page | string {
   const rawBlocks = Array.isArray(raw.blocks) ? raw.blocks : [];
   const blocks: Block[] = [];
   for (const b of rawBlocks as Record<string, unknown>[]) {
-    if (!BLOCK_TYPES.has(String(b?.type)))
-      return `Unknown block type "${String(b?.type)}". Use one of: ${[...BLOCK_TYPES].join(', ')}.`;
-    blocks.push({ ...newBlock(b.type as BlockType), ...b } as Block);
+    const block = toBlock(b);
+    if (typeof block === 'string') return block;
+    blocks.push(block);
   }
   const page = {
     ...raw,
@@ -203,6 +279,52 @@ export function courseOutline(doc: CourseDoc): string {
   });
 }
 
+function takenIds(doc: CourseDoc): Set<string> {
+  return new Set(doc.pages.flatMap((p) => p.blocks.map((b) => b.id)));
+}
+
+function unionFrames(blocks: Block[]): Block['frames'] {
+  const frames: NonNullable<Block['frames']> = {};
+  const layouts = new Set(blocks.flatMap((b) => Object.keys(b.frames ?? {}) as Layout[]));
+  for (const layout of layouts) {
+    const all = blocks.map((b) => b.frames?.[layout]).filter((f): f is Frame => !!f);
+    const x = Math.min(...all.map((f) => f.x));
+    const y = Math.min(...all.map((f) => f.y));
+    frames[layout] = {
+      x,
+      y,
+      w: Math.round((Math.max(...all.map((f) => f.x + f.w)) - x) * 10) / 10,
+      h: Math.round((Math.max(...all.map((f) => f.y + f.h)) - y) * 10) / 10,
+      r: 0,
+      ...(all[0].a ? { a: all[0].a } : {}),
+    };
+  }
+  return frames;
+}
+
+async function checked(
+  next: CourseDoc,
+  pageId: string,
+  touched: Set<string>,
+  activity: string,
+): Promise<ToolOutcome> {
+  const page = next.pages.find((p) => p.id === pageId)!;
+  const fit = touched.size ? await pageFitWarnings(next, page) : [];
+  const warnings = [
+    ...pageWarnings(next, page),
+    ...fit.filter((w) => [...touched].some((id) => w.includes(` ${id} `))),
+  ];
+  return {
+    doc: next,
+    result: JSON.stringify({
+      ok: true,
+      warnings,
+      ...(warnings.length ? { next: 'Fix these warnings before moving on.' } : {}),
+    }),
+    activity,
+  };
+}
+
 export async function runTool(
   doc: CourseDoc,
   name: string,
@@ -211,49 +333,164 @@ export async function runTool(
 ): Promise<ToolOutcome> {
   const fail = (result: string): ToolOutcome => ({ doc, result, error: true });
   const pageIdOf = (key: string) => String(input[key] ?? '');
+  const pageOf = (key: string) => doc.pages.find((p) => p.id === pageIdOf(key));
 
   switch (name) {
     case 'get_page': {
       const page = doc.pages.find((p) => p.id === pageIdOf('page_id'));
       return page ? { doc, result: JSON.stringify(page) } : fail('No page with that id.');
     }
-    case 'put_page': {
+    case 'add_page': {
       if (!input.page || typeof input.page !== 'object') return fail('page is required.');
       const page = toPage(input.page as Record<string, unknown>);
       if (typeof page === 'string') return fail(page);
-      const elsewhere = new Map(
-        doc.pages
-          .filter((p) => p.id !== page.id)
-          .flatMap((p) => p.blocks.map((b) => [b.id, p.title] as const)),
-      );
-      const clash = page.blocks.find((b) => elsewhere.has(b.id));
+      if (doc.pages.some((p) => p.id === page.id))
+        return fail(`A page with id "${page.id}" already exists. Change it with the block tools.`);
+      const clash = page.blocks.find((b) => takenIds(doc).has(b.id));
       if (clash)
-        return fail(
-          `Block id "${clash.id}" is already used on page "${elsewhere.get(clash.id)}". Ids must be unique in the course.`,
-        );
-      const exists = doc.pages.some((p) => p.id === page.id);
+        return fail(`Block id "${clash.id}" is already used. Ids must be unique in the course.`);
       const after = pageIdOf('after_page_id');
-      const next = exists
-        ? ops.updateCourse(
-            doc,
-            (d) => (d.pages = d.pages.map((p) => (p.id === page.id ? page : p))),
-          )
-        : after && doc.pages.some((p) => p.id === after)
+      const next =
+        after && doc.pages.some((p) => p.id === after)
           ? ops.insertPage(doc, after, page)
           : ops.updateCourse(doc, (d) => d.pages.push(page));
-      const warnings = [...pageWarnings(next, page), ...(await pageFitWarnings(next, page))];
-      return {
-        doc: next,
-        result: JSON.stringify({
-          ok: true,
-          page_id: page.id,
-          warnings,
-          ...(warnings.length
-            ? { next: 'Fix these warnings with put_page before moving on.' }
-            : {}),
-        }),
-        activity: `${exists ? 'Updated' : 'Built'} page: ${page.title}`,
+      return checked(
+        next,
+        page.id,
+        new Set(page.blocks.map((b) => b.id)),
+        `Built page: ${page.title}`,
+      );
+    }
+    case 'update_blocks': {
+      const page = pageOf('page_id');
+      if (!page) return fail('No page with that id.');
+      const changes = Array.isArray(input.changes)
+        ? (input.changes as Record<string, unknown>[])
+        : [];
+      const missing = changes.find((c) => !page.blocks.some((b) => b.id === c.id));
+      if (missing) return fail(`No block "${String(missing.id)}" on this page.`);
+      const next = ops.updatePage(doc, page.id, (p) => {
+        for (const change of changes) {
+          const block = p.blocks.find((b) => b.id === change.id) as unknown as Record<
+            string,
+            unknown
+          >;
+          for (const [key, value] of Object.entries(change)) {
+            if (key === 'id' || key === 'type') continue;
+            if (key === 'frames' && value && typeof value === 'object') {
+              const frames = { ...(block.frames as Record<string, object> | undefined) };
+              for (const [layout, f] of Object.entries(value as Record<string, object>))
+                frames[layout] = { ...frames[layout], ...f };
+              block.frames = frames;
+            } else if (value === null) delete block[key];
+            else block[key] = value;
+          }
+          fillIds([block]);
+        }
+      });
+      return checked(
+        next,
+        page.id,
+        new Set(changes.map((c) => String(c.id))),
+        `Updated ${page.title}`,
+      );
+    }
+    case 'add_blocks': {
+      const page = pageOf('page_id');
+      if (!page) return fail('No page with that id.');
+      const raws = Array.isArray(input.blocks) ? (input.blocks as Record<string, unknown>[]) : [];
+      const taken = takenIds(doc);
+      const touched = new Set<string>();
+      let next = doc;
+      let after = typeof input.after_block_id === 'string' ? input.after_block_id : null;
+      for (const raw of raws) {
+        const { in_place_of: inPlaceOf, ...rest } = raw;
+        const block = toBlock(rest);
+        if (typeof block === 'string') return fail(block);
+        if (taken.has(block.id))
+          return fail(`Block id "${block.id}" is already used. Ids must be unique in the course.`);
+        taken.add(block.id);
+        touched.add(block.id);
+        const current = next.pages.find((p) => p.id === page.id)!;
+        if (Array.isArray(inPlaceOf) && inPlaceOf.length) {
+          const replaced = current.blocks.filter((b) => inPlaceOf.includes(b.id));
+          if (replaced.length !== inPlaceOf.length)
+            return fail('in_place_of names blocks that are not on this page.');
+          block.frames = unionFrames(replaced);
+          next = ops.updatePage(next, page.id, (p) => {
+            const at = p.blocks.findIndex((b) => inPlaceOf.includes(b.id));
+            p.blocks = p.blocks.filter((b) => !inPlaceOf.includes(b.id));
+            p.blocks.splice(at, 0, block);
+          });
+        } else {
+          next = ops.insertBlock(next, page.id, after, block);
+          after = block.id;
+        }
+      }
+      return checked(next, page.id, touched, `Added to ${page.title}`);
+    }
+    case 'remove_blocks': {
+      const page = pageOf('page_id');
+      if (!page) return fail('No page with that id.');
+      const ids = Array.isArray(input.block_ids) ? (input.block_ids as string[]) : [];
+      const next = ops.updatePage(doc, page.id, (p) => {
+        p.blocks = p.blocks.filter((b) => !ids.includes(b.id));
+      });
+      return checked(next, page.id, new Set(), `Removed objects from ${page.title}`);
+    }
+    case 'make_button': {
+      const page = pageOf('page_id');
+      if (!page) return fail('No page with that id.');
+      const old = page.blocks.find((b) => b.id === input.block_id);
+      if (!old || (old.type !== 'text' && old.type !== 'heading'))
+        return fail('block_id must be a text or heading block on this page.');
+      const label =
+        typeof input.label === 'string'
+          ? input.label
+          : old.type === 'heading'
+            ? old.text
+            : old.html
+                .replace(/<br\s*\/?>|<\/p>/g, ' ')
+                .replace(/<[^>]+>/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+      const button: ButtonBlock = {
+        id: old.id,
+        type: 'button',
+        label,
+        action: input.action as ButtonAction,
+        style: 'solid',
+        fill: old.fill,
+        radius: old.radius,
+        corners: old.corners,
+        textStyle: old.textStyle,
+        frames: old.frames,
+        ...(old.anim ? { anim: old.anim } : {}),
+        ...(old.startHidden ? { startHidden: true } : {}),
       };
+      const next = ops.updatePage(doc, page.id, (p) => {
+        p.blocks = p.blocks.map((b) => (b.id === old.id ? button : b));
+      });
+      return checked(next, page.id, new Set([old.id]), `Made a button on ${page.title}`);
+    }
+    case 'update_page': {
+      const page = pageOf('page_id');
+      if (!page) return fail('No page with that id.');
+      const next = ops.updatePage(doc, page.id, (p) => {
+        if (typeof input.title === 'string') p.title = input.title;
+        if (Array.isArray(input.triggers)) {
+          p.triggers = (input.triggers as Trigger[]).map((t) => ({
+            ...t,
+            conditions: t.conditions ?? [],
+          }));
+          fillIds(p.triggers);
+        }
+        if (input.pick === null) delete p.pick;
+        else if (input.pick && typeof input.pick === 'object') p.pick = input.pick as Page['pick'];
+        if (typeof input.transition === 'string')
+          p.transition = input.transition as Page['transition'];
+      });
+      return checked(next, page.id, new Set(), `Updated ${page.title}`);
     }
     case 'delete_page': {
       const page = doc.pages.find((p) => p.id === pageIdOf('page_id'));

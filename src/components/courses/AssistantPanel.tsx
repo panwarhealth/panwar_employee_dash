@@ -12,6 +12,8 @@ export function AssistantPanel({
   canUndo,
   onSend,
   onDeck,
+  canFinishDeck,
+  onFinishDeck,
   onStop,
   onUndo,
   onClose,
@@ -23,6 +25,8 @@ export function AssistantPanel({
   canUndo: boolean;
   onSend: (text: string) => void;
   onDeck: (file: File) => void;
+  canFinishDeck: boolean;
+  onFinishDeck: () => void;
   onStop: () => void;
   onUndo: () => void;
   onClose: () => void;
@@ -31,7 +35,9 @@ export function AssistantPanel({
   const file = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
 
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [entries.length]);
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' });
+  }, [entries.length]);
 
   const submit = () => {
     if (!text.trim() || busy) return;
@@ -77,10 +83,13 @@ export function AssistantPanel({
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4 text-sm">
         {entries.length === 0 && (
           <div className="m-auto flex flex-col items-center gap-3 text-center text-ph-charcoal/60">
-            <p>Give it a course plan and it builds the pages, or tell it what to change.</p>
+            <p>
+              Import a course plan to build the pages from its slides, or tell the assistant what to
+              change.
+            </p>
             <Button className="rounded-full" onClick={() => file.current?.click()}>
               <FileUp className="h-4 w-4" />
-              Build from PowerPoint
+              Import PowerPoint
             </Button>
           </div>
         )}
@@ -100,6 +109,17 @@ export function AssistantPanel({
             {e.text}
           </div>
         ))}
+        {canFinishDeck && (
+          <div className="mr-8 flex flex-col items-start gap-2 rounded-2xl bg-ph-purple/5 px-3.5 py-3 text-ph-charcoal">
+            <p>
+              Check the pages, then let the assistant add the questions, popups and buttons the plan
+              asks for. This part uses AI and costs money.
+            </p>
+            <Button size="sm" className="rounded-full" onClick={onFinishDeck}>
+              Add the interactive parts
+            </Button>
+          </div>
+        )}
         {busy && (
           <div className="flex items-center gap-2 text-xs text-ph-charcoal/50">
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -112,7 +132,7 @@ export function AssistantPanel({
       <div className="flex items-end gap-2 border-t border-ph-charcoal/10 px-4 py-3">
         <button
           type="button"
-          title="Build from PowerPoint"
+          title="Import PowerPoint"
           disabled={busy}
           onClick={() => file.current?.click()}
           className="rounded-full p-2 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-40"

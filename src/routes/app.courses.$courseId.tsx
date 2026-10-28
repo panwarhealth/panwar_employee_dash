@@ -295,7 +295,9 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             cost={assistant.cost}
             canUndo={assistant.canUndo}
             onSend={(text) => void assistant.send(text)}
-            onDeck={(file) => void assistant.buildFromDeck(file)}
+            onDeck={(file) => void assistant.importDeck(file)}
+            canFinishDeck={assistant.canFinishDeck}
+            onFinishDeck={() => void assistant.finishDeck()}
             onStop={assistant.stop}
             onUndo={assistant.undo}
             onClose={() => setAssistantOpen(false)}
