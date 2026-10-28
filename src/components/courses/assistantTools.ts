@@ -107,6 +107,15 @@ export const ASSISTANT_TOOLS = [
     ),
   },
   {
+    name: 'add_note',
+    description:
+      'Leave a note for the designer about something they must check, decide or finish by hand, on a page or on one object on it (block_id). It shows as an amber tag on that object in the editor until they mark it fixed. Use it for every to-do instead of listing them in your reply.',
+    input_schema: obj(
+      { page_id: { type: 'string' }, block_id: { type: 'string' }, text: { type: 'string' } },
+      ['page_id', 'text'],
+    ),
+  },
+  {
     name: 'add_page',
     description:
       'Create a new page, such as a results page. Send the whole page: id, title, kind "canvas", blocks with frames for every layout, and triggers. It goes after after_page_id, or at the end.',
@@ -472,6 +481,23 @@ export async function runTool(
         p.blocks = p.blocks.map((b) => (b.id === old.id ? button : b));
       });
       return checked(next, page.id, new Set([old.id]), `Made a button on ${page.title}`);
+    }
+    case 'add_note': {
+      const page = pageOf('page_id');
+      if (!page) return fail('No page with that id.');
+      const blockId =
+        typeof input.block_id === 'string' && input.block_id ? input.block_id : undefined;
+      if (blockId && !page.blocks.some((b) => b.id === blockId))
+        return fail(`No block "${blockId}" on this page.`);
+      const text = String(input.text ?? '').trim();
+      if (!text) return fail('text is required.');
+      return {
+        doc: ops.updatePage(doc, page.id, (p) => {
+          p.notes = [...(p.notes ?? []), { id: uid(), ...(blockId ? { blockId } : {}), text }];
+        }),
+        result: 'ok',
+        activity: `Left a note on ${page.title}`,
+      };
     }
     case 'update_page': {
       const page = pageOf('page_id');

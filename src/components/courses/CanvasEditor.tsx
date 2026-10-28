@@ -224,6 +224,7 @@ export function CanvasEditor({
               const f = drag?.id === b.id && live ? live : frame;
               const on = b.id === selectedId;
               const typing = editing === b.id && (b.type === 'heading' || b.type === 'text');
+              const notes = page.notes?.filter((n) => n.blockId === b.id) ?? [];
               return (
                 <div
                   key={b.id}
@@ -232,6 +233,7 @@ export function CanvasEditor({
                     !typing &&
                       'cursor-move touch-none select-none [&>*:first-child]:pointer-events-none',
                     !b.frames?.[layout] && 'opacity-60 outline-dashed outline-1 outline-amber-500',
+                    notes.length > 0 && !on && 'outline outline-2 outline-amber-400',
                   )}
                   style={frameStyle(f, growsToFit(b))}
                   onPointerDown={typing ? undefined : (e) => begin(e, b.id, 'move')}
@@ -248,6 +250,17 @@ export function CanvasEditor({
                     />
                   ) : (
                     content
+                  )}
+                  {notes.length > 0 && (
+                    <button
+                      type="button"
+                      title={notes.map((n) => n.text).join('\n\n')}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => onSelect(b.id)}
+                      className="absolute -left-2.5 -top-2.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white shadow"
+                    >
+                      {notes.length}
+                    </button>
                   )}
                   {on && (
                     <>

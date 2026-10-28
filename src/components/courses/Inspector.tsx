@@ -18,6 +18,7 @@ import { TriggersPanel } from './TriggersPanel';
 import { Select, TextInput, Toggle } from './fields';
 import { SortableList } from './SortableList';
 import { ColourField } from './TextStyleFields';
+import { ReviewNotes } from './ReviewNotes';
 
 export function Inspector({
   doc,
@@ -55,6 +56,17 @@ export function Inspector({
 
   return (
     <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-ph-charcoal/10 bg-[#faf9fb] px-4 py-4 text-sm">
+      <ReviewNotes
+        page={page}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        onResolve={(id) =>
+          onPage((p) => {
+            p.notes = p.notes?.filter((n) => n.id !== id);
+            if (!p.notes?.length) delete p.notes;
+          })
+        }
+      />
       <div className="mb-4">
         <TextInput
           label="Page title"

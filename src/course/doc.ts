@@ -89,6 +89,13 @@ export interface Page {
   pick?: PickRule;
   transition?: Transition;
   background?: string;
+  notes?: ReviewNote[];
+}
+
+export interface ReviewNote {
+  id: string;
+  blockId?: string;
+  text: string;
 }
 
 export type Transition = 'none' | 'fade' | 'slide';

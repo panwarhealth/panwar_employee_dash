@@ -44,6 +44,13 @@ export function preflight(doc: CourseDoc): Check[] {
       text: `${plural(missing.length, 'media block')} without a file or link`,
     });
 
+  const notes = doc.pages.filter((p) => p.notes?.length);
+  if (notes.length)
+    checks.push({
+      ok: false,
+      text: `Review notes still open on: ${notes.map((p) => p.title).join(', ')}`,
+    });
+
   const pageIds = new Set(doc.pages.map((p) => p.id));
   const triggerActions = doc.pages.flatMap((p) => p.triggers.map((t) => t.action));
   const targets = [

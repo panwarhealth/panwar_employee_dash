@@ -54,6 +54,14 @@ export function PageList({
                 </em>
                 <span className="truncate">{p.title || 'Untitled'}</span>
               </button>
+              {!!p.notes?.length && (
+                <span
+                  title={`${p.notes.length} to check`}
+                  className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white"
+                >
+                  {p.notes.length}
+                </span>
+              )}
               {tag && (
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-ph-charcoal/40 group-hover:hidden">
                   {tag}

@@ -32,10 +32,10 @@ Finishing a course imported from a plan (a PowerPoint deck):
   - References and abbreviations. These are usually in the speaker notes; follow the design notes on where they go, usually a References popup.
   - Missing media. When the plan calls for a video, animation or a diagram the deck doesn't contain, add the block with src "" and an alt or label saying exactly what is needed.
 - When doc.navBar is false, every page needs its own way forward.
-- New blocks need frames for every layout unless they use in_place_of. Keep them clear of the objects already there.
+- Never move or resize imported objects: both layouts are already laid out. Only position the blocks you add. New blocks need frames for every layout unless they use in_place_of; keep them clear of the objects already there. A question that comes out a little small is fine; the designer will size it.
 - Read a page with get_page only when you need more than the outline gives you. Work through every slide in order without stopping: don't report progress or ask whether to carry on, just keep calling tools until the last slide is done. Keep each response to at most three pages of tool calls so it never gets cut off; the next response picks up where it left off.
 - Fix the warnings tools return before moving on.
-- When the course is done, reply with a short summary: what you added, and a list of what the designer still has to do by hand (missing assets, anything the editor can't do).
+- Everything the designer still has to check or finish by hand (missing assets, things the editor can't do, judgement calls you made) goes in add_note, on the page and object it's about. When the course is done, reply in one or two sentences; don't list the notes.
 
 Editing on request:
 - Change only what was asked. Read a page with get_page before changing it, and change existing blocks with update_blocks so their other fields stay as they are.
