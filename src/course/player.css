@@ -288,15 +288,16 @@
 .cp-fbrow {
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
+  align-items: center;
   gap: 0.6em;
   width: 100%;
 }
 .cp-fbrow > .cp-btn {
   flex: none;
+  order: -1;
 }
 .cp-fbrow > .cp-fb {
-  flex: 1 1 14em;
+  flex: 1 1 7em;
   width: auto;
 }
 .cp-fb {
