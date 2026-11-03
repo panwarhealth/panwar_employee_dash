@@ -350,7 +350,10 @@ export async function relayoutPhones(doc: CourseDoc): Promise<{ doc: CourseDoc; 
   const crowded: Page[] = [];
   if (!layoutsFor(next.screens).includes('phone')) return { doc: next, crowded };
   for (const page of next.pages) {
-    if (await fitPhone(next, page)) continue;
+    if (await fitPhone(next, page)) {
+      page.notes = page.notes?.filter((n) => n.text !== DOES_NOT_FIT_NOTE);
+      continue;
+    }
     crowded.push(page);
     if (!page.notes?.some((n) => n.text === DOES_NOT_FIT_NOTE))
       page.notes = [...(page.notes ?? []), { id: uid(), text: DOES_NOT_FIT_NOTE }];

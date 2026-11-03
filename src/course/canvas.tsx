@@ -110,6 +110,9 @@ export function CanvasStage({
             </div>
           );
         })}
+        {layout === 'phone' && page.sideways && (
+          <div className="cp-sideways">Turn your phone sideways to read the diagram</div>
+        )}
         {overlay}
       </div>
     </div>

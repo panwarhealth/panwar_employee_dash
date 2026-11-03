@@ -89,6 +89,7 @@ export interface Page {
   transition?: Transition;
   background?: string;
   notes?: ReviewNote[];
+  sideways?: boolean;
 }
 
 export interface ReviewNote {

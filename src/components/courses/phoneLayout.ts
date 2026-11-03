@@ -14,13 +14,14 @@ import { mostCommon } from './deckHtml';
 import { measureHeights } from './pageFit';
 
 const DESKTOP = { w: 960, h: 540 };
-const PHONE = { w: 360, h: 640, left: 6, width: 88, top: 7, bottom: 97, gap: 2 };
+const PHONE = { w: 360, h: 640, left: 6, width: 88, top: 7, bottom: 97, gap: 2, hint: 6 };
 const PHONE_BODY_PX = 15;
 const PHONE_TITLE_PX = 24;
 const MIN_CARD_SCALE = 0.7;
 const MAX_UNIT_HEIGHT = 0.42;
 const MIN_PICTURE_SHRINK = 0.4;
 const MIN_TEXT_SHRINK = 0.7;
+const MIN_GAP_SHRINK = 0.25;
 const MIN_LABEL_PX = 10;
 const QUESTION_PX = 14;
 const CONTAINER_PAD = 10;
@@ -52,19 +53,19 @@ export interface Cluster {
 interface Shrink {
   text: number;
   pictures: number;
+  gaps: number;
 }
 
 type Align = 'left' | 'center' | 'right';
 
-function overlapGroups(items: { id: string; frame: Box }[]): string[][] {
-  const parent = new Map(items.map((i) => [i.id, i.id]));
+function linkedGroups(ids: string[], linked: (a: string, b: string) => boolean): string[][] {
+  const parent = new Map(ids.map((id) => [id, id]));
   const find = (id: string): string => (parent.get(id) === id ? id : find(parent.get(id)!));
-  for (let i = 0; i < items.length; i++)
-    for (let j = i + 1; j < items.length; j++)
-      if (overlapShare(items[i].frame, items[j].frame) > 0.1)
-        parent.set(find(items[i].id), find(items[j].id));
+  for (let i = 0; i < ids.length; i++)
+    for (let j = i + 1; j < ids.length; j++)
+      if (linked(ids[i], ids[j])) parent.set(find(ids[i]), find(ids[j]));
   const groups = new Map<string, string[]>();
-  for (const i of items) groups.set(find(i.id), [...(groups.get(find(i.id)) ?? []), i.id]);
+  for (const id of ids) groups.set(find(id), [...(groups.get(find(id)) ?? []), id]);
   return [...groups.values()];
 }
 
@@ -116,7 +117,7 @@ function readingOrder<G extends { box: Box }>(groups: G[]): (G & { row: number }
 
 const desktopOf = (b: Block) => b.frames!.desktop!;
 
-const boxed = (b: Block) => 'fill' in b && (!!b.fill || ('border' in b && !!b.border));
+const boxed = (b: Block) => ('fill' in b && !!b.fill) || ('border' in b && !!b.border);
 
 function isRound(b: Block): boolean {
   const f = desktopOf(b);
@@ -124,10 +125,9 @@ function isRound(b: Block): boolean {
   return 'radius' in b && (b.radius ?? 0) >= side * 0.45;
 }
 
-const isTitle = (b: Block) =>
-  (b.type === 'heading' || b.type === 'text') &&
-  hasText(b) &&
-  /^t[lr]?$/.test(desktopOf(b).a ?? '');
+const isText = (b: Block) => b.type === 'heading' || b.type === 'text';
+
+const isTitle = (b: Block) => isText(b) && hasText(b) && /^t[lr]?$/.test(desktopOf(b).a ?? '');
 
 function reflows(b: Block): boolean {
   if (FLOWING.has(b.type)) return true;
@@ -142,23 +142,28 @@ export function phoneClusters(page: Page): Cluster[] {
   const byId = new Map(blocks.map((b) => [b.id, b]));
   const desk = (id: string) => desktopOf(byId.get(id)!);
   const inside = (outer: string, id: string) => centreInside(desk(outer), desk(id));
+  const holds = (id: string) => {
+    const b = byId.get(id)!;
+    const card = b.type === 'image' && !!b.stretch && desk(id).w >= 40;
+    const panel = b.type === 'text' && !hasText(b) && boxed(b);
+    return (card || panel) && !isRound(b) && desk(id).w >= 10 && desk(id).h >= 10;
+  };
   const containerOf = (ids: string[]) =>
     ids.find((id) => {
-      const b = byId.get(id)!;
-      const card = b.type === 'image' && !!b.stretch && desk(id).w >= 40;
-      const panel = b.type === 'text' && !hasText(b) && boxed(b);
-      if ((!card && !panel) || isRound(b)) return false;
-      if (desk(id).w < 10 || desk(id).h < 10) return false;
+      if (!holds(id)) return false;
       const others = ids.filter((o) => o !== id);
       const held = others.filter((o) => inside(id, o));
       const holdsText = held.some((o) => hasText(byId.get(o)!));
+      const card = byId.get(id)!.type === 'image';
       return (held.length >= 2 || (card && holdsText)) && held.length >= others.length * 0.6;
     });
+  const flows = (id: string) => FLOWING.has(byId.get(id)!.type);
+  const linked = (a: string, b: string) =>
+    flows(a) || flows(b)
+      ? (holds(a) && inside(a, b)) || (holds(b) && inside(b, a))
+      : overlapShare(desk(a), desk(b)) > 0.1;
   const build = (ids: string[]): Cluster[] => {
-    const groups = overlapGroups(ids.map((id) => ({ id, frame: desk(id) }))).map((g) => ({
-      ids: g,
-      box: bounds(g.map(desk)),
-    }));
+    const groups = linkedGroups(ids, linked).map((g) => ({ ids: g, box: bounds(g.map(desk)) }));
     const out: Cluster[] = [];
     for (const g of readingOrder(groups)) {
       const ordered = ids.filter((id) => g.ids.includes(id));
@@ -212,8 +217,10 @@ function estimateHeight(b: Block, s: number, widthPx: number): number {
 
 class PhoneStack {
   private readonly byId: Map<string, Block>;
-  private readonly gap = (PHONE.gap / 100) * PHONE.h;
+  private readonly gap: number;
+  private readonly fullSize: Set<string>;
   unreadable = false;
+  private rows = -1000;
 
   constructor(
     page: Page,
@@ -222,6 +229,11 @@ class PhoneStack {
     private readonly shrink: Shrink,
   ) {
     this.byId = new Map(page.blocks.map((b) => [b.id, b]));
+    this.gap = (PHONE.gap / 100) * PHONE.h * shrink.gaps;
+    this.fullSize = new Set([
+      ...page.blocks.filter((b) => b.type === 'button' || b.type === 'video').map((b) => b.id),
+      ...page.triggers.flatMap((t) => (t.when.kind === 'click' ? [t.when.blockId] : [])),
+    ]);
   }
 
   private desk(id: string): Frame {
@@ -274,7 +286,7 @@ class PhoneStack {
     const sizes = ids
       .map((id) => this.byId.get(id)!)
       .flatMap((b) =>
-        (b.type === 'text' || b.type === 'heading') && hasText(b)
+        (isText(b) && hasText(b)) || b.type === 'button'
           ? [b.textStyle?.size ?? 16]
           : FLOWING.has(b.type)
             ? [QUESTION_PX]
@@ -286,7 +298,8 @@ class PhoneStack {
   private scaleFor(ids: string[], fitWidth: number, fitHeight: number): number {
     const readable = this.readableScale(ids);
     if (readable > fitWidth + 0.001) this.unreadable = true;
-    const shrunk = Math.min(1, fitWidth, fitHeight) * this.shrink.pictures;
+    const fit = Math.min(1, fitWidth, fitHeight);
+    const shrunk = ids.some((id) => this.fullSize.has(id)) ? fit : fit * this.shrink.pictures;
     return Math.max(shrunk, Math.min(1, fitWidth, readable));
   }
 
@@ -294,7 +307,7 @@ class PhoneStack {
     const ids = unit.flatMap((c) => c.ids);
     const row = this.pxBox(ids);
     const k = Math.min(1, width / row.wPx, (MAX_UNIT_HEIGHT * PHONE.h) / row.hPx);
-    if (k < 0.5) return null;
+    if (k < 0.5 || this.readableScale(ids) > k) return null;
     const scaled = this.scaleFor(ids, width / row.wPx, (MAX_UNIT_HEIGHT * PHONE.h) / row.hPx);
     this.placeScaled(
       unit.flatMap((c) => c.ids),
@@ -349,10 +362,23 @@ class PhoneStack {
     return h;
   }
 
+  private textApart(c: Cluster, width: number): Cluster[] | null {
+    if (c.ids.length < 2 || c.ids.some((id) => !isText(this.byId.get(id)!))) return null;
+    if (this.readableScale(c.ids) <= width / this.pxBox(c.ids).wPx) return null;
+    return c.ids.map((id) => ({
+      ...c,
+      ids: [id],
+      flow: reflows(this.byId.get(id)!),
+      row: --this.rows,
+    }));
+  }
+
   private place(unit: Cluster[], left: number, width: number, top: number, align: Align): number {
     const first = unit[0];
     if (first.children) return this.placeContainer(first, left, width, top);
     if (first.flow) return this.placeFlow(first, left, width, top);
+    const apart = unit.length === 1 ? this.textApart(first, width) : null;
+    if (apart) return this.column(apart, left, width, top);
     return (
       (unit.length > 1 ? this.placeRow(unit, left, width, top) : null) ??
       this.placeGrid(unit, left, width, top, align)
@@ -402,7 +428,7 @@ class PhoneStack {
       top += this.place(unit, left, width, top, 'center') + this.gap;
       this.anchor(unit, (c) => (c.title ? 't' : 'c'));
     }
-    let bottom = end;
+    let bottom = end - (this.unreadable ? (PHONE.hint / 100) * PHONE.h : 0);
     for (const unit of this.units(clusters.filter((c) => c.footer)).reverse()) {
       bottom -= this.place(unit, left, width, 0, this.alignOf(unit));
       this.anchor(unit, () => 'b', bottom);
@@ -417,11 +443,11 @@ export function stackPhone(
   clusters: Cluster[],
   measured: Map<string, number> = new Map(),
   textScale: Map<string, number> = phoneTextScale(page),
-  shrink: Shrink = { text: 1, pictures: 1 },
-): { used: number; unreadable: boolean } {
+  shrink: Shrink = { text: 1, pictures: 1, gaps: 1 },
+): { used: number; sideways: boolean } {
   const stack = new PhoneStack(page, measured, textScale, shrink);
   const used = stack.run(clusters);
-  return { used, unreadable: stack.unreadable };
+  return { used, sideways: stack.unreadable };
 }
 
 const hasPictures = (list: Cluster[]): boolean =>
@@ -437,8 +463,12 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
   const clusters = phoneClusters(page);
   const scale = phoneTextScale(page);
   const flowing = new Set(flowIds(clusters));
-  const shrink: Shrink = { text: 1, pictures: hasPictures(clusters) ? 1 : MIN_PICTURE_SHRINK };
-  let result = { used: 1, unreadable: false };
+  const shrink: Shrink = {
+    text: 1,
+    pictures: hasPictures(clusters) ? 1 : MIN_PICTURE_SHRINK,
+    gaps: 1,
+  };
+  let result = { used: 1, sideways: false };
   for (let attempt = 0; attempt < 16; attempt++) {
     stackPhone(page, clusters, new Map(), scale, shrink);
     const measured = await measureHeights(doc, page, 'phone');
@@ -456,7 +486,10 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
       shrink.pictures = Math.max(MIN_PICTURE_SHRINK, shrink.pictures * step);
     else if (shrink.text > MIN_TEXT_SHRINK)
       shrink.text = Math.max(MIN_TEXT_SHRINK, shrink.text * step);
+    else if (shrink.gaps > MIN_GAP_SHRINK) shrink.gaps = MIN_GAP_SHRINK;
     else break;
   }
-  return result.used <= 1 && !result.unreadable;
+  if (result.sideways) page.sideways = true;
+  else delete page.sideways;
+  return result.used <= 1;
 }
