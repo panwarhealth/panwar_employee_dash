@@ -4,7 +4,7 @@ import { uid, type CourseDoc } from '@/course/doc';
 import { ASSISTANT_SYSTEM, deckMessage } from '@/components/courses/assistantPrompt';
 import { ASSISTANT_TOOLS, courseOutline, runTool } from '@/components/courses/assistantTools';
 import { readPptx } from '@/components/courses/pptx';
-import { importDeck, relayoutPhones } from '@/components/courses/deckToPages';
+import { importDeck, relayout } from '@/components/courses/deckToPages';
 import { updateCourse } from '@/course/edit';
 
 export interface ChatEntry {
@@ -177,7 +177,7 @@ export function useCourseAssistant(
       await run(deckPrompt, controller);
       setDeckPrompt(null);
       setStatus('Laying out the phone pages again');
-      const relaid = await relayoutPhones(docRef.current);
+      const relaid = await relayout(docRef.current);
       apply(relaid.doc);
       log('activity', 'Laid out the phone pages again around the new questions');
       if (relaid.crowded.length)

@@ -8,7 +8,7 @@ import {
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
 import { frameFor, frameStyle, growsToFit, MENU_CORNER } from '@/course/canvasLayout';
-import type { CourseDoc, Frame, Layout, Page } from '@/course/doc';
+import { isHiddenPopup, type CourseDoc, type Frame, type Layout, type Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
 import { InlineText } from './InlineText';
 
@@ -263,6 +263,7 @@ export function CanvasEditor({
             layout={layout}
             ctx={editContext(doc)}
             renderObject={(b, frame, content) => {
+              if (isHiddenPopup(b)) return null;
               const f = drag?.id === b.id && live ? live : frame;
               const on = b.id === selectedId;
               const typing = editing === b.id && (b.type === 'heading' || b.type === 'text');

@@ -1,4 +1,4 @@
-import { uid } from '@/course/doc';
+import { isHiddenPopup, uid } from '@/course/doc';
 import type {
   Anchor,
   Block,
@@ -26,6 +26,8 @@ import { fitPhone, phoneClusters, stackPhone } from './phoneLayout';
 import type { Deck, DeckShape, DeckSlide } from './pptx';
 
 const DESIGN_W = 960;
+const DESIGN_H = 540;
+const EDGE_PX = 32;
 
 type Item =
   | { kind: 'shape'; shape: DeckShape; block: HeadingBlock | TextBlock }
@@ -317,6 +319,43 @@ function missingFonts(deck: Deck): string[] {
   return [...new Set(fonts)].filter((f): f is string => !!f && !fontIdFor(f));
 }
 
+const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+
+function safeArea(page: Page): Box {
+  const card = page.blocks
+    .map((b) => b.frames?.desktop)
+    .filter((f): f is Frame => !!f && isBackdrop(f) && (f.w < 100 || f.h < 100))
+    .sort((a, b) => a.w * a.h - b.w * b.h)[0];
+  const edge = card ?? { x: 0, y: 0, w: 100, h: 100 };
+  const mx = (EDGE_PX / DESIGN_W) * 100;
+  const my = (EDGE_PX / DESIGN_H) * 100;
+  return { x: edge.x + mx, y: edge.y + my, w: edge.w - 2 * mx, h: edge.h - 2 * my };
+}
+
+export function insetDesktop(page: Page) {
+  const blocks = page.blocks.filter(
+    (b) => b.frames?.desktop && !isHiddenPopup(b) && !isBackdrop(b.frames.desktop),
+  );
+  if (!blocks.length) return;
+  const box = bounds(blocks.map((b) => b.frames!.desktop!));
+  const safe = safeArea(page);
+  const k = Math.min(1, safe.w / box.w, safe.h / box.h);
+  const x = clamp(box.x + (box.w * (1 - k)) / 2, safe.x, safe.x + safe.w - box.w * k);
+  const y = clamp(box.y + (box.h * (1 - k)) / 2, safe.y, safe.y + safe.h - box.h * k);
+  if (k === 1 && Math.abs(x - box.x) < 0.05 && Math.abs(y - box.y) < 0.05) return;
+  for (const b of blocks) {
+    const f = b.frames!.desktop!;
+    b.frames!.desktop = {
+      ...f,
+      x: round1(x + (f.x - box.x) * k),
+      y: round1(y + (f.y - box.y) * k),
+      w: round1(f.w * k),
+      h: round1(f.h * k),
+      ...(k < 1 ? { s: Math.round((f.s ?? 1) * k * 100) / 100 } : {}),
+    };
+  }
+}
+
 export async function importDeck(
   deck: Deck,
   mediaUrls: Record<string, string>,
@@ -333,6 +372,7 @@ export async function importDeck(
     onStatus(`Fitting tables (${i + 1} of ${converted.length})`);
     await fitTables(doc, c);
   }
+  if (layoutsFor(doc.screens).includes('desktop')) for (const c of converted) insetDesktop(c.page);
   const crowded: Page[] = [];
   if (layoutsFor(doc.screens).includes('phone'))
     for (const [i, c] of converted.entries()) {
@@ -345,9 +385,11 @@ export async function importDeck(
 export const DOES_NOT_FIT_NOTE =
   "This page doesn't fit on a phone screen. Split it across more pages, or put its sections in a tabs block.";
 
-export async function relayoutPhones(doc: CourseDoc): Promise<{ doc: CourseDoc; crowded: Page[] }> {
+export async function relayout(doc: CourseDoc): Promise<{ doc: CourseDoc; crowded: Page[] }> {
   const next = structuredClone(doc);
   const crowded: Page[] = [];
+  if (layoutsFor(next.screens).includes('desktop'))
+    for (const page of next.pages) insetDesktop(page);
   if (!layoutsFor(next.screens).includes('phone')) return { doc: next, crowded };
   for (const page of next.pages) {
     if (await fitPhone(next, page)) {
