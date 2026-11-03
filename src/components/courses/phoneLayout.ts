@@ -11,9 +11,10 @@ import {
 import { blockText, hasText } from '@/course/text';
 import { mostCommon } from './deckHtml';
 import { measureHeights } from './pageFit';
-import { boxed, DESIGN, FLOWING, isDecor, isHolder, isRound, isText } from './blockKinds';
+import { boxed, DESIGN, EDGE_PX, FLOWING, isDecor, isHolder, isRound, isText } from './blockKinds';
+import { cardOf } from './desktopLayout';
 
-const PHONE = { w: 360, h: 640, left: 6, width: 88, top: 7, bottom: 97, gap: 2, hint: 6 };
+const PHONE = { w: 360, h: 640, top: 7, gap: 2, hint: 6 };
 const PHONE_BODY_PX = 15;
 const PHONE_TITLE_PX = 24;
 const MIN_CARD_SCALE = 0.7;
@@ -431,11 +432,11 @@ class PhoneStack {
       }
   }
 
-  run(clusters: Cluster[]): number {
-    const left = (PHONE.left / 100) * PHONE.w;
-    const width = (PHONE.width / 100) * PHONE.w;
-    const start = (PHONE.top / 100) * PHONE.h;
-    const end = (PHONE.bottom / 100) * PHONE.h;
+  run(clusters: Cluster[], card: Box): number {
+    const left = (card.x / 100) * PHONE.w + EDGE_PX;
+    const width = (card.w / 100) * PHONE.w - 2 * EDGE_PX;
+    const start = Math.max((PHONE.top / 100) * PHONE.h, (card.y / 100) * PHONE.h + EDGE_PX);
+    const end = ((card.y + card.h) / 100) * PHONE.h - EDGE_PX;
     let top = start;
     for (const unit of this.units(clusters.filter((c) => !c.footer))) {
       top += this.place(unit, left, width, top, 'center') + this.gap;
@@ -459,7 +460,7 @@ export function stackPhone(
   shrink: Shrink = { text: 1, pictures: 1, gaps: 1 },
 ): { used: number; sideways: boolean } {
   const stack = new PhoneStack(page, measured, textScale, shrink);
-  const used = stack.run(clusters);
+  const used = stack.run(clusters, cardOf(page));
   return { used, sideways: stack.unreadable };
 }
 

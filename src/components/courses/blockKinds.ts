@@ -4,6 +4,8 @@ import { hasText } from '@/course/text';
 
 export const DESIGN = { w: 960, h: 540 };
 
+export const EDGE_PX = 20;
+
 export const FLOWING = new Set<Block['type']>([
   'check',
   'drag',

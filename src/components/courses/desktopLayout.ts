@@ -1,9 +1,8 @@
 import { isHiddenPopup, type Block, type CourseDoc, type Page } from '@/course/doc';
 import { bounds, centreInside, overlaps, round1, type Box } from '@/course/geometry';
-import { DESIGN, grows, isDecor, isHolder } from './blockKinds';
+import { DESIGN, EDGE_PX, grows, isDecor, isHolder } from './blockKinds';
 import { measureHeights } from './pageFit';
 
-const EDGE_PX = 20;
 const GAP = 1.5;
 const PASSES = 6;
 const FOOTER_GAP_PX = 10;
@@ -16,7 +15,7 @@ const placed = (page: Page) =>
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
-function cardOf(page: Page): Box {
+export function cardOf(page: Page): Box {
   const card = page.blocks
     .filter(isDecor)
     .map(at)
