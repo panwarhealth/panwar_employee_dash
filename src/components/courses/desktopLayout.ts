@@ -3,7 +3,7 @@ import { bounds, centreInside, round1, type Box } from '@/course/geometry';
 import { DESIGN, grows, isDecor, isHolder } from './blockKinds';
 import { measureHeights } from './pageFit';
 
-const EDGE_PX = 32;
+const EDGE_PX = 20;
 const GAP = 1.5;
 const PASSES = 6;
 
@@ -14,23 +14,24 @@ const placed = (page: Page) =>
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
-function safeArea(page: Page): Box {
+function cardOf(page: Page): Box {
   const card = page.blocks
     .filter(isDecor)
     .map(at)
     .filter((f) => f.w < 100 || f.h < 100)
-    .sort((a, b) => a.w * a.h - b.w * b.h)[0];
-  const edge = card ?? { x: 0, y: 0, w: 100, h: 100 };
-  const mx = (EDGE_PX / DESIGN.w) * 100;
-  const my = (EDGE_PX / DESIGN.h) * 100;
-  return { x: edge.x + mx, y: edge.y + my, w: edge.w - 2 * mx, h: edge.h - 2 * my };
+    .sort((a, b) => b.w * b.h - a.w * a.h)[0];
+  return card ?? { x: 0, y: 0, w: 100, h: 100 };
 }
 
 export function insetDesktop(page: Page) {
-  const blocks = placed(page);
+  const card = cardOf(page);
+  const fullBleed = (f: Box) => f.x <= card.x + 1 && f.x + f.w >= card.x + card.w - 1;
+  const blocks = placed(page).filter((b) => !fullBleed(at(b)));
   if (!blocks.length) return;
   const box = bounds(blocks.map(at));
-  const safe = safeArea(page);
+  const mx = (EDGE_PX / DESIGN.w) * 100;
+  const my = (EDGE_PX / DESIGN.h) * 100;
+  const safe = { x: card.x + mx, y: card.y + my, w: card.w - 2 * mx, h: card.h - 2 * my };
   const k = Math.min(1, safe.w / box.w, safe.h / box.h);
   const x = clamp(box.x + (box.w * (1 - k)) / 2, safe.x, safe.x + safe.w - box.w * k);
   const y = clamp(box.y + (box.h * (1 - k)) / 2, safe.y, safe.y + safe.h - box.h * k);
