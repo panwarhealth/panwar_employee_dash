@@ -4,7 +4,6 @@ import {
   bounds,
   centreInside,
   inFooterBand,
-  isBackdrop,
   overlapShare,
   round1,
   type Box,
@@ -12,8 +11,8 @@ import {
 import { blockText, hasText } from '@/course/text';
 import { mostCommon } from './deckHtml';
 import { measureHeights } from './pageFit';
+import { boxed, DESIGN, FLOWING, isDecor, isHolder, isRound, isText } from './blockKinds';
 
-const DESKTOP = { w: 960, h: 540 };
 const PHONE = { w: 360, h: 640, left: 6, width: 88, top: 7, bottom: 97, gap: 2, hint: 6 };
 const PHONE_BODY_PX = 15;
 const PHONE_TITLE_PX = 24;
@@ -25,20 +24,6 @@ const MIN_GAP_SHRINK = 0.25;
 const MIN_LABEL_PX = 10;
 const QUESTION_PX = 14;
 const CONTAINER_PAD = 10;
-
-const FLOWING = new Set<Block['type']>([
-  'check',
-  'drag',
-  'match',
-  'blank',
-  'slider',
-  'written',
-  'likert',
-  'results',
-  'accordion',
-  'tabs',
-  'pathway',
-]);
 
 export interface Cluster {
   ids: string[];
@@ -117,16 +102,6 @@ function readingOrder<G extends { box: Box }>(groups: G[]): (G & { row: number }
 
 const desktopOf = (b: Block) => b.frames!.desktop!;
 
-const boxed = (b: Block) => ('fill' in b && !!b.fill) || ('border' in b && !!b.border);
-
-function isRound(b: Block): boolean {
-  const f = desktopOf(b);
-  const side = Math.min((f.w / 100) * DESKTOP.w, (f.h / 100) * DESKTOP.h);
-  return 'radius' in b && (b.radius ?? 0) >= side * 0.45;
-}
-
-const isText = (b: Block) => b.type === 'heading' || b.type === 'text';
-
 const isTitle = (b: Block) => isText(b) && hasText(b) && /^t[lr]?$/.test(desktopOf(b).a ?? '');
 
 function reflows(b: Block): boolean {
@@ -144,9 +119,8 @@ export function phoneClusters(page: Page): Cluster[] {
   const inside = (outer: string, id: string) => centreInside(desk(outer), desk(id));
   const holds = (id: string) => {
     const b = byId.get(id)!;
-    const card = b.type === 'image' && !!b.stretch && desk(id).w >= 40;
-    const panel = b.type === 'text' && !hasText(b) && boxed(b);
-    return (card || panel) && !isRound(b) && desk(id).w >= 10 && desk(id).h >= 10;
+    const big = b.type === 'image' ? desk(id).w >= 40 : desk(id).w >= 10;
+    return isHolder(b) && big && desk(id).h >= 10;
   };
   const containerOf = (ids: string[]) =>
     ids.find((id) => {
@@ -184,7 +158,7 @@ export function phoneClusters(page: Page): Cluster[] {
     }
     return out;
   };
-  return build(blocks.filter((b) => !isBackdrop(desktopOf(b))).map((b) => b.id));
+  return build(blocks.filter((b) => !isDecor(b)).map((b) => b.id));
 }
 
 export function phoneTextScale(page: Page): Map<string, number> {
@@ -242,7 +216,7 @@ class PhoneStack {
 
   private pxBox(ids: string[]) {
     const b = bounds(ids.map((id) => this.desk(id)));
-    return { ...b, wPx: (b.w / 100) * DESKTOP.w, hPx: (b.h / 100) * DESKTOP.h };
+    return { ...b, wPx: (b.w / 100) * DESIGN.w, hPx: (b.h / 100) * DESIGN.h };
   }
 
   private setFrame(id: string, x: number, y: number, w: number, h: number, s: number, r?: number) {
@@ -273,10 +247,10 @@ class PhoneStack {
       const f = this.desk(id);
       this.setFrame(
         id,
-        left + ((f.x - box.x) / 100) * DESKTOP.w * k,
-        top + ((f.y - box.y) / 100) * DESKTOP.h * k,
-        (f.w / 100) * DESKTOP.w * k,
-        (f.h / 100) * DESKTOP.h * k,
+        left + ((f.x - box.x) / 100) * DESIGN.w * k,
+        top + ((f.y - box.y) / 100) * DESIGN.h * k,
+        (f.w / 100) * DESIGN.w * k,
+        (f.h / 100) * DESIGN.h * k,
         k,
       );
     }
@@ -457,9 +431,7 @@ const flowIds = (list: Cluster[]): string[] =>
   list.flatMap((c) => (c.children ? flowIds(c.children) : c.flow ? c.ids : []));
 
 export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
-  for (const b of page.blocks)
-    if (b.frames?.desktop && isBackdrop(b.frames.desktop))
-      b.frames.phone = { ...b.frames.desktop, a: 'c' };
+  for (const b of page.blocks) if (isDecor(b)) b.frames!.phone = { ...b.frames!.desktop!, a: 'c' };
   const clusters = phoneClusters(page);
   const scale = phoneTextScale(page);
   const flowing = new Set(flowIds(clusters));

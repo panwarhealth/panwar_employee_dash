@@ -338,6 +338,7 @@
 .cp-main-canvas {
   max-width: none;
   padding: 12px;
+  background: #1e1e1e;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -348,6 +349,10 @@
 }
 .cp-main-canvas .cp-stagewrap {
   height: calc(var(--cp-vh, 100vh) - 92px);
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .cp-stage {
   position: relative;
@@ -355,10 +360,6 @@
   overflow: hidden;
   background: #fff;
   container-type: size;
-}
-.cp-main-canvas .cp-stage {
-  height: 100%;
-  aspect-ratio: auto;
 }
 .cp-stage-desktop {
   aspect-ratio: 16 / 9;
@@ -371,6 +372,14 @@
   --dw: min(100cqw, 56.25cqh);
   --dh: min(177.7778cqw, 100cqh);
   --px: calc(var(--dw) / 360);
+}
+.cp-main-canvas .cp-stage-desktop {
+  width: min(100cqw, 177.7778cqh);
+  height: min(56.25cqw, 100cqh);
+}
+.cp-main-canvas .cp-stage-phone {
+  width: min(100cqw, 56.25cqh);
+  height: min(177.7778cqw, 100cqh);
 }
 .cp-sideways {
   position: absolute;
