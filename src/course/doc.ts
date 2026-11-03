@@ -497,7 +497,7 @@ export function newBlock(type: BlockType): Block {
         ],
         shuffle: true,
         feedbackCorrect: "That's right!",
-        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        feedbackWrong: 'Not quite. Have another go.',
         required: true,
         scored: true,
       };
@@ -560,7 +560,7 @@ export function newBlock(type: BlockType): Block {
         src: '',
         fileName: '',
         feedbackCorrect: "That's right!",
-        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        feedbackWrong: 'Not quite. Have another go.',
         required: true,
         scored: true,
       };
@@ -575,7 +575,7 @@ export function newBlock(type: BlockType): Block {
           { id: uid(), left: 'Item 2', right: 'Match 2' },
         ],
         feedbackCorrect: "That's right!",
-        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        feedbackWrong: 'Not quite. Have another go.',
         required: true,
         scored: true,
       };
@@ -586,7 +586,7 @@ export function newBlock(type: BlockType): Block {
         prompt: 'Fill in the blanks.',
         text: 'The capital of Australia is [Canberra].',
         feedbackCorrect: "That's right!",
-        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        feedbackWrong: 'Not quite. Have another go.',
         required: true,
         scored: true,
       };
@@ -602,7 +602,7 @@ export function newBlock(type: BlockType): Block {
         tolerance: 0,
         unit: '%',
         feedbackCorrect: "That's right!",
-        feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+        feedbackWrong: 'Not quite. Have another go.',
         required: true,
         scored: true,
       };
@@ -694,7 +694,7 @@ export const pickIds = (page: Page): string[] =>
 export const newPickRule = (): PickRule => ({
   needed: null,
   feedbackCorrect: "That's right!",
-  feedbackWrong: "Hmm, something doesn't seem quite right. Please try again.",
+  feedbackWrong: 'Not quite. Have another go.',
   showAs: 'popup',
   required: true,
 });
