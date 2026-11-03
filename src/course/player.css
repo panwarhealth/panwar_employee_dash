@@ -288,6 +288,25 @@
 .cp-fb {
   width: 100%;
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45em;
+}
+.cp-fb svg {
+  flex: none;
+  width: 1em;
+  height: 1em;
+  transform: translateY(0.15em);
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cp-fb-ok svg {
+  stroke: var(--cp-ok);
+}
+.cp-fb-bad svg {
+  stroke: #c98a00;
 }
 
 .cp-nav {

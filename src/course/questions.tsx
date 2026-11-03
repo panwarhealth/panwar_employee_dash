@@ -51,8 +51,9 @@ function QuestionFrame({
       {children({ locked, submitted })}
       {submitted ? (
         <>
-          <div className="cp-fb">
-            {correct ? block.feedbackCorrect : block.feedbackWrong}
+          <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
+            <ResultMark correct={correct} />
+            <span>{correct ? block.feedbackCorrect : block.feedbackWrong}</span>
           </div>
           {!correct && (
             <button
@@ -82,6 +83,18 @@ function QuestionFrame({
         </button>
       )}
     </div>
+  );
+}
+
+function ResultMark({ correct }: { correct: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {correct ? (
+        <path d="M5 12.5l4.5 4.5L19 7.5" />
+      ) : (
+        <path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5" />
+      )}
+    </svg>
   );
 }
 
