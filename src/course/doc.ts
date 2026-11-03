@@ -244,6 +244,7 @@ export interface CheckBlock extends BlockBase {
   feedbackWrong: string;
   required: boolean;
   scored: boolean;
+  submitLabel?: string;
 }
 
 export interface AudioCue {
@@ -332,6 +333,7 @@ export interface QuestionBase extends BlockBase {
   feedbackWrong: string;
   required: boolean;
   scored: boolean;
+  submitLabel?: string;
 }
 
 export interface DragItem {

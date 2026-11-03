@@ -481,6 +481,12 @@ function CheckForm({
         onChange={(v) => onChange((b) => (b.shuffle = v))}
       />
       <TextInput
+        label="Button label"
+        value={block.submitLabel ?? ''}
+        placeholder="Submit"
+        onChange={(v) => onChange((b) => (b.submitLabel = v || undefined))}
+      />
+      <TextInput
         label="Feedback when correct"
         value={block.feedbackCorrect}
         onChange={(v) => onChange((b) => (b.feedbackCorrect = v))}

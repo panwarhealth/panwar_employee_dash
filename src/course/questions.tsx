@@ -72,12 +72,13 @@ function QuestionFrame({
           type="button"
           className="cp-btn cp-btn-solid"
           disabled={!ready || ctx.edit}
+          title={ready ? undefined : 'Answer the question first'}
           onClick={() => {
             setSubmitted(true);
             ctx.answer(block.id, response, correct);
           }}
         >
-          Submit
+          {block.submitLabel || 'Submit'}
         </button>
       )}
     </div>

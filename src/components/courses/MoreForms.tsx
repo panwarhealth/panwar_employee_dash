@@ -99,6 +99,12 @@ function QuestionCommon<B extends QuestionBase>({ block, set }: { block: B; set:
   return (
     <>
       <TextInput
+        label="Button label"
+        value={block.submitLabel ?? ''}
+        placeholder="Submit"
+        onChange={(v) => set((b) => (b.submitLabel = v || undefined))}
+      />
+      <TextInput
         label="Feedback when correct"
         value={block.feedbackCorrect}
         onChange={(v) => set((b) => (b.feedbackCorrect = v))}
