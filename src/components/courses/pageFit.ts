@@ -1,45 +1,16 @@
-import { createElement } from 'react';
-import { flushSync } from 'react-dom';
-import { createRoot } from 'react-dom/client';
-import { CanvasStage } from '@/course/canvas';
 import { layoutsFor } from '@/course/canvasLayout';
 import type { CourseDoc, Layout, Page } from '@/course/doc';
-import { editContext } from '@/course/editContext';
+import { withStage } from './offscreenStage';
 
-const STAGE_WIDTH: Record<Layout, number> = { desktop: 960, phone: 360 };
-
-async function settle(host: HTMLElement) {
-  await document.fonts.ready;
-  const pending = Array.from(host.querySelectorAll('img')).filter((img) => !img.complete);
-  await Promise.race([
-    Promise.all(pending.map((img) => new Promise((done) => (img.onload = img.onerror = done)))),
-    new Promise((done) => setTimeout(done, 4000)),
-  ]);
-}
-
-async function offscreen<T>(
+const offscreen = <T>(
   doc: CourseDoc,
   page: Page,
   layout: Layout,
   read: (stage: DOMRect, objects: Element[]) => T,
-): Promise<T> {
-  const host = document.createElement('div');
-  host.className = 'cp';
-  host.style.cssText = `position:fixed;left:-20000px;top:0;width:${STAGE_WIDTH[layout]}px;visibility:hidden;pointer-events:none`;
-  document.body.appendChild(host);
-  const root = createRoot(host);
-  try {
-    flushSync(() =>
-      root.render(createElement(CanvasStage, { page, layout, ctx: editContext(doc) })),
-    );
-    await settle(host);
-    const stage = host.querySelector('.cp-stage')!.getBoundingClientRect();
-    return read(stage, Array.from(host.querySelectorAll('.cp-stage > .cp-obj')));
-  } finally {
-    root.unmount();
-    host.remove();
-  }
-}
+) =>
+  withStage(doc, page, layout, (stage) =>
+    read(stage.getBoundingClientRect(), Array.from(stage.querySelectorAll(':scope > .cp-obj'))),
+  );
 
 export const measureHeights = (doc: CourseDoc, page: Page, layout: Layout) =>
   offscreen(doc, page, layout, (stage, objects) => {

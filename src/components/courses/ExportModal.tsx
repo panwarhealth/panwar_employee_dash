@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
 import { buildZip, mediaUrls, plural, preflight, slugify } from '@/course/exportZip';
-import { cn } from '@/lib/utils';
+import { cn, saveBlob } from '@/lib/utils';
 
 export function ExportModal({
   open,
@@ -32,12 +32,7 @@ export function ExportModal({
     setProgress('Fetching the course player');
     try {
       const { blob } = await buildZip(doc, (url) => downloadMedia(courseId, url), setProgress);
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = href;
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(href);
+      saveBlob(blob, fileName);
       await markExported(courseId);
       onExported();
       onClose();

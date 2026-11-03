@@ -10,6 +10,7 @@ import { AssistantPanel } from '@/components/courses/AssistantPanel';
 import { ExportModal } from '@/components/courses/ExportModal';
 import { Inspector } from '@/components/courses/Inspector';
 import { PageList } from '@/components/courses/PageList';
+import { PdfModal } from '@/components/courses/PdfModal';
 import { PreviewModal } from '@/components/courses/PreviewModal';
 import { SettingsModal } from '@/components/courses/SettingsModal';
 import { VariablesModal } from '@/components/courses/VariablesModal';
@@ -49,7 +50,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const [blockId, setBlockId] = useState<string | null>(null);
   const [phone, setPhone] = useState(initial.screens === 'phone');
   const [modal, setModal] = useState<
-    'add' | 'export' | 'settings' | 'preview' | 'variables' | null
+    'add' | 'export' | 'pdf' | 'settings' | 'preview' | 'variables' | null
   >(null);
   const save = useCourseAutosave(courseId, doc);
   const assistant = useCourseAssistant(courseId, doc, setDoc);
@@ -172,6 +173,9 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               <Button size="sm" variant="outline" onClick={() => setModal('preview')}>
                 Preview
               </Button>
+              <Button size="sm" variant="outline" onClick={() => setModal('pdf')}>
+                Export PDF
+              </Button>
               <Button size="sm" onClick={() => setModal('export')}>
                 Export zip
               </Button>
@@ -249,6 +253,12 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           onClose={() => setModal(null)}
           doc={doc}
           onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}
+        />
+        <PdfModal
+          open={modal === 'pdf'}
+          onClose={() => setModal(null)}
+          courseId={courseId}
+          doc={doc}
         />
         <ExportModal
           open={modal === 'export'}

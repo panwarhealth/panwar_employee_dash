@@ -1,0 +1,6 @@
+.cp-still *,
+.cp-still *::before,
+.cp-still *::after {
+  animation: none !important;
+  transition: none !important;
+}

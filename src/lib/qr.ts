@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import type { QrCodeOptions } from '@/api/links';
+import { saveBlob } from '@/lib/utils';
 
 const QUIET_ZONE = 4;
 const LOGO_SHARE = 0.24;
@@ -50,15 +51,6 @@ export async function loadLogo(): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
-}
-
-function saveBlob(blob: Blob, filename: string) {
-  const href = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = href;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(href);
 }
 
 export function downloadSvg(svg: string, filename: string) {

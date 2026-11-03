@@ -1,3 +1,4 @@
+import { saveBlob } from '@/lib/utils';
 /**
  * RFC 4180 CSV parser: quoted fields, doubled quotes, commas and newlines inside quotes, CRLF or LF.
  * Detects a semicolon or tab delimiter when the header has no commas (Excel in some locales).
@@ -58,10 +59,5 @@ const csvCell = (value: string | number) => {
 
 export function downloadCsv(filename: string, rows: (string | number)[][]) {
   const body = '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
-  const url = URL.createObjectURL(new Blob([body], { type: 'text/csv;charset=utf-8' }));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  saveBlob(new Blob([body], { type: 'text/csv;charset=utf-8' }), filename);
 }

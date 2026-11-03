@@ -9,6 +9,8 @@
  *   on `.panwarhealth.com.au` after the Entra SSO exchange.
  */
 
+import { saveBlob } from '@/lib/utils';
+
 const BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:7071/api';
 
@@ -68,12 +70,7 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
 export async function apiDownload(path: string, fileName: string): Promise<void> {
   const response = await fetch(`${BASE_URL}${path}`, { credentials: 'include' });
   await throwIfFailed(response);
-  const url = URL.createObjectURL(await response.blob());
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
+  saveBlob(await response.blob(), fileName);
 }
 
 async function throwIfFailed(response: Response): Promise<void> {
