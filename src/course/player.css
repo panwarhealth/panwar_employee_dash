@@ -413,6 +413,12 @@
   display: flex;
   flex-direction: column;
 }
+.cp-obj[hidden] {
+  display: none;
+}
+.cp-through {
+  pointer-events: none;
+}
 .cp-obj > :first-child {
   flex: 1 1 auto;
 }

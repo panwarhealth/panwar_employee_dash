@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import type { Block, Frame, Layout, Page } from './doc';
+import { isHiddenPopup, type Block, type Frame, type Layout, type Page } from './doc';
 import { BlockView } from './blocks';
 import type { BlockContext } from './context';
 import { frameFor, frameStyle, growsToFit } from './canvasLayout';
 import { animClass, animStyle } from './anim';
+import { centreInside } from './geometry';
 
 function objectClass(block: Block, ctx: BlockContext): string {
   const i = block.interact;
@@ -62,6 +63,22 @@ function Fit({ children }: { children: ReactNode }) {
   );
 }
 
+const decorative = (b: Block) =>
+  b.type === 'image' || b.type === 'heading' || (b.type === 'text' && !/<a\s/i.test(b.html));
+
+function clickThrough(page: Page, layout: Layout, clickable: Set<string>): Set<string> {
+  const out = new Set<string>();
+  page.blocks.forEach((b, i) => {
+    if (clickable.has(b.id) || !decorative(b)) return;
+    const f = frameFor(page, b, layout);
+    const over = page.blocks
+      .slice(0, i)
+      .some((c) => clickable.has(c.id) && centreInside(frameFor(page, c, layout), f));
+    if (over) out.add(b.id);
+  });
+  return out;
+}
+
 export function CanvasStage({
   page,
   layout,
@@ -79,6 +96,7 @@ export function CanvasStage({
   hidden?: Set<string>;
   leaving?: boolean;
 }) {
+  const throughTo = clickThrough(page, layout, ctx.clickable);
   return (
     <div className={`cp-stagewrap cp-stagewrap-${layout}`}>
       <div
@@ -86,6 +104,7 @@ export function CanvasStage({
         style={page.background ? { background: page.background } : undefined}
       >
         {page.blocks.map((b) => {
+          if (isHiddenPopup(b)) return <div key={b.id} className="cp-obj" hidden />;
           const frame = frameFor(page, b, layout);
           const view = <BlockView block={b} ctx={ctx} />;
           const content = growsToFit(b) ? view : <Fit>{view}</Fit>;
@@ -94,7 +113,7 @@ export function CanvasStage({
           return (
             <div
               key={b.id}
-              className={`${objectClass(b, ctx)} ${animClass(b, leaving, !!hidden?.has(b.id))}`}
+              className={`${objectClass(b, ctx)} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) ? ' cp-through' : ''}`}
               style={{ ...frameStyle(frame, growsToFit(b)), ...animStyle(b) }}
               onClick={clickable ? () => ctx.click(b) : undefined}
               role={clickable ? 'button' : undefined}
