@@ -24,6 +24,7 @@ export interface BlockContext {
   picked: string[];
   clicked: string[];
   picksCorrect: boolean;
+  linksDone: boolean;
   click(block: Block): void;
   openPopup(blockId: string): void;
   audioProgress(blockId: string, seconds: number): void;

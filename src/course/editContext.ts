@@ -11,6 +11,7 @@ export const editContext = (doc: CourseDoc): BlockContext => ({
   picked: [],
   clicked: [],
   picksCorrect: false,
+  linksDone: true,
   click: () => {},
   openPopup: () => {},
   audioProgress: () => {},

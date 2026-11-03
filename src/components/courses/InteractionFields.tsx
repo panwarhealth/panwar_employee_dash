@@ -1,8 +1,10 @@
 import {
   hasPicks,
+  linkedPages,
   NO_INTERACTION,
   pickIds,
   type Block,
+  type ButtonBlock,
   type Condition,
   type CourseDoc,
   type Interaction,
@@ -14,7 +16,7 @@ import { Select, TextInput, Toggle } from './fields';
 
 const sectionClass = 'mt-1 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
-export type EnabledWhen = 'always' | 'picks' | 'condition';
+export type EnabledWhen = NonNullable<ButtonBlock['enabledWhen']>;
 
 export function InteractionFields({
   doc,
@@ -87,6 +89,9 @@ export function InteractionFields({
               { value: 'always', label: 'Always' },
               ...(hasPicks(page)
                 ? [{ value: 'picks' as const, label: 'All correct picks are made' }]
+                : []),
+              ...(linkedPages(page).length
+                ? [{ value: 'visited' as const, label: 'All linked pages are visited' }]
                 : []),
               { value: 'condition', label: 'A condition is true' },
             ]}

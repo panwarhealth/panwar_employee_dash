@@ -140,6 +140,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
               !ctx.edit &&
               ((block.action.kind !== 'link' && !ctx.canLeave) ||
                 (block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
+                (block.enabledWhen === 'visited' && !ctx.linksDone) ||
                 (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])))
             }
             onClick={() => !ctx.edit && ctx.act(block.action, block)}

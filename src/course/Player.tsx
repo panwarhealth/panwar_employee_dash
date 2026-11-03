@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  linkedPages,
   newPickRule,
   type Block,
   type Action,
@@ -99,13 +100,7 @@ function freshState(doc: CourseDoc): PlayState {
   };
 }
 
-function hubPages(doc: CourseDoc): Set<string> {
-  const actions = doc.pages.flatMap((p) => [
-    ...p.triggers.map((t) => t.action),
-    ...p.blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
-  ]);
-  return new Set(actions.flatMap((a) => (a.kind === 'page' && a.back ? [a.pageId] : [])));
-}
+const hubPages = (doc: CourseDoc) => new Set(doc.pages.flatMap(linkedPages));
 
 const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
 
@@ -288,6 +283,9 @@ export function Player({
   const blocked =
     page.blocks.some((b) => mustAnswer(b) && !answered(b, state)) ||
     (pickBlocks(page) && !pickStatus(page, picked).correct);
+  const linksDone = linkedPages(page).every((id) => state.visited.includes(id));
+  const hubLocked =
+    !linksDone && page.blocks.some((b) => b.type === 'button' && b.enabledWhen === 'visited');
 
   const ctx: BlockContext = {
     edit: false,
@@ -315,6 +313,7 @@ export function Player({
     picked,
     clicked: state.clicked ?? [],
     picksCorrect: pickStatus(page, picked).correct,
+    linksDone,
     click: (b) => {
       markClicked(b);
       dispatch({ kind: 'click', blockId: b.id });
@@ -416,8 +415,8 @@ export function Player({
             <button
               type="button"
               className="cp-navbtn cp-navbtn-next"
-              disabled={blocked}
-              title={blocked ? 'Finish this page to continue' : undefined}
+              disabled={blocked || hubLocked}
+              title={blocked || hubLocked ? 'Finish this page to continue' : undefined}
               onClick={next}
             >
               {last ? 'Finish' : 'Continue'}

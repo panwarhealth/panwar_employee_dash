@@ -219,7 +219,7 @@ export interface ButtonBlock extends BlockBase {
   radius?: number;
   corners?: Corners;
   textStyle?: TextStyle;
-  enabledWhen?: 'always' | 'picks' | 'condition';
+  enabledWhen?: 'always' | 'picks' | 'visited' | 'condition';
   enabledIf?: Condition[];
 }
 
@@ -700,3 +700,9 @@ export const newPickRule = (): PickRule => ({
 });
 
 export const hasPicks = (page: Page) => pickIds(page).length > 0;
+
+export const linkedPages = (page: Page): string[] =>
+  [
+    ...page.triggers.map((t) => t.action),
+    ...page.blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
+  ].flatMap((a) => (a.kind === 'page' && a.back ? [a.pageId] : []));
