@@ -51,7 +51,7 @@ function QuestionFrame({
       {children({ locked, submitted })}
       {submitted ? (
         <>
-          <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
+          <div className="cp-fb">
             {correct ? block.feedbackCorrect : block.feedbackWrong}
           </div>
           {!correct && (

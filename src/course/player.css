@@ -287,17 +287,7 @@
 }
 .cp-fb {
   width: 100%;
-  padding: 0.75em 0.875em;
-  font-size: 0.9375em;
-  background: #f4f4f6;
-  color: #2b2b33;
-  border-left: 4px solid;
-}
-.cp-fb-ok {
-  border-left-color: var(--cp-ok);
-}
-.cp-fb-bad {
-  border-left-color: #e0a100;
+  margin: 0;
 }
 
 .cp-nav {

@@ -35,7 +35,7 @@ function PickFeedback({
   const rule = page.pick ?? newPickRule();
   return (
     <div className={`cp-pickfb cp-pickfb-${rule.showAs}`}>
-      <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
+      <div className="cp-fb">
         <p>{correct ? rule.feedbackCorrect : rule.feedbackWrong}</p>
         <button
           type="button"
