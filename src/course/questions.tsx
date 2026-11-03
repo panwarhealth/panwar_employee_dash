@@ -52,8 +52,7 @@ function QuestionFrame({
       {submitted ? (
         <>
           <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
-            <ResultMark correct={correct} />
-            <span>{correct ? block.feedbackCorrect : block.feedbackWrong}</span>
+            {correct ? block.feedbackCorrect : block.feedbackWrong}
           </div>
           {!correct && (
             <button
@@ -83,18 +82,6 @@ function QuestionFrame({
         </button>
       )}
     </div>
-  );
-}
-
-function ResultMark({ correct }: { correct: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      {correct ? (
-        <path d="M5 12.5l4.5 4.5L19 7.5" />
-      ) : (
-        <path d="M7 7l10 10M17 7L7 17" />
-      )}
-    </svg>
   );
 }
 

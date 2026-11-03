@@ -288,25 +288,17 @@
 .cp-fb {
   width: 100%;
   margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.45em;
+  padding: 0.7em 0.9em;
+  border: 1px solid;
+  color: #2b2b33;
 }
-.cp-fb svg {
-  flex: none;
-  width: 1em;
-  height: 1em;
-  transform: translateY(0.15em);
-  fill: none;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.cp-fb-ok {
+  background: #eff8f2;
+  border-color: #cfe6d7;
 }
-.cp-fb-ok svg {
-  stroke: var(--cp-ok);
-}
-.cp-fb-bad svg {
-  stroke: #c0573e;
+.cp-fb-bad {
+  background: #fdf7ea;
+  border-color: #eedfbd;
 }
 
 .cp-nav {
