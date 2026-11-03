@@ -25,6 +25,8 @@ const MIN_LABEL_PX = 10;
 const QUESTION_PX = 14;
 const CONTAINER_PAD = 10;
 const CARD_GAP = 1.5;
+const TAP_PX = 44;
+const FITS = 1.005;
 
 export interface Cluster {
   ids: string[];
@@ -218,7 +220,7 @@ function estimateHeight(b: Block, s: number, widthPx: number): number {
 class PhoneStack {
   private readonly byId: Map<string, Block>;
   private readonly gap: number;
-  private readonly fullSize: Set<string>;
+  private readonly taps: Set<string>;
   unreadable = false;
   private rows = -1000;
 
@@ -230,8 +232,8 @@ class PhoneStack {
   ) {
     this.byId = new Map(page.blocks.map((b) => [b.id, b]));
     this.gap = (PHONE.gap / 100) * PHONE.h * shrink.gaps;
-    this.fullSize = new Set([
-      ...page.blocks.filter((b) => b.type === 'button' || b.type === 'video').map((b) => b.id),
+    this.taps = new Set([
+      ...page.blocks.filter((b) => b.type === 'button').map((b) => b.id),
       ...page.blocks
         .filter((b) => b.type === 'text' && boxed(b) && /<a\s/i.test(b.html))
         .map((b) => b.id),
@@ -298,11 +300,19 @@ class PhoneStack {
     return sizes.length ? Math.min(1, MIN_LABEL_PX / Math.min(...sizes)) : 0;
   }
 
+  private minSidePx(id: string): number {
+    const f = this.desk(id);
+    return Math.min((f.w / 100) * DESIGN.w, (f.h / 100) * DESIGN.h);
+  }
+
   private scaleFor(ids: string[], fitWidth: number, fitHeight: number): number {
     const readable = this.readableScale(ids);
     if (readable > fitWidth + 0.001) this.unreadable = true;
     const fit = Math.min(1, fitWidth, fitHeight);
-    const shrunk = ids.some((id) => this.fullSize.has(id)) ? fit : fit * this.shrink.pictures;
+    const video = ids.some((id) => this.byId.get(id)!.type === 'video');
+    const sides = ids.filter((id) => this.taps.has(id)).map((id) => this.minSidePx(id) * fit);
+    const tapFloor = sides.length ? Math.min(1, TAP_PX / Math.min(...sides)) : 0;
+    const shrunk = video ? fit : fit * Math.max(this.shrink.pictures, tapFloor);
     return Math.max(shrunk, Math.min(1, fitWidth, readable));
   }
 
@@ -470,6 +480,8 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
     gaps: 1,
   };
   let result = { used: 1, sideways: false };
+  let last = Infinity;
+  let lever = shrink.pictures > MIN_PICTURE_SHRINK ? 0 : 1;
   for (let attempt = 0; attempt < 16; attempt++) {
     stackPhone(page, clusters, new Map(), scale, shrink);
     const measured = await measureHeights(doc, page, 'phone');
@@ -481,16 +493,21 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
       shrink,
     );
     const used = result.used;
-    if (used <= 1) break;
+    if (used <= FITS) break;
+    if (used > last - 0.002) lever++;
+    last = used;
     const step = Math.max(0.75, 0.98 / used);
-    if (shrink.pictures > MIN_PICTURE_SHRINK)
+    if (lever === 0 && shrink.pictures > MIN_PICTURE_SHRINK)
       shrink.pictures = Math.max(MIN_PICTURE_SHRINK, shrink.pictures * step);
-    else if (shrink.text > MIN_TEXT_SHRINK)
+    else if (lever <= 1 && shrink.text > MIN_TEXT_SHRINK) {
+      lever = 1;
       shrink.text = Math.max(MIN_TEXT_SHRINK, shrink.text * step);
-    else if (shrink.gaps > MIN_GAP_SHRINK) shrink.gaps = MIN_GAP_SHRINK;
-    else break;
+    } else if (shrink.gaps > MIN_GAP_SHRINK) {
+      lever = 2;
+      shrink.gaps = MIN_GAP_SHRINK;
+    } else break;
   }
   if (result.sideways) page.sideways = true;
   else delete page.sideways;
-  return result.used <= 1;
+  return result.used <= FITS;
 }

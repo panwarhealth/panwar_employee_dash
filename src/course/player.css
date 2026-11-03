@@ -193,6 +193,9 @@
   border-radius: 6px;
   padding: 20px;
 }
+.cp-obj .cp-fit-in > .cp-check {
+  height: auto;
+}
 .cp-q {
   font-weight: 700;
   font-size: 1.0625em;

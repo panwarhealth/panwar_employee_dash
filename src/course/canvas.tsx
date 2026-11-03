@@ -35,8 +35,8 @@ function Fit({ children }: { children: ReactNode }) {
       inner.style.height = '';
       inner.style.transform = '';
       const s = Math.min(
-        content.clientHeight / content.scrollHeight,
-        content.clientWidth / content.scrollWidth,
+        outer.clientHeight / content.scrollHeight,
+        outer.clientWidth / content.scrollWidth,
       );
       if (!(s < 0.99)) return;
       inner.style.height = `${100 / s}%`;
