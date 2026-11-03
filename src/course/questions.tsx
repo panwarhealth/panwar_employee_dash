@@ -50,7 +50,7 @@ function QuestionFrame({
       {hint && <p className="cp-hint">{hint}</p>}
       {children({ locked, submitted })}
       {submitted ? (
-        <>
+        <div className="cp-fbrow">
           <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
             {correct ? block.feedbackCorrect : block.feedbackWrong}
           </div>
@@ -66,7 +66,7 @@ function QuestionFrame({
               Try again
             </button>
           )}
-        </>
+        </div>
       ) : (
         <button
           type="button"
