@@ -1,5 +1,6 @@
 import { layoutsFor } from '@/course/canvasLayout';
 import type { CourseDoc, Layout, Page } from '@/course/doc';
+import { FLOWING } from './blockKinds';
 import { withStage } from './offscreenStage';
 
 const offscreen = <T>(
@@ -46,7 +47,7 @@ const measure = (doc: CourseDoc, page: Page, layout: Layout) =>
       const scaled = el.querySelector<HTMLElement>(':scope > .cp-fit > .cp-fit-in')?.style
         .transform;
       const s = scaled?.match(/scale\(([\d.]+)\)/)?.[1];
-      if (s && Number(s) < 0.5)
+      if (s && Number(s) < (FLOWING.has(b.type) ? 0.85 : 0.5))
         out.push(
           `${where} has more content than its frame and is shrunk to ${Math.round(Number(s) * 100)}% to fit. Nothing may scroll: give it more room, or split the content across pages or into a tabs block.`,
         );

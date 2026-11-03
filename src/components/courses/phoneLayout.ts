@@ -24,6 +24,7 @@ const MIN_GAP_SHRINK = 0.25;
 const MIN_LABEL_PX = 10;
 const QUESTION_PX = 14;
 const CONTAINER_PAD = 10;
+const CARD_GAP = 1.5;
 
 export interface Cluster {
   ids: string[];
@@ -66,6 +67,23 @@ function bands<G>(list: G[], lo: (g: G) => number, hi: (g: G) => number): G[][] 
   return out.map((b) => b.items);
 }
 
+const byX = <G extends { box: Box }>(band: G[]) => [...band].sort((a, b) => a.box.x - b.box.x);
+
+const centre = (b: Box) => b.x + b.w / 2;
+
+function cardRows<G extends { box: Box }>(top: G[], bottom: G[]): boolean {
+  const a = byX(top);
+  const b = byX(bottom);
+  return (
+    a.length > 1 &&
+    a.length === b.length &&
+    a.every(
+      (g, i) => Math.abs(centre(g.box) - centre(b[i].box)) < Math.min(g.box.w, b[i].box.w) / 2,
+    ) &&
+    a.every((g, i) => i === 0 || g.box.x - (a[i - 1].box.x + a[i - 1].box.w) >= CARD_GAP)
+  );
+}
+
 function readingOrder<G extends { box: Box }>(groups: G[]): (G & { row: number })[] {
   const out: (G & { row: number })[] = [];
   let next = 0;
@@ -80,7 +98,15 @@ function readingOrder<G extends { box: Box }>(groups: G[]): (G & { row: number }
       (g) => g.box.y + g.box.h,
     );
     if (rows.length > 1) {
-      for (const r of rows) cut(r, next++);
+      for (let i = 0; i < rows.length; ) {
+        let j = i;
+        while (j + 1 < rows.length && cardRows(rows[j], rows[j + 1])) j++;
+        if (j === i) cut(rows[i], next++);
+        else
+          for (const [c] of byX(rows[i]).entries())
+            for (const band of rows.slice(i, j + 1)) cut([byX(band)[c]], next++);
+        i = j + 1;
+      }
       return;
     }
     const cols = bands(
@@ -109,7 +135,7 @@ function reflows(b: Block): boolean {
   if (!hasText(b)) return false;
   const w = desktopOf(b).w;
   if (!boxed(b)) return w >= 20 || blockText(b).length > 40;
-  return !isRound(b) && w >= 40;
+  return !isRound(b) && (w >= 40 || blockText(b).length > 60);
 }
 
 export function phoneClusters(page: Page): Cluster[] {
@@ -206,6 +232,9 @@ class PhoneStack {
     this.gap = (PHONE.gap / 100) * PHONE.h * shrink.gaps;
     this.fullSize = new Set([
       ...page.blocks.filter((b) => b.type === 'button' || b.type === 'video').map((b) => b.id),
+      ...page.blocks
+        .filter((b) => b.type === 'text' && boxed(b) && /<a\s/i.test(b.html))
+        .map((b) => b.id),
       ...page.triggers.flatMap((t) => (t.when.kind === 'click' ? [t.when.blockId] : [])),
     ]);
   }
