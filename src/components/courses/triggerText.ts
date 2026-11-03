@@ -71,7 +71,7 @@ export function actionText(a: Action, doc: CourseDoc, page: Page): string {
     case 'prev':
       return 'Go to previous page';
     case 'page':
-      return `Jump to ${doc.pages.find((p) => p.id === a.pageId)?.title ?? 'missing page'}`;
+      return `Jump to ${doc.pages.find((p) => p.id === a.pageId)?.title ?? 'missing page'}${a.back ? ' and come back' : ''}`;
     case 'set':
       return a.op === 'toggle'
         ? `Toggle ${varName(doc, a.varId)}`

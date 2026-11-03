@@ -20,7 +20,7 @@ export interface BlockContext {
   answers: Record<string, Answer>;
   answer(blockId: string, selected: string[], correct: boolean): void;
   next(): void;
-  act(action: ButtonAction): void;
+  act(action: ButtonAction, from?: Block): void;
   picked: string[];
   clicked: string[];
   picksCorrect: boolean;

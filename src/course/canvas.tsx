@@ -18,7 +18,7 @@ function objectClass(block: Block, ctx: BlockContext): string {
     clickable && 'cp-click',
     picked && i.picked !== 'none' && i.picked !== 'dim' && `cp-picked-${i.picked}`,
     dimmed && 'cp-dim',
-    i.visited === 'fade' && ctx.clicked.includes(block.id) && !picked && 'cp-visited',
+    i.visited !== 'none' && ctx.clicked.includes(block.id) && !picked && `cp-visited-${i.visited}`,
   ]
     .filter(Boolean)
     .join(' ');

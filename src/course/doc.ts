@@ -45,7 +45,7 @@ export interface Variable {
 export type Action =
   | { kind: 'next' }
   | { kind: 'prev' }
-  | { kind: 'page'; pageId: string }
+  | { kind: 'page'; pageId: string; back?: boolean }
   | { kind: 'link'; url: string }
   | { kind: 'popup'; blockId: string }
   | { kind: 'closePopup' }
@@ -117,7 +117,7 @@ export interface PickRule {
 
 export type HoverLook = 'none' | 'scale' | 'glow' | 'lift' | 'border';
 export type PickedLook = 'none' | 'tick' | 'glow' | 'dim';
-export type VisitedLook = 'none' | 'fade';
+export type VisitedLook = 'none' | 'fade' | 'tick';
 
 export interface Interaction {
   hover: HoverLook;
@@ -225,7 +225,7 @@ export interface ButtonBlock extends BlockBase {
 
 export type ButtonAction =
   | { kind: 'next' }
-  | { kind: 'page'; pageId: string }
+  | { kind: 'page'; pageId: string; back?: boolean }
   | { kind: 'link'; url: string };
 
 export interface CheckOption {

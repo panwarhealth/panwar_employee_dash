@@ -68,17 +68,16 @@ export function InteractionFields({
           />
         </>
       )}
-      {block.type !== 'button' && (
-        <Select
-          label="When visited"
-          value={i.visited}
-          options={[
-            { value: 'none', label: 'No change' },
-            { value: 'fade', label: 'Fade to 60%' },
-          ]}
-          onChange={(visited) => set({ visited })}
-        />
-      )}
+      <Select
+        label="When visited"
+        value={i.visited}
+        options={[
+          { value: 'none', label: 'No change' },
+          { value: 'fade', label: 'Fade to 60%' },
+          { value: 'tick', label: 'Show a tick' },
+        ]}
+        onChange={(visited) => set({ visited })}
+      />
       {block.type === 'button' && (
         <>
           <Select

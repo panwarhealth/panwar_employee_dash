@@ -60,7 +60,10 @@ export function insetDesktop(page: Page) {
   reshape(blocks, box, x, y, k);
 }
 
-const isContinue = (b: Block) => b.type === 'button' && b.action.kind === 'next';
+const isContinue = (b: Block) =>
+  b.type === 'button' &&
+  (b.action.kind === 'next' ||
+    (b.action.kind === 'page' && /^(continue|next)\b/i.test(b.label.trim())));
 
 function cornerBadge(page: Page, blocks: Block[]): Block | undefined {
   const clicked = new Set(

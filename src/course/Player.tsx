@@ -99,6 +99,14 @@ function freshState(doc: CourseDoc): PlayState {
   };
 }
 
+function hubPages(doc: CourseDoc): Set<string> {
+  const actions = doc.pages.flatMap((p) => [
+    ...p.triggers.map((t) => t.action),
+    ...p.blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
+  ]);
+  return new Set(actions.flatMap((a) => (a.kind === 'page' && a.back ? [a.pageId] : [])));
+}
+
 const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
 
 function mustAnswer(b: Block): boolean {
@@ -140,6 +148,7 @@ export function Player({
     () => doc.pages.filter((p) => !(state.skip ?? []).includes(p.id)),
     [doc.pages, state.skip],
   );
+  const visitedFromHub = useMemo(() => hubPages(doc), [doc]);
   const index = Math.max(
     0,
     pages.findIndex((p) => p.id === state.pageId),
@@ -188,14 +197,40 @@ export function Player({
     if (!settings) setEnded(true);
   };
 
-  const next = () => (index < pages.length - 1 ? go(pages[index + 1].id) : finish());
+  const backToHub = () => {
+    if (!state.hub || state.hub === page.id) return false;
+    go(state.hub);
+    return true;
+  };
+
+  const step = (from: Page[]) => from.find((p) => !visitedFromHub.has(p.id));
+
+  const next = () => {
+    if (backToHub()) return;
+    setState((s) => ({ ...s, hub: undefined }));
+    const to = step(pages.slice(index + 1));
+    if (to) go(to.id);
+    else finish();
+  };
+
+  const prev = () => {
+    if (backToHub()) return;
+    const to = step(pages.slice(0, index).reverse());
+    if (to) go(to.id);
+  };
+
+  const markClicked = (b: Block) =>
+    setState((s) =>
+      s.clicked?.includes(b.id) ? s : { ...s, clicked: [...(s.clicked ?? []), b.id] },
+    );
 
   const act = (a: Action) => {
     if (a.kind === 'next') next();
-    else if (a.kind === 'prev') {
-      if (index > 0) go(pages[index - 1].id);
-    } else if (a.kind === 'page') go(a.pageId);
-    else if (a.kind === 'popup') setPopup(a.blockId);
+    else if (a.kind === 'prev') prev();
+    else if (a.kind === 'page') {
+      setState((s) => ({ ...s, hub: a.back ? page.id : undefined }));
+      go(a.pageId);
+    } else if (a.kind === 'popup') setPopup(a.blockId);
     else if (a.kind === 'closePopup') setPopup(null);
     else if (a.kind === 'link') window.open(a.url, '_blank', 'noopener');
     else if (a.kind === 'finish') finish();
@@ -234,7 +269,12 @@ export function Player({
         else navigate = a;
       }
     }
-    setState((s) => ({ ...s, vars: nextVars, vis, picks: { ...s.picks, [page.id]: picks } }));
+    setState((s) => ({
+      ...s,
+      vars: nextVars,
+      vis,
+      picks: { ...s.picks, [page.id]: picks },
+    }));
     if (navigate) act(navigate);
   };
   dispatchRef.current = dispatch;
@@ -259,19 +299,24 @@ export function Player({
           ...s,
           answers: {
             ...s.answers,
-            [blockId]: { selected, correct, firstCorrect: prev ? prev.firstCorrect : correct },
+            [blockId]: {
+              selected,
+              correct,
+              firstCorrect: prev ? prev.firstCorrect : correct,
+            },
           },
         };
       }),
     next,
-    act,
+    act: (a, from) => {
+      if (from) markClicked(from);
+      act(a);
+    },
     picked,
     clicked: state.clicked ?? [],
     picksCorrect: pickStatus(page, picked).correct,
     click: (b) => {
-      setState((s) =>
-        s.clicked?.includes(b.id) ? s : { ...s, clicked: [...(s.clicked ?? []), b.id] },
-      );
+      markClicked(b);
       dispatch({ kind: 'click', blockId: b.id });
     },
     openPopup: setPopup,
@@ -357,7 +402,7 @@ export function Player({
             type="button"
             className="cp-navbtn"
             disabled={index === 0}
-            onClick={() => go(pages[index - 1].id)}
+            onClick={prev}
           >
             Back
           </button>

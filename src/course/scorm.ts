@@ -14,6 +14,7 @@ export interface PlayState {
   skip?: string[];
   vars?: Record<string, string>;
   vis?: Record<string, boolean>;
+  hub?: string;
 }
 
 export interface Lms {

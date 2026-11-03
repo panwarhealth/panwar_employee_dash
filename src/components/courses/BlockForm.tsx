@@ -358,7 +358,14 @@ function ActionFields({
             value: p.id,
             label: `${i + 1}. ${p.title || 'Untitled'}`,
           }))}
-          onChange={(pageId) => onChange({ kind: 'page', pageId })}
+          onChange={(pageId) => onChange({ ...action, pageId })}
+        />
+      )}
+      {action.kind === 'page' && (
+        <Toggle
+          label="Come back here after"
+          checked={!!action.back}
+          onChange={(back) => onChange({ ...action, back })}
         />
       )}
       {action.kind === 'link' && (

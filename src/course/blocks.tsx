@@ -142,7 +142,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
                 (block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
                 (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])))
             }
-            onClick={() => !ctx.edit && ctx.act(block.action)}
+            onClick={() => !ctx.edit && ctx.act(block.action, block)}
           >
             {ctx.merge(block.label, false)}
           </button>

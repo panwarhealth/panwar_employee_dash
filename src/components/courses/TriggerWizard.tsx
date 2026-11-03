@@ -4,7 +4,7 @@ import { Modal } from '@/components/ui/modal';
 import type { Action, CourseDoc, Page, SetOp, Trigger, TriggerEvent } from '@/course/doc';
 import { blockLabel } from './blockMeta';
 import { ConditionsEditor } from './ConditionsEditor';
-import { Select, TextInput } from './fields';
+import { Select, TextInput, Toggle } from './fields';
 import { ACTIONS, EVENTS, SET_OPS } from './triggerText';
 
 function defaultAction(kind: Action['kind'], doc: CourseDoc, page: Page): Action {
@@ -98,6 +98,13 @@ export function TriggerWizard({
                 value={a.pageId}
                 options={doc.pages.map((p, i) => ({ value: p.id, label: `${i + 1}. ${p.title}` }))}
                 onChange={(pageId) => setT({ ...t, action: { ...a, pageId } })}
+              />
+            )}
+            {a.kind === 'page' && (
+              <Toggle
+                label="Come back here after"
+                checked={!!a.back}
+                onChange={(back) => setT({ ...t, action: { ...a, back } })}
               />
             )}
             {a.kind === 'link' && (

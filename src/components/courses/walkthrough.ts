@@ -31,7 +31,11 @@ function revealedBy(page: Page, blockId: string): string {
 }
 
 const goesTo = (doc: CourseDoc, a: ButtonAction) =>
-  a.kind === 'next' ? 'the next page' : a.kind === 'page' ? `"${pageTitle(doc, a.pageId)}"` : a.url;
+  a.kind === 'next'
+    ? 'the next page'
+    : a.kind === 'page'
+      ? `"${pageTitle(doc, a.pageId)}"${a.back ? ', then back here' : ''}`
+      : a.url;
 
 const feedback = (right: string, wrong: string) => [
   ...(right ? [`If right: ${stripTags(right)}`] : []),
@@ -54,7 +58,10 @@ function blockDetail(doc: CourseDoc, page: Page, b: Block): Detail | null {
         lines: b.type === 'image' ? [`Picture: ${b.alt || b.fileName}`] : blockText(b).split('\n'),
       };
     case 'button':
-      return { title: `Button "${b.label}"`, lines: [`Goes to ${goesTo(doc, b.action)}`] };
+      return {
+        title: `Button "${b.label}"`,
+        lines: [`Goes to ${goesTo(doc, b.action)}`],
+      };
     case 'popup':
       return {
         title: `Pop-up "${b.title}"`,

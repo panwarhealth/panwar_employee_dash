@@ -531,7 +531,8 @@
 .cp-picked-tick {
   outline: 0.2em solid var(--cp-ok);
 }
-.cp-picked-tick::after {
+.cp-picked-tick::after,
+.cp-visited-tick::after {
   content: '\2713';
   position: absolute;
   top: -0.6em;
@@ -552,7 +553,7 @@
 .cp-dim {
   opacity: 0.45;
 }
-.cp-visited {
+.cp-visited-fade {
   opacity: 0.6;
 }
 .cp-canvascol {
