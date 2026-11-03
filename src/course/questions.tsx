@@ -92,7 +92,7 @@ function ResultMark({ correct }: { correct: boolean }) {
       {correct ? (
         <path d="M5 12.5l4.5 4.5L19 7.5" />
       ) : (
-        <path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5" />
+        <path d="M7 7l10 10M17 7L7 17" />
       )}
     </svg>
   );
