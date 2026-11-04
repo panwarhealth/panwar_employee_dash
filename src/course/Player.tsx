@@ -107,6 +107,16 @@ function hubsOf(doc: CourseDoc): Map<string, string> {
   return hubs;
 }
 
+function leadsToSeen(page: Page, seen: string[]): string[] {
+  const goesTo = [
+    ...page.triggers.flatMap((t) =>
+      t.when.kind === 'click' ? [[t.when.blockId, t.action] as const] : [],
+    ),
+    ...page.blocks.flatMap((b) => (b.type === 'button' ? [[b.id, b.action] as const] : [])),
+  ];
+  return goesTo.flatMap(([id, a]) => (a.kind === 'page' && seen.includes(a.pageId) ? [id] : []));
+}
+
 const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
 
 function mustAnswer(b: Block): boolean {
@@ -317,7 +327,7 @@ export function Player({
       act(a);
     },
     picked,
-    clicked: state.clicked ?? [],
+    clicked: [...(state.clicked ?? []), ...leadsToSeen(page, state.visited)],
     picksCorrect: pickStatus(page, picked).correct,
     linksDone,
     click: (b) => {
