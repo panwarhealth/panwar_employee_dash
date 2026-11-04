@@ -17,6 +17,7 @@ export const BLOCKS: BlockMeta[] = [
   { type: 'audio', name: 'Audio', detail: 'Narration with reveal cue points', group: 'Content' },
   { type: 'animation', name: 'Animation', detail: 'Lottie or GIF', group: 'Content' },
   { type: 'divider', name: 'Divider', group: 'Content' },
+  { type: 'shape', name: 'Shape', detail: 'Box or circle, gradient, shadow', group: 'Content' },
   { type: 'popup', name: 'Pop-up', detail: 'Button that opens a layer', group: 'Interactive' },
   { type: 'accordion', name: 'Accordion', group: 'Interactive' },
   { type: 'tabs', name: 'Tabs', group: 'Interactive' },
@@ -99,6 +100,7 @@ function labelText(b: Block): string {
     case 'likert':
       return b.prompt;
     case 'divider':
+    case 'shape':
     case 'results':
       return '';
   }

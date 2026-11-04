@@ -6,6 +6,7 @@ import type {
   HeadingBlock,
   ImageBlock,
   Page,
+  ShapeBlock,
   TextBlock,
 } from '@/course/doc';
 import { uid } from '@/course/doc';
@@ -36,7 +37,7 @@ const ALIGN = [
   { value: 'justify' as const, label: 'Justify' },
 ];
 
-type Boxed = HeadingBlock | TextBlock | ImageBlock;
+type Boxed = HeadingBlock | TextBlock | ImageBlock | ShapeBlock;
 
 function BoxFields<B extends Boxed>({
   block,
@@ -59,7 +60,7 @@ function BoxFields<B extends Boxed>({
         }
       />
       <BorderField value={block.border} onChange={(v) => set((b) => (b.border = v))} />
-      {block.type !== 'image' && (
+      {(block.type === 'heading' || block.type === 'text') && (
         <Select
           label="Vertical align"
           value={block.valign ?? (block.fill || block.gradient ? 'middle' : 'top')}
@@ -70,22 +71,24 @@ function BoxFields<B extends Boxed>({
           ]}
           onChange={(v) =>
             set((b) => {
-              if (b.type !== 'image') b.valign = v;
+              if (b.type === 'heading' || b.type === 'text') b.valign = v;
             })
           }
         />
       )}
-      <RadiusField
-        value={block.radius}
-        fallback={0}
-        corners={block.corners}
-        onChange={(radius, corners) =>
-          set((b) => {
-            b.radius = radius;
-            b.corners = corners;
-          })
-        }
-      />
+      {!(block.type === 'shape' && block.shape === 'ellipse') && (
+        <RadiusField
+          value={block.radius}
+          fallback={0}
+          corners={block.corners}
+          onChange={(radius, corners) =>
+            set((b) => {
+              b.radius = radius;
+              b.corners = corners;
+            })
+          }
+        />
+      )}
       <ShadowField value={block.shadow} onChange={(v) => set((b) => (b.shadow = v))} />
     </>
   );
@@ -232,6 +235,21 @@ export function BlockForm({
       );
     case 'divider':
       return <p className="text-sm text-ph-charcoal/60">A thin line between blocks.</p>;
+    case 'shape':
+      return (
+        <>
+          <Select
+            label="Shape"
+            value={block.shape}
+            options={[
+              { value: 'rect', label: 'Box' },
+              { value: 'ellipse', label: 'Circle or oval' },
+            ]}
+            onChange={(v) => set<typeof block>((b) => (b.shape = v))}
+          />
+          <BoxFields block={block} set={set<typeof block>} />
+        </>
+      );
     case 'button':
       return (
         <>

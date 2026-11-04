@@ -343,8 +343,8 @@ const makeButton: Handler = (doc, input) => {
   const page = pageOf(doc, input);
   if (!page) return fail(doc, 'No page with that id.');
   const old = page.blocks.find((b) => b.id === input.block_id);
-  if (!old || (old.type !== 'text' && old.type !== 'heading'))
-    return fail(doc, 'block_id must be a text or heading block on this page.');
+  if (!old || (old.type !== 'text' && old.type !== 'heading' && old.type !== 'shape'))
+    return fail(doc, 'block_id must be a text, heading or shape block on this page.');
   const button: ButtonBlock = {
     id: old.id,
     type: 'button',
@@ -355,7 +355,7 @@ const makeButton: Handler = (doc, input) => {
     fill: old.fill,
     radius: old.radius,
     corners: old.corners,
-    textStyle: old.textStyle,
+    ...(old.type !== 'shape' && old.textStyle ? { textStyle: old.textStyle } : {}),
     frames: old.frames,
     ...(old.anim ? { anim: old.anim } : {}),
     ...(old.startHidden ? { startHidden: true } : {}),

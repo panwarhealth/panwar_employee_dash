@@ -123,6 +123,20 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
     }
     case 'divider':
       return <hr className="cp-divider" />;
+    case 'shape':
+      return (
+        <div
+          className="cp-shape"
+          style={{
+            ...paintCss(block.fill, block.gradient),
+            ...borderCss(block.border),
+            ...(block.shape === 'ellipse'
+              ? { borderRadius: '50%' }
+              : radiusCss(block.radius, block.corners)),
+            ...shadowCss(block.shadow, 'box'),
+          }}
+        />
+      );
     case 'button': {
       const locked =
         !ctx.edit &&

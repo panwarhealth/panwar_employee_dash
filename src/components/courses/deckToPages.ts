@@ -8,6 +8,7 @@ import type {
   ImageBlock,
   Layout,
   Page,
+  ShapeBlock,
   TextBlock,
 } from '@/course/doc';
 import { layoutsFor } from '@/course/canvasLayout';
@@ -20,7 +21,7 @@ import {
   round1,
   type Box,
 } from '@/course/geometry';
-import { fontIdFor, shadowPx, shapeBlock } from './deckHtml';
+import { fontIdFor, panelBlock, shadowPx, shapeBlock } from './deckHtml';
 import { tidyDesktop } from './desktopLayout';
 import { measureHeights } from './pageFit';
 import { fitPhone, phoneClusters, stackPhone } from './phoneLayout';
@@ -29,7 +30,7 @@ import type { Deck, DeckShape, DeckSlide } from './pptx';
 const DESIGN_W = 960;
 
 type Item =
-  | { kind: 'shape'; shape: DeckShape; block: HeadingBlock | TextBlock }
+  | { kind: 'shape'; shape: DeckShape; block: HeadingBlock | TextBlock | ShapeBlock }
   | {
       kind: 'image';
       image: Box & { r: number; light: boolean };
@@ -128,8 +129,10 @@ function slideItems(
   for (const entry of slide.order) {
     if (entry.kind === 'shape') {
       const shape = slide.shapes[entry.index];
-      const id = makeId(shape.text.trim() ? 'text' : 'box');
-      items.push({ kind: 'shape', shape, block: shapeBlock(shape, id, pxPerPt) });
+      const hasWords = !!shape.text.trim();
+      const id = makeId(hasWords ? 'text' : 'box');
+      const block = hasWords ? shapeBlock(shape, id, pxPerPt) : panelBlock(shape, id, pxPerPt);
+      items.push({ kind: 'shape', shape, block });
       continue;
     }
     if (entry.kind === 'drawing') {

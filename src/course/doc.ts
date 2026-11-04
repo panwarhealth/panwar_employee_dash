@@ -236,6 +236,17 @@ export interface DividerBlock extends BlockBase {
   type: 'divider';
 }
 
+export interface ShapeBlock extends BlockBase {
+  type: 'shape';
+  shape: 'rect' | 'ellipse';
+  fill?: string;
+  gradient?: Gradient;
+  shadow?: Shadow;
+  border?: Border;
+  radius?: number;
+  corners?: Corners;
+}
+
 export interface ButtonBlock extends BlockBase {
   type: 'button';
   label: string;
@@ -449,6 +460,7 @@ export type Block =
   | VideoBlock
   | EmbedBlock
   | DividerBlock
+  | ShapeBlock
   | ButtonBlock
   | CheckBlock
   | AudioBlock
@@ -505,6 +517,8 @@ export function newBlock(type: BlockType): Block {
       return { id, type, url: '' };
     case 'divider':
       return { id, type };
+    case 'shape':
+      return { id, type, shape: 'rect', fill: '#E8E8E8' };
     case 'button':
       return {
         id,
@@ -692,7 +706,36 @@ export const NO_INTERACTION: Interaction = {
   correct: false,
 };
 
+const DESIGN_PX = { w: 960, h: 540 };
+
+function emptyBoxToShape(b: TextBlock): ShapeBlock {
+  const f = b.frames?.desktop;
+  const w = f ? (f.w / 100) * DESIGN_PX.w : 0;
+  const h = f ? (f.h / 100) * DESIGN_PX.h : 0;
+  const circle =
+    !!f && Math.abs(w - h) <= Math.max(w, h) * 0.03 && (b.radius ?? 0) >= Math.min(w, h) * 0.45;
+  return {
+    id: b.id,
+    type: 'shape',
+    shape: circle ? 'ellipse' : 'rect',
+    ...(b.frames ? { frames: b.frames } : {}),
+    ...(b.interact ? { interact: b.interact } : {}),
+    ...(b.anim ? { anim: b.anim } : {}),
+    ...(b.startHidden ? { startHidden: true } : {}),
+    ...(b.fill ? { fill: b.fill } : {}),
+    ...(b.gradient ? { gradient: b.gradient } : {}),
+    ...(b.shadow ? { shadow: b.shadow } : {}),
+    ...(b.border ? { border: b.border } : {}),
+    ...(!circle && b.radius !== undefined ? { radius: b.radius } : {}),
+    ...(!circle && b.corners ? { corners: b.corners } : {}),
+  };
+}
+
+const emptyHtml = (html: string) => !html.replace(/<[^>]*>|&nbsp;|\s/g, '');
+
 function upgradeBlock(b: Block): Block {
+  if (b.type === 'text' && emptyHtml(b.html) && (b.fill || b.gradient || b.border))
+    return emptyBoxToShape(b);
   if ((b as { type: string }).type !== 'scroll') return b;
   const text = { ...b, type: 'text', align: 'left' } as Block & { height?: number };
   delete text.height;

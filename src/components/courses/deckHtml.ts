@@ -1,4 +1,4 @@
-import type { HeadingBlock, Shadow, TextBlock, TextStyle } from '@/course/doc';
+import type { HeadingBlock, Shadow, ShapeBlock, TextBlock, TextStyle } from '@/course/doc';
 import { round1 } from '@/course/geometry';
 import { BUILTIN_FONTS } from '@/course/typography';
 import type { DeckPara, DeckRun, DeckShadow, DeckShape } from './pptx';
@@ -125,6 +125,21 @@ export const shadowPx = (s: DeckShadow | undefined, pxPerPt: number): Shadow | u
     y: round1(s.y * pxPerPt),
     blur: round1(s.blur * pxPerPt),
   };
+
+export function panelBlock(shape: DeckShape, id: string, pxPerPt: number): ShapeBlock {
+  const ellipse = !!shape.ellipse;
+  return {
+    id,
+    type: 'shape',
+    shape: ellipse ? 'ellipse' : 'rect',
+    ...(shape.fill ? { fill: shape.fill } : {}),
+    ...(shape.gradient ? { gradient: shape.gradient } : {}),
+    ...(shape.shadow ? { shadow: shadowPx(shape.shadow, pxPerPt) } : {}),
+    ...(shape.border ? { border: shape.border } : {}),
+    ...(!ellipse ? { radius: shape.radius ?? 0 } : {}),
+    ...(!ellipse && shape.corners ? { corners: shape.corners } : {}),
+  };
+}
 
 export function shapeBlock(
   shape: DeckShape,

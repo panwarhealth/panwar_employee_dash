@@ -288,6 +288,7 @@ function readShape(ctx: SlideContext, el: Element, t: Transform, owner: Part, fr
       shadowOf(spPr, style, ctx.styles.theme) ?? effectShadow(runEffects(el), ctx.styles.theme),
     border: drawable ? border : undefined,
     corners: prst === 'round2SameRect' ? 'top' : undefined,
+    ellipse: prst === 'ellipse' || undefined,
     radius: radiusOf(ctx, geom, at),
   });
 }

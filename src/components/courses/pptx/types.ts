@@ -69,6 +69,7 @@ export interface DeckShape {
   border?: DeckBorder;
   radius?: number;
   corners?: 'top';
+  ellipse?: boolean;
 }
 
 export interface DeckImage {

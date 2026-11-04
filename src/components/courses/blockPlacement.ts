@@ -1,6 +1,6 @@
 import { isHiddenPopup, type Block, type Frame, type Layout, type Page } from '@/course/doc';
 import { bounds, centreInside, isBackdrop, round1 } from '@/course/geometry';
-import { hasText } from '@/course/text';
+import { isPanel } from './blockKinds';
 
 const areaOf = (b: Block) => (b.frames?.desktop ? b.frames.desktop.w * b.frames.desktop.h : 0);
 
@@ -8,8 +8,7 @@ function enclosingBox(page: Page, held: Block[]): Block | undefined {
   const frame = (b: Block) => b.frames?.desktop;
   const boxes = page.blocks.filter((c) => {
     const f = frame(c);
-    if (!f || held.includes(c) || c.type !== 'text' || isBackdrop(f)) return false;
-    if ((!c.fill && !c.border) || hasText(c)) return false;
+    if (!f || held.includes(c) || !isPanel(c) || isBackdrop(f)) return false;
     if (!held.every((b) => frame(b) && centreInside(f, frame(b)!))) return false;
     return page.blocks.every((o) => {
       const of = frame(o);

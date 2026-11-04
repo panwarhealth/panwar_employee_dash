@@ -10,11 +10,13 @@ import { paintCss } from './typography';
 function objectClass(block: Block, ctx: BlockContext): string {
   const i = block.interact;
   const clickable = block.type !== 'button' && ctx.clickable.has(block.id);
-  if (!i) return clickable ? 'cp-obj cp-click' : 'cp-obj';
+  const round = block.type === 'shape' && block.shape === 'ellipse';
+  if (!i) return ['cp-obj', clickable && 'cp-click', round && 'cp-round'].filter(Boolean).join(' ');
   const picked = ctx.picked.includes(block.id);
   const dimmed = !picked && ctx.picked.length > 0 && i.picked === 'dim';
   return [
     'cp-obj',
+    round && 'cp-round',
     i.hover !== 'none' && `cp-hover-${i.hover}`,
     clickable && 'cp-click',
     picked && i.picked !== 'none' && i.picked !== 'dim' && `cp-picked-${i.picked}`,
