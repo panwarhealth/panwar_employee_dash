@@ -24,6 +24,7 @@ import { FontOptions } from '@/components/courses/fontContext';
 import { useCourseAssistant } from '@/hooks/useCourseAssistant';
 import { useCourseAutosave } from '@/hooks/useCourseAutosave';
 import { useUndoable } from '@/hooks/useUndoable';
+import { useNonBreakingSpace } from '@/components/courses/nbsp';
 import { cn } from '@/lib/utils';
 import '@/course/player.css';
 
@@ -49,6 +50,7 @@ function EditorPage() {
 function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc }) {
   const queryClient = useQueryClient();
   const history = useUndoable(initial);
+  useNonBreakingSpace();
   const { value: doc, set: setDoc } = history;
   const [pageId, setPageId] = useState(initial.pages[0].id);
   const [blockId, setBlockId] = useState<string | null>(null);

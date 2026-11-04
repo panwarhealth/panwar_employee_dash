@@ -1,8 +1,20 @@
-import type { KeyboardEvent } from 'react';
+import { useEffect } from 'react';
 
-export function typeNonBreakingSpace(e: KeyboardEvent): boolean {
-  if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || e.key !== ' ') return false;
-  e.preventDefault();
-  document.execCommand('insertText', false, '\u00a0');
-  return true;
+const typesText = (el: EventTarget | null) =>
+  el instanceof HTMLElement &&
+  (el.isContentEditable ||
+    el instanceof HTMLTextAreaElement ||
+    (el instanceof HTMLInputElement && ['text', 'search', ''].includes(el.type)));
+
+export function useNonBreakingSpace() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || (e.key !== ' ' && e.code !== 'Space')) return;
+      if (!typesText(e.target)) return;
+      e.preventDefault();
+      document.execCommand('insertText', false, '\u00a0');
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
 }
