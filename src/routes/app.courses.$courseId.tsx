@@ -59,7 +59,6 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const save = useCourseAutosave(courseId, doc);
   const assistant = useCourseAssistant(courseId, doc, setDoc);
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [refitting, setRefitting] = useState(false);
 
   const page = doc.pages.find((p) => p.id === pageId) ?? doc.pages[0];
   const layout: Layout = doc.screens === 'both' ? (phone ? 'phone' : 'desktop') : doc.screens;
@@ -183,28 +182,6 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               </button>
               <button
                 type="button"
-                disabled={refitting}
-                title="Lay out every page again for desktop and phone"
-                onClick={async () => {
-                  if (
-                    !window.confirm(
-                      'Lay out every page again for desktop and phone? Question boxes get room for their feedback. Ctrl+Z undoes it.',
-                    )
-                  )
-                    return;
-                  setRefitting(true);
-                  try {
-                    setDoc((await relayout(doc)).doc);
-                  } finally {
-                    setRefitting(false);
-                  }
-                }}
-                className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-50"
-              >
-                {refitting ? 'Re-fitting…' : 'Re-fit layout'}
-              </button>
-              <button
-                type="button"
                 onClick={() => setModal('variables')}
                 className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
               >
@@ -305,6 +282,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           doc={doc}
           courseId={courseId}
           onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}
+          onRefit={async () => setDoc((await relayout(doc)).doc)}
         />
         <VariablesModal
           open={modal === 'variables'}

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
 import { labelClass } from '@/lib/edm';
@@ -11,13 +13,16 @@ export function SettingsModal({
   doc,
   courseId,
   onChange,
+  onRefit,
 }: {
   open: boolean;
   courseId: string;
   onClose: () => void;
   doc: CourseDoc;
   onChange: (update: (d: CourseDoc) => void) => void;
+  onRefit: () => Promise<void>;
 }) {
+  const [refitting, setRefitting] = useState(false);
   return (
     <Modal open={open} onClose={onClose} title="Course settings" className="max-w-xl">
       <div className="flex flex-col gap-6 px-6 py-5">
@@ -49,6 +54,29 @@ export function SettingsModal({
             className="h-9 w-14 cursor-pointer rounded border border-ph-charcoal/20"
           />
         </label>
+        <div>
+          <span className={labelClass}>Layout</span>
+          <p className="mb-3 text-sm text-ph-charcoal/60">
+            Lays out every page again for desktop and phone, and gives question boxes room for their
+            feedback. Use it after making questions longer or adding things to pages. Ctrl+Z undoes
+            it.
+          </p>
+          <Button
+            variant="outline"
+            disabled={refitting}
+            onClick={async () => {
+              setRefitting(true);
+              try {
+                await onRefit();
+                onClose();
+              } finally {
+                setRefitting(false);
+              }
+            }}
+          >
+            {refitting ? 'Re-fitting…' : 'Re-fit every page'}
+          </Button>
+        </div>
       </div>
     </Modal>
   );
