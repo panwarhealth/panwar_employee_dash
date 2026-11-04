@@ -52,17 +52,42 @@ function cleanStyle(style: CSSStyleDeclaration): string {
   return out.join('; ');
 }
 
-function clean(node: Node, out: Node, doc: Document) {
+const WEB_ADDRESS = /https?:\/\/[^\s<>"]*[^\s<>".,;:!?)\]']/gi;
+
+function linkTo(href: string, doc: Document): HTMLAnchorElement {
+  const a = doc.createElement('a');
+  a.setAttribute('href', href);
+  a.setAttribute('target', '_blank');
+  a.setAttribute('rel', 'noopener');
+  a.textContent = href;
+  return a;
+}
+
+function appendText(text: string, out: Node, doc: Document, inLink: boolean) {
+  if (inLink) {
+    out.appendChild(doc.createTextNode(text));
+    return;
+  }
+  let at = 0;
+  for (const m of text.matchAll(WEB_ADDRESS)) {
+    out.appendChild(doc.createTextNode(text.slice(at, m.index)));
+    out.appendChild(linkTo(m[0], doc));
+    at = m.index + m[0].length;
+  }
+  out.appendChild(doc.createTextNode(text.slice(at)));
+}
+
+function clean(node: Node, out: Node, doc: Document, inLink = false) {
   node.childNodes.forEach((child) => {
     if (child.nodeType === Node.TEXT_NODE) {
-      out.appendChild(doc.createTextNode(child.textContent ?? ''));
+      appendText(child.textContent ?? '', out, doc, inLink);
       return;
     }
     if (!(child instanceof HTMLElement)) return;
     const tag = child.tagName;
     if (DROP.has(tag)) return;
     if (!ALLOWED.has(tag) && !RENAME[tag]) {
-      clean(child, out, doc);
+      clean(child, out, doc, inLink);
       return;
     }
     const el = doc.createElement(RENAME[tag] ?? tag.toLowerCase());
@@ -82,7 +107,7 @@ function clean(node: Node, out: Node, doc: Document) {
       .filter(Boolean)
       .join('; ');
     if (styles) el.setAttribute('style', styles);
-    clean(child, el, doc);
+    clean(child, el, doc, inLink || tag === 'A');
     out.appendChild(el);
   });
 }

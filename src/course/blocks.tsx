@@ -123,7 +123,13 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
     }
     case 'divider':
       return <hr className="cp-divider" />;
-    case 'button':
+    case 'button': {
+      const locked =
+        !ctx.edit &&
+        ((block.action.kind !== 'link' && !ctx.canLeave) ||
+          (block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
+          (block.enabledWhen === 'visited' && !ctx.linksDone) ||
+          (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])));
       return (
         <div className="cp-btnrow">
           <button
@@ -145,19 +151,15 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
               ...radiusCss(block.radius, block.corners),
               ...ctx.textStyle(block.textStyle),
             }}
-            disabled={
-              !ctx.edit &&
-              ((block.action.kind !== 'link' && !ctx.canLeave) ||
-                (block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
-                (block.enabledWhen === 'visited' && !ctx.linksDone) ||
-                (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])))
-            }
+            disabled={locked}
+            title={locked ? 'Finish this page to continue' : undefined}
             onClick={() => !ctx.edit && ctx.act(block.action, block)}
           >
             {ctx.merge(block.label, false)}
           </button>
         </div>
       );
+    }
     case 'audio':
       return <AudioView block={block} ctx={ctx} />;
     case 'animation':
