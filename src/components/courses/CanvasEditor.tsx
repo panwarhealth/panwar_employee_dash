@@ -23,6 +23,7 @@ import {
   type Layout,
   type Page,
 } from '@/course/doc';
+import { bounds } from '@/course/geometry';
 import { cn } from '@/lib/utils';
 import { InlineText } from './InlineText';
 
@@ -60,6 +61,7 @@ interface Guides {
 }
 
 const SNAP = 1;
+const PICKED = '__picked';
 const MIN = 2;
 
 function selectionOf(page: Page, selectedId: string | null): string[] {
@@ -123,7 +125,8 @@ export function CanvasEditor({
   const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
   const selectedGroup = groups.find((g) => g.id === selectedId) ?? null;
-  const dragGroup = drag ? groups.find((g) => g.id === drag.id) : undefined;
+  const dragMembers =
+    drag?.id === PICKED ? picked : drag ? groups.find((g) => g.id === drag.id)?.members : undefined;
   const selectedIds = selectionOf(page, selectedId);
   const [box, setBox] = useState<SelectionBox | null>(null);
 
@@ -155,7 +158,7 @@ export function CanvasEditor({
   }, [selectedId, live, page, layout, editing]);
 
   useEffect(() => {
-    const ids = selectionOf(page, selectedId);
+    const ids = picked.length > 1 ? picked : selectionOf(page, selectedId);
     const group = groupsOf(page).find((g) => g.id === selectedId);
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -196,6 +199,7 @@ export function CanvasEditor({
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         onRemove(ids);
+        setPicked([]);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -224,6 +228,13 @@ export function CanvasEditor({
     e.stopPropagation();
     if (e.button !== 0) return;
     if (mode === 'move' && e.shiftKey) return pick(id);
+    if (mode === 'move' && picked.length > 1 && picked.includes(id)) {
+      const p = toPct(e);
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+      const frames = picked.map((m) => frameFor(page, page.blocks.find((b) => b.id === m)!, layout));
+      setDrag({ id: PICKED, mode, startX: p.x, startY: p.y, orig: { ...bounds(frames), r: 0 } });
+      return;
+    }
     setPicked([]);
     const g = groupBy.get(id);
     const target = mode === 'move' && g && selectedId !== id ? g.id : id;
@@ -249,7 +260,7 @@ export function CanvasEditor({
       f = { ...o, x: o.x + dx, y: o.y + dy };
       if (!e.altKey) {
         const others = page.blocks
-          .filter((b) => b.id !== drag.id && !dragGroup?.members.includes(b.id))
+          .filter((b) => b.id !== drag.id && !dragMembers?.includes(b.id))
           .map((b) => frameFor(page, b, layout));
         const sx = snapAxis(f.x, f.w, [
           0,
@@ -288,10 +299,10 @@ export function CanvasEditor({
   };
 
   const end = () => {
-    if (drag && live && dragGroup)
+    if (drag && live && dragMembers)
       onFrames(
         Object.fromEntries(
-          dragGroup.members.map((id) => {
+          dragMembers.map((id) => {
             const f = frameFor(page, page.blocks.find((b) => b.id === id)!, layout);
             return [id, refit(f, drag.orig, live)];
           }),
@@ -352,7 +363,7 @@ export function CanvasEditor({
                 drag && live
                   ? drag.id === b.id
                     ? live
-                    : dragGroup?.members.includes(b.id)
+                    : dragMembers?.includes(b.id)
                       ? refit(frame, drag.orig, live)
                       : frame
                   : frame;
@@ -476,7 +487,7 @@ export function CanvasEditor({
       </div>
       {picked.length > 1 ? (
         <p className="relative z-30 flex items-center gap-2 text-xs text-ph-charcoal/70">
-          {picked.length} objects selected.
+          {picked.length} objects selected. Drag one to move them all, or
           <button
             type="button"
             onClick={() => {
