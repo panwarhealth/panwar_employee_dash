@@ -25,6 +25,7 @@ import {
 } from '@/course/doc';
 import { bounds } from '@/course/geometry';
 import { cn } from '@/lib/utils';
+import { isDecor } from './blockKinds';
 import { InlineText } from './InlineText';
 
 const SAFE_ZONE_KEY = 'course-editor.show-safe-zone';
@@ -240,6 +241,11 @@ export function CanvasEditor({
   const begin = (e: ReactPointerEvent, id: string, mode: Mode) => {
     e.stopPropagation();
     if (e.button !== 0) return;
+    const backdrop = page.blocks.find((b) => b.id === id);
+    if (mode === 'move' && backdrop && isDecor(backdrop) && selectedId !== id) {
+      setPicked([]);
+      return onSelect(null);
+    }
     if (mode === 'move' && e.shiftKey) return pick(id);
     if (mode === 'move' && picked.length > 1 && picked.includes(id)) {
       const p = toPct(e);
