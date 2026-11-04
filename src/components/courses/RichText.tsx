@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SIZES } from '@/course/typography';
 import { FontOptions } from './fontContext';
+import { showNbspHtml } from './nbsp';
 
 const toolClass = 'rounded p-1.5 text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple';
 const pickClass =
@@ -31,7 +32,7 @@ export function RichText({
 }) {
   const fonts = useContext(FontOptions);
   const ref = useRef<HTMLDivElement>(null);
-  const initial = useRef(html);
+  const initial = useRef(showNbspHtml(html));
   const saved = useRef<Range | null>(null);
 
   useEffect(() => {
@@ -216,6 +217,7 @@ export function RichText({
           ref={ref}
           contentEditable
           suppressContentEditableWarning
+          data-nbsp-code
           onInput={commit}
           onKeyUp={remember}
           onMouseUp={remember}

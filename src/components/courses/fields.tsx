@@ -1,6 +1,7 @@
 import { useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { uploadMedia } from '@/api/courses';
 import type { Corners } from '@/course/doc';
+import { showNbsp } from './nbsp';
 import { cn } from '@/lib/utils';
 
 const inputClass =
@@ -93,7 +94,8 @@ export function TextInput({
     <Field label={label}>
       <input
         className={inputClass}
-        value={value}
+        value={showNbsp(value)}
+        data-nbsp-code
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -114,7 +116,8 @@ export function TextArea({
     <Field label={label}>
       <textarea
         className={cn(inputClass, 'min-h-[80px] resize-y')}
-        value={value}
+        value={showNbsp(value)}
+        data-nbsp-code
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>

@@ -1,16 +1,23 @@
 import { useEffect } from 'react';
 
-const NBSP = ' ';
+const NBSP = '\u00a0';
 const ENTITY = '&nbsp;';
 
-const typesText = (el: EventTarget | null) =>
+export const showNbsp = (text: string) => text.replace(/\u00a0/g, ENTITY);
+
+export const showNbspHtml = (html: string) => html.replace(/\u00a0|&nbsp;/g, '&amp;nbsp;');
+
+const typesText = (el: EventTarget | null): el is HTMLElement =>
   el instanceof HTMLElement &&
   (el.isContentEditable ||
     el instanceof HTMLTextAreaElement ||
     (el instanceof HTMLInputElement && ['text', 'search', ''].includes(el.type)));
 
+const showsCode = (el: HTMLElement) => !!el.closest('[data-nbsp-code]');
+
 function insertNbsp(el: HTMLElement) {
-  if (el.isContentEditable) document.execCommand('insertHTML', false, ENTITY);
+  if (showsCode(el)) document.execCommand('insertText', false, ENTITY);
+  else if (el.isContentEditable) document.execCommand('insertHTML', false, ENTITY);
   else document.execCommand('insertText', false, NBSP);
 }
 
@@ -47,11 +54,11 @@ export function useNonBreakingSpace() {
       if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || (e.key !== ' ' && e.code !== 'Space')) return;
       if (!typesText(e.target)) return;
       e.preventDefault();
-      insertNbsp(e.target as HTMLElement);
+      insertNbsp(e.target);
     };
     const onInput = (e: Event) => {
-      const el = e.target as HTMLElement;
-      if (!typesText(el)) return;
+      const el = e.target;
+      if (!typesText(el) || showsCode(el)) return;
       if (el.isContentEditable) setTimeout(() => replaceTypedEntity(el));
       else replaceTypedEntity(el);
     };
