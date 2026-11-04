@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Monitor, Settings, Smartphone, Sparkles } from 'lucide-react';
+import { ArrowLeft, Monitor, Redo2, Settings, Smartphone, Sparkles, Undo2 } from 'lucide-react';
 import { CanvasEditor } from '@/components/courses/CanvasEditor';
-import { downloadMedia, getCourse } from '@/api/courses';
+import { getCourse } from '@/api/courses';
 import { Button } from '@/components/ui/button';
 import { AddBlockMenu } from '@/components/courses/AddBlockMenu';
 import { AssistantPanel } from '@/components/courses/AssistantPanel';
@@ -18,11 +18,11 @@ import { frameFor, newFrame } from '@/course/canvasLayout';
 import { newBlock, newPage, normalizeDoc, type CourseDoc, type Layout } from '@/course/doc';
 import * as ops from '@/course/edit';
 import { fontFaces, fontOptions } from '@/course/typography';
-import { CourseColours, courseColours, Dropper } from '@/components/courses/colourContext';
-import { pickColour } from '@/components/courses/eyedropper';
+import { CourseColours, courseColours } from '@/components/courses/colourContext';
 import { FontOptions } from '@/components/courses/fontContext';
 import { useCourseAssistant } from '@/hooks/useCourseAssistant';
 import { useCourseAutosave } from '@/hooks/useCourseAutosave';
+import { useUndoable } from '@/hooks/useUndoable';
 import { cn } from '@/lib/utils';
 import '@/course/player.css';
 
@@ -47,7 +47,8 @@ function EditorPage() {
 
 function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc }) {
   const queryClient = useQueryClient();
-  const [doc, setDoc] = useState(initial);
+  const history = useUndoable(initial);
+  const { value: doc, set: setDoc } = history;
   const [pageId, setPageId] = useState(initial.pages[0].id);
   const [blockId, setBlockId] = useState<string | null>(null);
   const [phone, setPhone] = useState(initial.screens === 'phone');
@@ -73,234 +74,248 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
     setPageId(id);
     setBlockId(null);
   };
-  const pickFromPage = () =>
-    pickColour(doc, page, layout, document.querySelector('[data-editor-stage] .cp-stage'), (url) =>
-      downloadMedia(courseId, url),
-    );
 
   return (
     <FontOptions.Provider value={fontOptions(doc)}>
       <CourseColours.Provider value={courseColours(doc)}>
-        <Dropper.Provider value={pickFromPage}>
-          <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
-            {doc.fonts.length > 0 && <style>{fontFaces(doc)}</style>}
-            <PageList
-              pages={doc.pages}
-              currentId={page.id}
-              onSelect={selectPage}
-              onAdd={() => {
-                const p = newPage(`Page ${doc.pages.length + 1}`);
-                setDoc((d) => ops.insertPage(d, page.id, p));
-                selectPage(p.id);
-              }}
-              onDuplicate={(id) => {
-                const copy = ops.copyPage(doc.pages.find((p) => p.id === id)!);
-                setDoc((d) => ops.insertPage(d, id, copy));
-                selectPage(copy.id);
-              }}
-              onDelete={(id) => {
-                const target = doc.pages.find((p) => p.id === id);
-                if (!target || !window.confirm(`Delete the page "${target.title}"?`)) return;
-                setDoc((d) => ops.removePage(d, id));
-                if (id === page.id) selectPage(doc.pages.find((p) => p.id !== id)!.id);
-              }}
-              onMove={(from, to) => setDoc((d) => ops.movePage(d, from, to))}
-            />
+      <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
+        {doc.fonts.length > 0 && <style>{fontFaces(doc)}</style>}
+        <PageList
+          pages={doc.pages}
+          currentId={page.id}
+          onSelect={selectPage}
+          onAdd={() => {
+            const p = newPage(`Page ${doc.pages.length + 1}`);
+            setDoc((d) => ops.insertPage(d, page.id, p));
+            selectPage(p.id);
+          }}
+          onDuplicate={(id) => {
+            const copy = ops.copyPage(doc.pages.find((p) => p.id === id)!);
+            setDoc((d) => ops.insertPage(d, id, copy));
+            selectPage(copy.id);
+          }}
+          onDelete={(id) => {
+            const target = doc.pages.find((p) => p.id === id);
+            if (!target || !window.confirm(`Delete the page "${target.title}"?`)) return;
+            setDoc((d) => ops.removePage(d, id));
+            if (id === page.id) selectPage(doc.pages.find((p) => p.id !== id)!.id);
+          }}
+          onMove={(from, to) => setDoc((d) => ops.movePage(d, from, to))}
+        />
 
-            <div className="flex min-w-0 flex-1 flex-col bg-[#eceaef]">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-ph-charcoal/10 bg-white px-4 py-2 text-sm">
-                <Link
-                  to="/app/courses"
-                  className="flex items-center gap-1 text-ph-charcoal/60 hover:text-ph-purple"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Courses
-                </Link>
-                <strong className="min-w-0 truncate font-semibold text-ph-charcoal">{doc.title}</strong>
-                <span
-                  className={cn(
-                    'whitespace-nowrap text-xs',
-                    save === 'error'
-                      ? 'text-red-700'
-                      : save === 'saved'
-                        ? 'text-green-700'
-                        : 'text-ph-charcoal/50',
-                  )}
-                >
-                  {save === 'saved'
-                    ? 'Saved'
-                    : save === 'saving'
-                      ? 'Saving…'
-                      : save === 'error'
-                        ? 'Not saved, retrying on next change'
-                        : 'Unsaved'}
-                </span>
-                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                  {doc.screens === 'both' && (
-                    <div className="flex gap-1">
-                      <SegButton
-                        on={!phone}
-                        onClick={() => setPhone(false)}
-                        icon={<Monitor className="h-3.5 w-3.5" />}
-                        label="Desktop"
-                      />
-                      <SegButton
-                        on={phone}
-                        onClick={() => setPhone(true)}
-                        icon={<Smartphone className="h-3.5 w-3.5" />}
-                        label="Phone"
-                      />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setAssistantOpen((o) => !o)}
-                    className={cn(
-                      'flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium hover:bg-ph-charcoal/5 hover:text-ph-purple',
-                      assistantOpen || assistant.busy ? 'text-ph-purple' : 'text-ph-charcoal/70',
-                    )}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    AI assistant
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModal('variables')}
-                    className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
-                  >
-                    Variables
-                  </button>
-                  <button
-                    type="button"
-                    title="Course settings"
-                    onClick={() => setModal('settings')}
-                    className="rounded-md p-1.5 text-ph-charcoal/60 hover:bg-ph-charcoal/5 hover:text-ph-purple"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </button>
-                  <Button size="sm" variant="outline" onClick={() => setModal('preview')}>
-                    Preview
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setModal('pdf')}>
-                    Export PDF
-                  </Button>
-                  <Button size="sm" onClick={() => setModal('export')}>
-                    Export zip
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-1 justify-center overflow-auto p-6">
-                <CanvasEditor
-                  doc={doc}
-                  page={page}
-                  layout={layout}
-                  selectedId={blockId}
-                  onSelect={setBlockId}
-                  onFrame={setFrame}
-                  onRemove={removeBlock}
-                  onText={(id, value) =>
-                    setDoc((d) =>
-                      ops.updateBlock(d, page.id, id, (b) => {
-                        if (b.type === 'text') b.html = value;
-                        if (b.type === 'heading') b.text = value;
-                      }),
-                    )
-                  }
-                />
-              </div>
+        <div className="flex min-w-0 flex-1 flex-col bg-[#eceaef]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-ph-charcoal/10 bg-white px-4 py-2 text-sm">
+            <Link
+              to="/app/courses"
+              className="flex items-center gap-1 text-ph-charcoal/60 hover:text-ph-purple"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Courses
+            </Link>
+            <strong className="min-w-0 truncate font-semibold text-ph-charcoal">{doc.title}</strong>
+            <span
+              className={cn(
+                'whitespace-nowrap text-xs',
+                save === 'error'
+                  ? 'text-red-700'
+                  : save === 'saved'
+                    ? 'text-green-700'
+                    : 'text-ph-charcoal/50',
+              )}
+            >
+              {save === 'saved'
+                ? 'Saved'
+                : save === 'saving'
+                  ? 'Saving…'
+                  : save === 'error'
+                    ? 'Not saved, retrying on next change'
+                    : 'Unsaved'}
+            </span>
+            <div className="flex gap-0.5">
+              <button
+                type="button"
+                title="Undo (Ctrl+Z)"
+                disabled={!history.canUndo}
+                onClick={history.undo}
+                className="rounded-md p-1.5 text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:pointer-events-none disabled:opacity-30"
+              >
+                <Undo2 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                title="Redo (Ctrl+Y)"
+                disabled={!history.canRedo}
+                onClick={history.redo}
+                className="rounded-md p-1.5 text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:pointer-events-none disabled:opacity-30"
+              >
+                <Redo2 className="h-4 w-4" />
+              </button>
             </div>
-
-            <Inspector
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              {doc.screens === 'both' && (
+                <div className="flex gap-1">
+                  <SegButton
+                    on={!phone}
+                    onClick={() => setPhone(false)}
+                    icon={<Monitor className="h-3.5 w-3.5" />}
+                    label="Desktop"
+                  />
+                  <SegButton
+                    on={phone}
+                    onClick={() => setPhone(true)}
+                    icon={<Smartphone className="h-3.5 w-3.5" />}
+                    label="Phone"
+                  />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setAssistantOpen((o) => !o)}
+                className={cn(
+                  'flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium hover:bg-ph-charcoal/5 hover:text-ph-purple',
+                  assistantOpen || assistant.busy ? 'text-ph-purple' : 'text-ph-charcoal/70',
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI assistant
+              </button>
+              <button
+                type="button"
+                onClick={() => setModal('variables')}
+                className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
+              >
+                Variables
+              </button>
+              <button
+                type="button"
+                title="Course settings"
+                onClick={() => setModal('settings')}
+                className="rounded-md p-1.5 text-ph-charcoal/60 hover:bg-ph-charcoal/5 hover:text-ph-purple"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              <Button size="sm" variant="outline" onClick={() => setModal('preview')}>
+                Preview
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setModal('pdf')}>
+                Export PDF
+              </Button>
+              <Button size="sm" onClick={() => setModal('export')}>
+                Export zip
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-1 justify-center overflow-auto p-6">
+            <CanvasEditor
               doc={doc}
               page={page}
-              courseId={courseId}
+              layout={layout}
               selectedId={blockId}
               onSelect={setBlockId}
-              onPage={(fn) => setDoc((d) => ops.updatePage(d, page.id, fn))}
-              onAddBlock={() => setModal('add')}
-              onMoveBlock={(from, to) => setDoc((d) => ops.moveBlock(d, page.id, from, to))}
-              onChangeBlock={(id, update) => setDoc((d) => ops.updateBlock(d, page.id, id, update))}
-              onDuplicateBlock={(id) => {
-                const copy = ops.copyBlock(page.blocks.find((b) => b.id === id)!);
-                setDoc((d) => ops.insertBlock(d, page.id, id, copy));
-                setBlockId(copy.id);
-              }}
-              onRemoveBlock={removeBlock}
-              canvas={{
-                layout,
-                otherLayout,
-                frame: selectedBlock ? frameFor(page, selectedBlock, layout) : null,
-                onFrame: (f) => selectedBlock && setFrame(selectedBlock.id, f),
-                onCopyLayout: () =>
-                  otherLayout && setDoc((d) => ops.copyLayout(d, page.id, otherLayout, layout)),
-              }}
+              onFrame={setFrame}
+              onRemove={removeBlock}
+              onText={(id, value) =>
+                setDoc((d) =>
+                  ops.updateBlock(d, page.id, id, (b) => {
+                    if (b.type === 'text') b.html = value;
+                    if (b.type === 'heading') b.text = value;
+                  }),
+                )
+              }
             />
-
-            <AddBlockMenu
-              open={modal === 'add'}
-              onClose={() => setModal(null)}
-              onPick={(type) => {
-                const b = newBlock(type);
-                setDoc((d) => {
-                  const next = ops.insertBlock(d, page.id, blockId, b);
-                  return ops.setFrame(next, page.id, b.id, layout, newFrame(type, layout));
-                });
-                setBlockId(b.id);
-                setModal(null);
-              }}
-            />
-            <SettingsModal
-              open={modal === 'settings'}
-              onClose={() => setModal(null)}
-              doc={doc}
-              courseId={courseId}
-              onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}
-            />
-            <VariablesModal
-              open={modal === 'variables'}
-              onClose={() => setModal(null)}
-              doc={doc}
-              onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}
-            />
-            <PdfModal
-              open={modal === 'pdf'}
-              onClose={() => setModal(null)}
-              courseId={courseId}
-              doc={doc}
-            />
-            <ExportModal
-              open={modal === 'export'}
-              onClose={() => setModal(null)}
-              courseId={courseId}
-              doc={doc}
-              onExported={() => void queryClient.invalidateQueries({ queryKey: ['courses'] })}
-            />
-            {assistantOpen && (
-              <AssistantPanel
-                entries={assistant.entries}
-                busy={assistant.busy}
-                status={assistant.status}
-                cost={assistant.cost}
-                canUndo={assistant.canUndo}
-                onSend={(text) => void assistant.send(text)}
-                onDeck={(file) => void assistant.importDeck(file)}
-                canFinishDeck={assistant.canFinishDeck}
-                onFinishDeck={() => void assistant.finishDeck()}
-                onStop={assistant.stop}
-                onUndo={assistant.undo}
-                onClose={() => setAssistantOpen(false)}
-              />
-            )}
-            {modal === 'preview' && (
-              <PreviewModal
-                doc={doc}
-                startPageId={page.id}
-                layout={layout}
-                onClose={() => setModal(null)}
-              />
-            )}
           </div>
-        </Dropper.Provider>
+        </div>
+
+        <Inspector
+          doc={doc}
+          page={page}
+          courseId={courseId}
+          selectedId={blockId}
+          onSelect={setBlockId}
+          onPage={(fn) => setDoc((d) => ops.updatePage(d, page.id, fn))}
+          onAddBlock={() => setModal('add')}
+          onMoveBlock={(from, to) => setDoc((d) => ops.moveBlock(d, page.id, from, to))}
+          onChangeBlock={(id, update) => setDoc((d) => ops.updateBlock(d, page.id, id, update))}
+          onDuplicateBlock={(id) => {
+            const copy = ops.copyBlock(page.blocks.find((b) => b.id === id)!);
+            setDoc((d) => ops.insertBlock(d, page.id, id, copy));
+            setBlockId(copy.id);
+          }}
+          onRemoveBlock={removeBlock}
+          canvas={{
+            layout,
+            otherLayout,
+            frame: selectedBlock ? frameFor(page, selectedBlock, layout) : null,
+            onFrame: (f) => selectedBlock && setFrame(selectedBlock.id, f),
+            onCopyLayout: () =>
+              otherLayout && setDoc((d) => ops.copyLayout(d, page.id, otherLayout, layout)),
+          }}
+        />
+
+        <AddBlockMenu
+          open={modal === 'add'}
+          onClose={() => setModal(null)}
+          onPick={(type) => {
+            const b = newBlock(type);
+            setDoc((d) => {
+              const next = ops.insertBlock(d, page.id, blockId, b);
+              return ops.setFrame(next, page.id, b.id, layout, newFrame(type, layout));
+            });
+            setBlockId(b.id);
+            setModal(null);
+          }}
+        />
+        <SettingsModal
+          open={modal === 'settings'}
+          onClose={() => setModal(null)}
+          doc={doc}
+          courseId={courseId}
+          onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}
+        />
+        <VariablesModal
+          open={modal === 'variables'}
+          onClose={() => setModal(null)}
+          doc={doc}
+          onChange={(fn) => setDoc((d) => ops.updateCourse(d, fn))}
+        />
+        <PdfModal
+          open={modal === 'pdf'}
+          onClose={() => setModal(null)}
+          courseId={courseId}
+          doc={doc}
+        />
+        <ExportModal
+          open={modal === 'export'}
+          onClose={() => setModal(null)}
+          courseId={courseId}
+          doc={doc}
+          onExported={() => void queryClient.invalidateQueries({ queryKey: ['courses'] })}
+        />
+        {assistantOpen && (
+          <AssistantPanel
+            entries={assistant.entries}
+            busy={assistant.busy}
+            status={assistant.status}
+            cost={assistant.cost}
+            canUndo={assistant.canUndo}
+            onSend={(text) => void assistant.send(text)}
+            onDeck={(file) => void assistant.importDeck(file)}
+            canFinishDeck={assistant.canFinishDeck}
+            onFinishDeck={() => void assistant.finishDeck()}
+            onStop={assistant.stop}
+            onUndo={assistant.undo}
+            onClose={() => setAssistantOpen(false)}
+          />
+        )}
+        {modal === 'preview' && (
+          <PreviewModal
+            doc={doc}
+            startPageId={page.id}
+            layout={layout}
+            onClose={() => setModal(null)}
+          />
+        )}
+      </div>
       </CourseColours.Provider>
     </FontOptions.Provider>
   );

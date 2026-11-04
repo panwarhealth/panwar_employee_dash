@@ -1,7 +1,8 @@
 import type { jsPDF } from 'jspdf';
 import { isHiddenPopup, type CourseDoc, type Layout, type Page } from '@/course/doc';
+import { mediaUrls } from '@/course/exportZip';
 import { cueHidden } from '@/course/grading';
-import { withLocalMedia, withStage } from './offscreenStage';
+import { withStage } from './offscreenStage';
 import { pageDetails, type Detail } from './walkthrough';
 import './coursePdf.css';
 
@@ -13,6 +14,23 @@ const SHEETS = {
 } as const;
 const STAGE_RATIO: Record<Layout, number> = { desktop: 9 / 16, phone: 16 / 9 };
 const MM_PER_PT = 0.3528;
+
+async function withLocalMedia<T>(
+  doc: CourseDoc,
+  fetchMedia: (url: string) => Promise<Blob>,
+  render: (doc: CourseDoc) => Promise<T>,
+): Promise<T> {
+  const local = await Promise.all(
+    mediaUrls(doc).map(async (url) => [url, URL.createObjectURL(await fetchMedia(url))] as const),
+  );
+  let json = JSON.stringify(doc);
+  for (const [url, blobUrl] of local) json = json.split(url).join(blobUrl);
+  try {
+    return await render(JSON.parse(json) as CourseDoc);
+  } finally {
+    for (const [, blobUrl] of local) URL.revokeObjectURL(blobUrl);
+  }
+}
 
 function learnerHidden(page: Page): Set<string> {
   const hidden = cueHidden(page, {});

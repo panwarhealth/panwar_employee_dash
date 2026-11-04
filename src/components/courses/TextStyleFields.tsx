@@ -1,8 +1,9 @@
 import { useContext, useState } from 'react';
-import { Pipette } from 'lucide-react';
+import { Pipette, X } from 'lucide-react';
 import type { Border, Gradient, Shadow, TextStyle } from '@/course/doc';
 import { gradientCss, SIZES } from '@/course/typography';
-import { CourseColours, Dropper } from './colourContext';
+import { CourseColours } from './colourContext';
+import { pickColour } from './eyedropper';
 import { FontOptions } from './fontContext';
 import { Field, NumberBox, Select, Toggle } from './fields';
 
@@ -39,6 +40,8 @@ export function ColourField({
   );
 }
 
+const HEX = /^#[0-9a-f]{6}$/i;
+
 function ColourPicker({
   value,
   onChange,
@@ -46,35 +49,48 @@ function ColourPicker({
   value: string | undefined;
   onChange: (v: string) => void;
 }) {
-  const pick = useContext(Dropper);
   const [picking, setPicking] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = value && HEX.test(value) ? value.toUpperCase() : '';
   return (
     <span className="flex shrink-0 items-center gap-1">
       <input
         type="color"
-        value={value && /^#[0-9a-f]{6}$/i.test(value) ? value : '#2f3030'}
+        value={shown || '#2f3030'}
         onChange={(e) => onChange(e.target.value.toUpperCase())}
         className="h-8 w-10 cursor-pointer rounded border border-ph-charcoal/20"
       />
-      {pick && (
-        <button
-          type="button"
-          title="Pick a colour from the page"
-          disabled={picking}
-          onClick={async () => {
-            setPicking(true);
-            try {
-              const colour = await pick();
-              if (colour) onChange(colour);
-            } finally {
-              setPicking(false);
-            }
-          }}
-          className="flex h-8 w-8 items-center justify-center rounded border border-ph-charcoal/20 text-ph-charcoal/70 hover:border-ph-purple hover:text-ph-purple disabled:cursor-wait disabled:opacity-50"
-        >
-          <Pipette size={15} />
-        </button>
-      )}
+      <button
+        type="button"
+        title="Pick a colour from anything on screen"
+        disabled={picking}
+        onClick={async () => {
+          setPicking(true);
+          try {
+            const colour = await pickColour();
+            if (colour) onChange(colour);
+          } finally {
+            setPicking(false);
+          }
+        }}
+        className="flex h-8 w-8 items-center justify-center rounded border border-ph-charcoal/20 text-ph-charcoal/70 hover:border-ph-purple hover:text-ph-purple disabled:cursor-wait disabled:opacity-50"
+      >
+        <Pipette size={15} />
+      </button>
+      <input
+        type="text"
+        aria-label="Hex colour"
+        placeholder="#000000"
+        value={draft ?? shown}
+        onChange={(e) => {
+          const typed = e.target.value.trim();
+          setDraft(typed);
+          const full = typed.startsWith('#') ? typed : `#${typed}`;
+          if (HEX.test(full)) onChange(full.toUpperCase());
+        }}
+        onBlur={() => setDraft(null)}
+        className="h-8 w-20 rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-1.5 font-mono text-xs uppercase focus:border-ph-purple focus:outline-none"
+      />
     </span>
   );
 }
@@ -191,21 +207,14 @@ function GradientFields({ value, onChange }: { value: Gradient; onChange: (g: Gr
         )}
       </div>
       {value.stops.map((stop, i) => (
-        <div key={i} className="flex flex-col">
+        <div key={i} className="flex flex-col gap-1 border-t border-ph-charcoal/10 pt-2">
           <span className="flex items-center gap-2">
             <ColourPicker value={stop.colour} onChange={(colour) => setStop(i, { colour })} />
-            <NumberBox
-              min={0}
-              max={100}
-              value={stop.at}
-              onChange={(at) => setStop(i, { at: Math.min(100, Math.max(0, at)) })}
-              className={`${inputClass} !w-16`}
-            />
-            <span className="text-xs text-ph-charcoal/50">%</span>
             {value.stops.length > 2 && (
               <button
                 type="button"
-                className="ml-auto text-xs text-ph-charcoal/60 underline underline-offset-2"
+                title="Remove this colour"
+                className="ml-auto text-ph-charcoal/50 hover:text-ph-charcoal"
                 onClick={() =>
                   onChange({
                     ...value,
@@ -213,10 +222,22 @@ function GradientFields({ value, onChange }: { value: Gradient; onChange: (g: Gr
                   })
                 }
               >
-                Remove
+                <X size={16} />
               </button>
             )}
           </span>
+          <label className="flex items-center gap-2 text-xs text-ph-charcoal/60">
+            Position
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={stop.at}
+              onChange={(e) => setStop(i, { at: e.target.valueAsNumber })}
+              className="flex-1 accent-ph-purple"
+            />
+            <span className="w-9 text-right tabular-nums">{stop.at}%</span>
+          </label>
           <Swatches value={stop.colour} onPick={(colour) => setStop(i, { colour })} />
         </div>
       ))}
@@ -272,10 +293,10 @@ function ShadowFields({ value, onChange }: { value: Shadow; onChange: (v: Shadow
   );
   return (
     <div className="flex flex-col gap-2 rounded-md border border-ph-charcoal/10 p-2">
+      <Field label="Colour">
+        <ColourPicker value={value.colour} onChange={(colour) => set({ colour })} />
+      </Field>
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Colour">
-          <ColourPicker value={value.colour} onChange={(colour) => set({ colour })} />
-        </Field>
         <Field label="Strength (%)">
           <NumberBox
             min={0}
@@ -286,11 +307,11 @@ function ShadowFields({ value, onChange }: { value: Shadow; onChange: (v: Shadow
             className={inputClass}
           />
         </Field>
+        {offset('Blur (px)', 'blur', 0)}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {offset('Across (px)', 'x', -100)}
         {offset('Down (px)', 'y', -100)}
-        {offset('Blur (px)', 'blur', 0)}
       </div>
     </div>
   );

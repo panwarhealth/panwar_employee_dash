@@ -249,7 +249,6 @@ export function CanvasEditor({
       </label>
       <div
         ref={stage}
-        data-editor-stage
         className={cn(
           'cp w-full [&_.cp-stage]:overflow-visible',
           layout === 'phone' ? 'max-w-[360px]' : 'max-w-[960px]',
