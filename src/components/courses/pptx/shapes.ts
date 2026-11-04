@@ -20,12 +20,13 @@ import { A, child, EMU_PER_PT, externalLink, num, P, paragraphsText, R, type Par
 const DRAWABLE =
   /^(rect|roundRect|round2SameRect|ellipse|flowChartProcess|flowChartAlternateProcess)$/;
 const STRAIGHT_LINE = /^(line|straightConnector1)$/;
-const USABLE_MEDIA = /\.(png|jpe?g|gif|svg)$/i;
+const USABLE_MEDIA = /\.(png|jpe?g|webp|gif|svg)$/i;
 const MIME: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   gif: 'image/gif',
+  webp: 'image/webp',
   svg: 'image/svg+xml',
 };
 const DESIGN_W = 960;

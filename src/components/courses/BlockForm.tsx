@@ -172,7 +172,7 @@ export function BlockForm({
             courseId={courseId}
             value={block.src}
             fileName={block.fileName}
-            accept=".jpg,.jpeg,.png,.svg,.gif"
+            accept=".jpg,.jpeg,.png,.webp,.svg,.gif"
             onChange={(url, file) =>
               set<typeof block>((b) => {
                 b.src = url;

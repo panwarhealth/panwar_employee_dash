@@ -263,7 +263,7 @@ export function PopupForm({
         courseId={courseId}
         value={block.src}
         fileName={block.fileName}
-        accept=".jpg,.jpeg,.png,.svg,.gif"
+        accept=".jpg,.jpeg,.png,.webp,.svg,.gif"
         onChange={(url, file) =>
           set((b) => {
             b.src = url;
@@ -350,7 +350,7 @@ export function FlipForm({
             courseId={courseId}
             value={c.frontSrc}
             fileName={c.frontSrc ? 'Image added' : ''}
-            accept=".jpg,.jpeg,.png,.svg,.gif"
+            accept=".jpg,.jpeg,.png,.webp,.svg,.gif"
             onChange={(url) => set((b) => (b.cards[i].frontSrc = url))}
           />
           <TextArea
@@ -429,7 +429,7 @@ export function HotspotForm({
         courseId={courseId}
         value={block.src}
         fileName={block.fileName}
-        accept=".jpg,.jpeg,.png,.svg,.gif"
+        accept=".jpg,.jpeg,.png,.webp,.svg,.gif"
         onChange={(url, file) =>
           set((b) => {
             b.src = url;
@@ -571,7 +571,7 @@ export function DragForm({
             courseId={courseId}
             value={block.src}
             fileName={block.fileName}
-            accept=".jpg,.jpeg,.png,.svg,.gif"
+            accept=".jpg,.jpeg,.png,.webp,.svg,.gif"
             onChange={(url, file) =>
               set((b) => {
                 b.src = url;
