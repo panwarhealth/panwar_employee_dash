@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { loadPresets } from './presets';
 import { IDENTITY, walkTree, type SlideContext } from './shapes';
-import { colourOf, fillOf, readTheme, type Theme } from './theme';
+import { colourOf, fillOf, gradientOf, readTheme, type Theme } from './theme';
 import type { Deck, DeckSlide } from './types';
 import {
   child,
@@ -42,8 +42,11 @@ async function readNotes(zip: JSZip, slide: Part) {
   return { notes, comments };
 }
 
+const backgroundEl = (parts: (Part | undefined)[]) =>
+  parts.map((p) => p?.xml.getElementsByTagNameNS(P, 'bg')[0]).find(Boolean);
+
 function backgroundOf(parts: (Part | undefined)[], theme: Theme) {
-  const bg = parts.map((p) => p?.xml.getElementsByTagNameNS(P, 'bg')[0]).find(Boolean);
+  const bg = backgroundEl(parts);
   const bgPr = child(bg, P, 'bgPr');
   return bgPr ? fillOf(bgPr, undefined, theme) : colourOf(child(bg, P, 'bgRef'), theme);
 }
@@ -119,6 +122,10 @@ export async function readPptx(file: Blob): Promise<Deck> {
       number: i + 1,
       hidden: slide.xml.documentElement.getAttribute('show') === '0',
       background: backgroundOf([slide, layout, master], theme),
+      backgroundGradient: gradientOf(
+        child(backgroundEl([slide, layout, master]), P, 'bgPr'),
+        theme,
+      ),
       diagrams: ctx.diagrams,
       shapes: ctx.shapes,
       images: ctx.images,

@@ -1,8 +1,17 @@
-import type { Block, ButtonAction, CheckBlock, CourseDoc, Page } from '@/course/doc';
+import type {
+  Block,
+  ButtonAction,
+  CheckBlock,
+  CourseDoc,
+  HeadingBlock,
+  ImageBlock,
+  Page,
+  TextBlock,
+} from '@/course/doc';
 import { uid } from '@/course/doc';
 import { MediaInput, RadiusField, Select, TextArea, TextInput, Toggle } from './fields';
 import { RichText } from './RichText';
-import { BorderField, ColourField, TextStyleFields } from './TextStyleFields';
+import { BorderField, PaintField, ShadowField, TextStyleFields } from './TextStyleFields';
 import {
   AnimationForm,
   AudioForm,
@@ -26,6 +35,61 @@ const ALIGN = [
   { value: 'right' as const, label: 'Right' },
   { value: 'justify' as const, label: 'Justify' },
 ];
+
+type Boxed = HeadingBlock | TextBlock | ImageBlock;
+
+function BoxFields<B extends Boxed>({
+  block,
+  set,
+}: {
+  block: B;
+  set: (fn: (b: B) => void) => void;
+}) {
+  return (
+    <>
+      <PaintField
+        label="Background colour"
+        fill={block.fill}
+        gradient={block.gradient}
+        onChange={(fill, gradient) =>
+          set((b) => {
+            b.fill = fill;
+            b.gradient = gradient;
+          })
+        }
+      />
+      <BorderField value={block.border} onChange={(v) => set((b) => (b.border = v))} />
+      {block.type !== 'image' && (
+        <Select
+          label="Vertical align"
+          value={block.valign ?? (block.fill || block.gradient ? 'middle' : 'top')}
+          options={[
+            { value: 'top', label: 'Top' },
+            { value: 'middle', label: 'Middle' },
+            { value: 'bottom', label: 'Bottom' },
+          ]}
+          onChange={(v) =>
+            set((b) => {
+              if (b.type !== 'image') b.valign = v;
+            })
+          }
+        />
+      )}
+      <RadiusField
+        value={block.radius}
+        fallback={0}
+        corners={block.corners}
+        onChange={(radius, corners) =>
+          set((b) => {
+            b.radius = radius;
+            b.corners = corners;
+          })
+        }
+      />
+      <ShadowField value={block.shadow} onChange={(v) => set((b) => (b.shadow = v))} />
+    </>
+  );
+}
 
 export function BlockForm({
   block,
@@ -72,54 +136,7 @@ export function BlockForm({
             boldByDefault
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />
-          <ColourField
-            label="Background colour"
-            value={block.fill}
-            onChange={(v) => set<typeof block>((b) => (b.fill = v))}
-          />
-          <BorderField
-            value={block.border}
-            onChange={(v) => set<typeof block>((b) => (b.border = v))}
-          />
-          <Select
-            label="Vertical align"
-            value={block.valign ?? (block.fill ? 'middle' : 'top')}
-            options={[
-              { value: 'top', label: 'Top' },
-              { value: 'middle', label: 'Middle' },
-              { value: 'bottom', label: 'Bottom' },
-            ]}
-            onChange={(v) => set<typeof block>((b) => (b.valign = v))}
-          />
-          <BorderField
-            value={block.border}
-            onChange={(v) => set<typeof block>((b) => (b.border = v))}
-          />
-          <Select
-            label="Vertical align"
-            value={block.valign ?? (block.fill ? 'middle' : 'top')}
-            options={[
-              { value: 'top', label: 'Top' },
-              { value: 'middle', label: 'Middle' },
-              { value: 'bottom', label: 'Bottom' },
-            ]}
-            onChange={(v) => set<typeof block>((b) => (b.valign = v))}
-          />
-          <BorderField
-            value={block.border}
-            onChange={(v) => set<typeof block>((b) => (b.border = v))}
-          />
-          <RadiusField
-            value={block.radius}
-            fallback={0}
-            corners={block.corners}
-            onChange={(radius, corners) =>
-              set<typeof block>((b) => {
-                b.radius = radius;
-                b.corners = corners;
-              })
-            }
-          />
+          <BoxFields block={block} set={set<typeof block>} />
         </>
       );
     case 'text':
@@ -141,22 +158,7 @@ export function BlockForm({
             value={block.textStyle}
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />
-          <ColourField
-            label="Background colour"
-            value={block.fill}
-            onChange={(v) => set<typeof block>((b) => (b.fill = v))}
-          />
-          <RadiusField
-            value={block.radius}
-            fallback={0}
-            corners={block.corners}
-            onChange={(radius, corners) =>
-              set<typeof block>((b) => {
-                b.radius = radius;
-                b.corners = corners;
-              })
-            }
-          />
+          <BoxFields block={block} set={set<typeof block>} />
         </>
       );
     case 'image':
@@ -190,22 +192,7 @@ export function BlockForm({
             value={block.alt}
             onChange={(v) => set<typeof block>((b) => (b.alt = v))}
           />
-          <ColourField
-            label="Background colour"
-            value={block.fill}
-            onChange={(v) => set<typeof block>((b) => (b.fill = v))}
-          />
-          <RadiusField
-            value={block.radius}
-            fallback={0}
-            corners={block.corners}
-            onChange={(radius, corners) =>
-              set<typeof block>((b) => {
-                b.radius = radius;
-                b.corners = corners;
-              })
-            }
-          />
+          <BoxFields block={block} set={set<typeof block>} />
         </>
       );
     case 'video':
@@ -271,8 +258,21 @@ export function BlockForm({
             value={block.textStyle}
             boldByDefault
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
+          />
+          <PaintField
+            label="Button colour"
             fill={block.fill}
-            onFill={(v) => set<typeof block>((b) => (b.fill = v))}
+            gradient={block.gradient}
+            onChange={(fill, gradient) =>
+              set<typeof block>((b) => {
+                b.fill = fill;
+                b.gradient = gradient;
+              })
+            }
+          />
+          <ShadowField
+            value={block.shadow}
+            onChange={(v) => set<typeof block>((b) => (b.shadow = v))}
           />
           <RadiusField
             value={block.radius}

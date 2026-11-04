@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { Border, CourseDoc, TextStyle, Corners, VAlign } from './doc';
+import type { Border, CourseDoc, Corners, Gradient, Shadow, TextStyle, VAlign } from './doc';
 
 export const BUILTIN_FONTS: { id: string; label: string; css: string }[] = [
   { id: 'course', label: 'Course default', css: '' },
@@ -57,6 +57,30 @@ export const radiusCss = (radius: number | undefined, corners: Corners = 'all'):
     ? {}
     : { borderRadius: ROUNDED[corners].map((on) => px(on * radius)).join(' ') };
 
+export const gradientCss = (g: Gradient): string => {
+  const stops = g.stops.map((s) => `${s.colour} ${s.at}%`).join(', ');
+  return g.kind === 'radial'
+    ? `radial-gradient(circle, ${stops})`
+    : `linear-gradient(${g.angle}deg, ${stops})`;
+};
+
+export const paintCss = (fill: string | undefined, gradient?: Gradient): CSSProperties =>
+  gradient ? { background: gradientCss(gradient) } : fill ? { background: fill } : {};
+
+const shadowValue = (s: Shadow) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(s.colour.slice(i, i + 2), 16));
+  return `${px(s.x)} ${px(s.y)} ${px(s.blur)} rgba(${r}, ${g}, ${b}, ${s.opacity})`;
+};
+
+export const shadowCss = (s: Shadow | undefined, on: 'box' | 'text' | 'image'): CSSProperties =>
+  !s
+    ? {}
+    : on === 'box'
+      ? { boxShadow: shadowValue(s) }
+      : on === 'text'
+        ? { textShadow: shadowValue(s) }
+        : { filter: `drop-shadow(${shadowValue(s)})` };
+
 export const borderCss = (border: Border | undefined): CSSProperties =>
   border ? { border: `${px(border.width)} solid ${border.colour}`, boxSizing: 'border-box' } : {};
 
@@ -64,15 +88,19 @@ const JUSTIFY: Record<VAlign, string> = { top: 'flex-start', middle: 'center', b
 
 export function boxCss(box: {
   fill?: string;
+  gradient?: Gradient;
+  shadow?: Shadow;
   radius?: number;
   corners?: Corners;
   border?: Border;
   valign?: VAlign;
 }): CSSProperties {
-  const valign = box.valign ?? (box.fill ? 'middle' : undefined);
+  const filled = !!(box.fill || box.gradient);
+  const valign = box.valign ?? (filled ? 'middle' : undefined);
   return {
-    ...(box.fill ? { background: box.fill } : {}),
-    ...(box.fill || box.border ? { padding: `${px(3.6)} ${px(7.2)}` } : {}),
+    ...paintCss(box.fill, box.gradient),
+    ...shadowCss(box.shadow, filled || box.border ? 'box' : 'text'),
+    ...(filled || box.border ? { padding: `${px(3.6)} ${px(7.2)}` } : {}),
     ...(valign
       ? { display: 'flex', flexDirection: 'column', justifyContent: JUSTIFY[valign] }
       : {}),

@@ -3,7 +3,7 @@ import { round1 } from '@/course/geometry';
 import { isLightArtwork } from './artwork';
 import { inheritedChain, placeholderOf } from './placeholders';
 import { readText, VALIGN, type TextStyles } from './text';
-import { borderOf, colourOf, fillOf } from './theme';
+import { borderOf, colourOf, effectShadow, fillOf, gradientOf, shadowOf } from './theme';
 import type {
   DeckArea,
   DeckBorder,
@@ -94,6 +94,7 @@ function addDrawing(ctx: SlideContext, drawing: DeckDrawing) {
 function drawShape(
   ctx: SlideContext,
   spPr: Element | undefined,
+  style: Element | undefined,
   at: Placed,
   t: Transform,
   fill: string | undefined,
@@ -112,13 +113,18 @@ function drawShape(
     size,
     {
       fill,
+      gradient: gradientOf(spPr, ctx.styles.theme),
       stroke: border?.colour,
       strokeWidth: (border?.width ?? 0) * EMU_PER_PT,
       flipH: xfrm?.getAttribute('flipH') === '1',
       flipV: xfrm?.getAttribute('flipV') === '1',
     },
   );
-  addDrawing(ctx, { ...at, svg });
+  addDrawing(ctx, {
+    ...at,
+    svg,
+    shadow: shadowOf(spPr, style, ctx.styles.theme),
+  });
   return true;
 }
 
@@ -224,6 +230,11 @@ function arrowHead(
   return { ...toFrame(back.x, back.y, size, size, angle), svg };
 }
 
+const runEffects = (el: Element) =>
+  Array.from(el.getElementsByTagNameNS(A, 'rPr'))
+    .map((r) => child(r, A, 'effectLst'))
+    .find(Boolean);
+
 function readShape(ctx: SlideContext, el: Element, t: Transform, owner: Part, fromLayout: boolean) {
   const ph = placeholderOf(el);
   if (fromLayout && ph) return;
@@ -247,7 +258,7 @@ function readShape(ctx: SlideContext, el: Element, t: Transform, owner: Part, fr
   if (!at.w || !at.h) return;
   const drawable = DRAWABLE.test(prst);
   if (!drawable) {
-    if ((fill || border) && !drawShape(ctx, spPr, at, t, fill, border)) ctx.diagrams.push(at);
+    if ((fill || border) && !drawShape(ctx, spPr, style, at, t, fill, border)) ctx.diagrams.push(at);
     if (text.trim().length < 3) return;
   }
   const read = readText(el, owner, phChain, ctx.styles);
@@ -272,6 +283,9 @@ function readShape(ctx: SlideContext, el: Element, t: Transform, owner: Part, fr
     placeholder: ph?.type,
     fromLayout: fromLayout || undefined,
     fill: drawable ? fill : undefined,
+    gradient: drawable ? gradientOf(spPr, ctx.styles.theme) : undefined,
+    shadow:
+      shadowOf(spPr, style, ctx.styles.theme) ?? effectShadow(runEffects(el), ctx.styles.theme),
     border: drawable ? border : undefined,
     corners: prst === 'round2SameRect' ? 'top' : undefined,
     radius: radiusOf(ctx, geom, at),
@@ -369,6 +383,7 @@ async function readPicture(ctx: SlideContext, el: Element, t: Transform, owner: 
     crop: crop?.some(Boolean) ? crop : undefined,
     radius: radiusOf(ctx, child(spPr, A, 'prstGeom'), at),
     border: borderOf(spPr, child(el, P, 'style'), ctx.styles.theme),
+    shadow: shadowOf(spPr, child(el, P, 'style'), ctx.styles.theme),
   });
 }
 

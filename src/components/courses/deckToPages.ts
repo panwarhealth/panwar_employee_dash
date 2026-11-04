@@ -20,7 +20,7 @@ import {
   round1,
   type Box,
 } from '@/course/geometry';
-import { fontIdFor, shapeBlock } from './deckHtml';
+import { fontIdFor, shadowPx, shapeBlock } from './deckHtml';
 import { tidyDesktop } from './desktopLayout';
 import { measureHeights } from './pageFit';
 import { fitPhone, phoneClusters, stackPhone } from './phoneLayout';
@@ -30,7 +30,11 @@ const DESIGN_W = 960;
 
 type Item =
   | { kind: 'shape'; shape: DeckShape; block: HeadingBlock | TextBlock }
-  | { kind: 'image'; image: Box & { r: number; light: boolean }; block: ImageBlock };
+  | {
+      kind: 'image';
+      image: Box & { r: number; light: boolean };
+      block: ImageBlock;
+    };
 
 interface TableCell {
   id: string;
@@ -141,6 +145,7 @@ function slideItems(
           alt: '',
           size: 'full',
           stretch: true,
+          shadow: shadowPx(drawing.shadow, pxPerPt),
         },
       });
       continue;
@@ -161,6 +166,7 @@ function slideItems(
         crop: image.crop,
         radius: image.radius,
         border: image.border,
+        shadow: shadowPx(image.shadow, pxPerPt),
       },
     });
   }
@@ -276,6 +282,7 @@ function slideToPage(
     ...(slide.background && slide.background.toUpperCase() !== '#FFFFFF'
       ? { background: slide.background }
       : {}),
+    ...(slide.backgroundGradient ? { gradient: slide.backgroundGradient } : {}),
   };
   if (layoutsFor(doc.screens).includes('phone')) stackPhone(page, phoneClusters(page));
   return { page, tables: tablesOf(items) };

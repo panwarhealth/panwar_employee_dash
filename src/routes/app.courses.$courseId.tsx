@@ -18,6 +18,7 @@ import { frameFor, newFrame } from '@/course/canvasLayout';
 import { newBlock, newPage, normalizeDoc, type CourseDoc, type Layout } from '@/course/doc';
 import * as ops from '@/course/edit';
 import { fontFaces, fontOptions } from '@/course/typography';
+import { CourseColours, courseColours } from '@/components/courses/colourContext';
 import { FontOptions } from '@/components/courses/fontContext';
 import { useCourseAssistant } from '@/hooks/useCourseAssistant';
 import { useCourseAutosave } from '@/hooks/useCourseAutosave';
@@ -74,6 +75,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
 
   return (
     <FontOptions.Provider value={fontOptions(doc)}>
+      <CourseColours.Provider value={courseColours(doc)}>
       <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
         {doc.fonts.length > 0 && <style>{fontFaces(doc)}</style>}
         <PageList
@@ -292,6 +294,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           />
         )}
       </div>
+      </CourseColours.Provider>
     </FontOptions.Provider>
   );
 }

@@ -1,3 +1,4 @@
+import type { Gradient } from '@/course/doc';
 import { A, child, num } from './xml';
 
 export interface ShapePath {
@@ -166,8 +167,16 @@ export function shapePaths(
 export function drawingSvg(
   paths: ShapePath[],
   size: { w: number; h: number },
-  paint: { fill?: string; stroke?: string; strokeWidth: number; flipH: boolean; flipV: boolean },
+  paint: {
+    fill?: string;
+    gradient?: Gradient;
+    stroke?: string;
+    strokeWidth: number;
+    flipH: boolean;
+    flipV: boolean;
+  },
 ): string {
+  const fill = paint.gradient ? 'url(#fill)' : paint.fill;
   const pad = paint.stroke ? paint.strokeWidth : 0;
   const flip =
     paint.flipH || paint.flipV
@@ -176,12 +185,22 @@ export function drawingSvg(
   const body = paths
     .map(
       (p) =>
-        `<path d="${p.d}" fill="${p.fill && paint.fill ? paint.fill : 'none'}"${
+        `<path d="${p.d}" fill="${p.fill && fill ? fill : 'none'}"${
           p.stroke && paint.stroke
             ? ` stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}" stroke-linejoin="round"`
             : ''
         }/>`,
     )
     .join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-pad} ${-pad} ${size.w + 2 * pad} ${size.h + 2 * pad}" preserveAspectRatio="none"><g${flip}>${body}</g></svg>`;
+  const defs = paint.gradient ? `<defs>${svgGradient(paint.gradient)}</defs>` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-pad} ${-pad} ${size.w + 2 * pad} ${size.h + 2 * pad}" preserveAspectRatio="none">${defs}<g${flip}>${body}</g></svg>`;
+}
+
+function svgGradient(g: Gradient): string {
+  const stops = g.stops.map((s) => `<stop offset="${s.at}%" stop-color="${s.colour}"/>`).join('');
+  if (g.kind === 'radial') return `<radialGradient id="fill">${stops}</radialGradient>`;
+  const a = (g.angle * Math.PI) / 180;
+  const [dx, dy] = [Math.sin(a) / 2, -Math.cos(a) / 2];
+  const at = (v: number) => Math.round(v * 1000) / 1000;
+  return `<linearGradient id="fill" x1="${at(0.5 - dx)}" y1="${at(0.5 - dy)}" x2="${at(0.5 + dx)}" y2="${at(0.5 + dy)}">${stops}</linearGradient>`;
 }

@@ -1,3 +1,5 @@
+import type { Gradient } from '@/course/doc';
+
 export type DeckAlign = 'left' | 'center' | 'right' | 'justify';
 
 export interface DeckRun {
@@ -30,6 +32,14 @@ export interface DeckBorder {
   width: number;
 }
 
+export interface DeckShadow {
+  colour: string;
+  opacity: number;
+  x: number;
+  y: number;
+  blur: number;
+}
+
 export interface DeckCell {
   table: string;
   row: number;
@@ -54,6 +64,8 @@ export interface DeckShape {
   fromLayout?: boolean;
   cell?: DeckCell;
   fill?: string;
+  gradient?: Gradient;
+  shadow?: DeckShadow;
   border?: DeckBorder;
   radius?: number;
   corners?: 'top';
@@ -70,6 +82,7 @@ export interface DeckImage {
   crop?: [number, number, number, number];
   radius?: number;
   border?: DeckBorder;
+  shadow?: DeckShadow;
 }
 
 export interface DeckArea {
@@ -86,12 +99,14 @@ export interface DeckDrawing {
   h: number;
   r: number;
   svg: string;
+  shadow?: DeckShadow;
 }
 
 export interface DeckSlide {
   number: number;
   hidden: boolean;
   background?: string;
+  backgroundGradient?: Gradient;
   diagrams: DeckArea[];
   shapes: DeckShape[];
   images: DeckImage[];

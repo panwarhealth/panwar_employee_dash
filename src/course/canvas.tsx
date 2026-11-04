@@ -5,6 +5,7 @@ import type { BlockContext } from './context';
 import { frameFor, frameStyle, growsToFit } from './canvasLayout';
 import { animClass, animStyle } from './anim';
 import { centreInside } from './geometry';
+import { paintCss } from './typography';
 
 function objectClass(block: Block, ctx: BlockContext): string {
   const i = block.interact;
@@ -101,7 +102,7 @@ export function CanvasStage({
     <div className={`cp-stagewrap cp-stagewrap-${layout}`}>
       <div
         className={`cp-stage cp-stage-${layout}`}
-        style={page.background ? { background: page.background } : undefined}
+        style={paintCss(page.background, page.gradient)}
       >
         {page.blocks.map((b) => {
           if (isHiddenPopup(b)) return <div key={b.id} className="cp-obj" hidden />;

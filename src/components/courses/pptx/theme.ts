@@ -1,5 +1,6 @@
 import { round1 } from '@/course/geometry';
-import type { DeckBorder } from './types';
+import type { Gradient } from '@/course/doc';
+import type { DeckBorder, DeckShadow } from './types';
 import { A, child, EMU_PER_PT, num } from './xml';
 
 export interface Theme {
@@ -7,10 +8,11 @@ export interface Theme {
   majorFont?: string;
   minorFont?: string;
   lineWidths: number[];
+  effects: (Element | undefined)[];
 }
 
 export function readTheme(themeXml: Document | undefined): Theme {
-  const theme: Theme = { colours: {}, lineWidths: [] };
+  const theme: Theme = { colours: {}, lineWidths: [], effects: [] };
   if (!themeXml) return theme;
   const scheme = themeXml.getElementsByTagNameNS(A, 'clrScheme')[0];
   for (const el of Array.from(scheme?.children ?? [])) {
@@ -26,6 +28,8 @@ export function readTheme(themeXml: Document | undefined): Theme {
   theme.minorFont = latin('minorFont');
   const lines = themeXml.getElementsByTagNameNS(A, 'lnStyleLst')[0];
   theme.lineWidths = Array.from(lines?.children ?? []).map((ln) => num(ln, 'w') || 9525);
+  const effects = themeXml.getElementsByTagNameNS(A, 'effectStyleLst')[0];
+  theme.effects = Array.from(effects?.children ?? []).map((e) => child(e, A, 'effectLst'));
   return theme;
 }
 
@@ -75,8 +79,27 @@ function hslToHex([h, s, l]: [number, number, number]): string {
 
 const SCHEME_ALIAS: Record<string, string> = { bg1: 'lt1', tx1: 'dk1', bg2: 'lt2', tx2: 'dk2' };
 
-export function colourOf(el: Element | undefined, theme: Theme): string | undefined {
-  const colour = child(el, A, 'srgbClr') ?? child(el, A, 'schemeClr') ?? child(el, A, 'sysClr');
+const PRESET_COLOURS: Record<string, string> = {
+  black: '#000000',
+  white: '#FFFFFF',
+  gray: '#808080',
+  dkGray: '#A9A9A9',
+  ltGray: '#D3D3D3',
+  red: '#FF0000',
+  green: '#008000',
+  blue: '#0000FF',
+  yellow: '#FFFF00',
+};
+
+function colourParts(
+  el: Element | undefined,
+  theme: Theme,
+): { hex: string; alpha: number } | undefined {
+  const colour =
+    child(el, A, 'srgbClr') ??
+    child(el, A, 'schemeClr') ??
+    child(el, A, 'sysClr') ??
+    child(el, A, 'prstClr');
   if (!colour) return undefined;
   const val = colour.getAttribute('val') ?? '';
   let hex =
@@ -84,7 +107,9 @@ export function colourOf(el: Element | undefined, theme: Theme): string | undefi
       ? `#${val}`
       : colour.localName === 'sysClr'
         ? `#${colour.getAttribute('lastClr') ?? '000000'}`
-        : theme.colours[SCHEME_ALIAS[val] ?? val];
+        : colour.localName === 'prstClr'
+          ? PRESET_COLOURS[val]
+          : theme.colours[SCHEME_ALIAS[val] ?? val];
   if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return undefined;
   let alpha = 1;
   const mods = Array.from(colour.children);
@@ -103,9 +128,66 @@ export function colourOf(el: Element | undefined, theme: Theme): string | undefi
     }
     hex = hslToHex([h, Math.min(1, s), Math.min(1, Math.max(0, l))]);
   }
-  if (alpha >= 0.99) return hex.toUpperCase();
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgba(${r}, ${g}, ${b}, ${Math.round(alpha * 100) / 100})`;
+  return { hex: hex.toUpperCase(), alpha: Math.round(alpha * 100) / 100 };
+}
+
+export function colourOf(el: Element | undefined, theme: Theme): string | undefined {
+  const c = colourParts(el, theme);
+  if (!c) return undefined;
+  if (c.alpha >= 0.99) return c.hex;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(c.hex.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${c.alpha})`;
+}
+
+export function gradientOf(spPr: Element | undefined, theme: Theme): Gradient | undefined {
+  const grad = child(spPr, A, 'gradFill');
+  if (!grad) return undefined;
+  const stops = Array.from(grad.getElementsByTagNameNS(A, 'gs'))
+    .flatMap((gs) => {
+      const colour = colourOf(gs, theme);
+      return colour ? [{ colour, at: Math.round(num(gs, 'pos') / 1000) }] : [];
+    })
+    .sort((a, b) => a.at - b.at);
+  if (stops.length < 2) return undefined;
+  const lin = child(grad, A, 'lin');
+  return {
+    kind: child(grad, A, 'path') ? 'radial' : 'linear',
+    angle: Math.round(num(lin, 'ang') / 60000 + 90) % 360,
+    stops,
+  };
+}
+
+export function shadowOf(
+  spPr: Element | undefined,
+  style: Element | undefined,
+  theme: Theme,
+): DeckShadow | undefined {
+  const ref = child(style, A, 'effectRef');
+  const idx = ref ? num(ref, 'idx') : 0;
+  return effectShadow(
+    child(spPr, A, 'effectLst') ?? (idx > 0 ? theme.effects[idx - 1] : undefined),
+    theme,
+    ref,
+  );
+}
+
+export function effectShadow(
+  effects: Element | undefined,
+  theme: Theme,
+  ref?: Element,
+): DeckShadow | undefined {
+  const shadow = child(effects, A, 'outerShdw');
+  const c = colourParts(shadow, theme) ?? colourParts(ref, theme);
+  if (!shadow || !c || c.alpha < 0.01) return undefined;
+  const dist = num(shadow, 'dist') / EMU_PER_PT;
+  const dir = ((num(shadow, 'dir') / 60000) * Math.PI) / 180;
+  return {
+    colour: c.hex,
+    opacity: c.alpha,
+    x: round1(dist * Math.cos(dir)),
+    y: round1(dist * Math.sin(dir)),
+    blur: round1(num(shadow, 'blurRad') / EMU_PER_PT),
+  };
 }
 
 export function fillOf(spPr: Element | undefined, style: Element | undefined, theme: Theme) {

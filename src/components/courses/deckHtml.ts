@@ -1,7 +1,7 @@
-import type { HeadingBlock, TextBlock, TextStyle } from '@/course/doc';
+import type { HeadingBlock, Shadow, TextBlock, TextStyle } from '@/course/doc';
 import { round1 } from '@/course/geometry';
 import { BUILTIN_FONTS } from '@/course/typography';
-import type { DeckPara, DeckRun, DeckShape } from './pptx';
+import type { DeckPara, DeckRun, DeckShadow, DeckShape } from './pptx';
 
 interface Base {
   size: number;
@@ -118,6 +118,14 @@ function isUniform(paras: DeckPara[], base: Base): boolean {
   );
 }
 
+export const shadowPx = (s: DeckShadow | undefined, pxPerPt: number): Shadow | undefined =>
+  s && {
+    ...s,
+    x: round1(s.x * pxPerPt),
+    y: round1(s.y * pxPerPt),
+    blur: round1(s.blur * pxPerPt),
+  };
+
 export function shapeBlock(
   shape: DeckShape,
   id: string,
@@ -129,6 +137,8 @@ export function shapeBlock(
   const textStyle = textStyleOf(base, pxPerPt, firstPara?.lineHeight);
   const style = {
     fill: shape.fill,
+    gradient: shape.gradient,
+    shadow: shadowPx(shape.shadow, pxPerPt),
     border: shape.border,
     radius: shape.radius ?? (shape.fill || shape.border ? 0 : undefined),
     corners: shape.corners,

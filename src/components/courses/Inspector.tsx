@@ -17,7 +17,7 @@ import { InteractionFields, PickRuleFields } from './InteractionFields';
 import { TriggersPanel } from './TriggersPanel';
 import { Select, TextInput, Toggle } from './fields';
 import { SortableList } from './SortableList';
-import { ColourField } from './TextStyleFields';
+import { PaintField } from './TextStyleFields';
 import { ReviewNotes } from './ReviewNotes';
 
 export function Inspector({
@@ -85,10 +85,16 @@ export function Inspector({
           />
         </div>
         <div className="mt-2">
-          <ColourField
+          <PaintField
             label="Page background"
-            value={page.background}
-            onChange={(v) => onPage((p) => (p.background = v))}
+            fill={page.background}
+            gradient={page.gradient}
+            onChange={(fill, gradient) =>
+              onPage((p) => {
+                p.background = fill;
+                p.gradient = gradient;
+              })
+            }
           />
         </div>
       </div>

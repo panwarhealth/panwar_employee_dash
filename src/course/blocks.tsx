@@ -1,7 +1,7 @@
 import type { Block } from './doc';
 import type { BlockContext } from './context';
 import { sanitizeHtml } from './sanitize';
-import { borderCss, boxCss, radiusCss } from './typography';
+import { borderCss, boxCss, paintCss, radiusCss, shadowCss } from './typography';
 import { embedUrl } from './util';
 import { AnimationView, AudioView } from './media';
 import {
@@ -59,7 +59,8 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
             style={{
               ...radiusCss(block.radius, block.corners),
               ...borderCss(block.border),
-              ...(block.fill ? { background: block.fill } : {}),
+              ...paintCss(block.fill, block.gradient),
+              ...shadowCss(block.shadow, 'image'),
             }}
           >
             <img
@@ -77,9 +78,10 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       }
       return block.src ? (
         <img
-          className={`cp-img cp-img-${block.size}${block.fill ? ' cp-img-fill' : ''}`}
+          className={`cp-img cp-img-${block.size}${block.fill || block.gradient ? ' cp-img-fill' : ''}`}
           style={{
-            ...(block.fill ? { background: block.fill } : {}),
+            ...paintCss(block.fill, block.gradient),
+            ...shadowCss(block.shadow, 'image'),
             ...radiusCss(block.radius, block.corners),
             ...borderCss(block.border),
             ...(block.stretch ? { objectFit: 'fill' } : {}),
@@ -133,6 +135,13 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
                   ? { background: block.fill, borderColor: block.fill }
                   : { borderColor: block.fill, color: block.fill }
                 : {}),
+              ...(block.style === 'solid' && block.gradient
+                ? {
+                    ...paintCss(undefined, block.gradient),
+                    borderColor: 'transparent',
+                  }
+                : {}),
+              ...shadowCss(block.shadow, 'box'),
               ...radiusCss(block.radius, block.corners),
               ...ctx.textStyle(block.textStyle),
             }}

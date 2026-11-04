@@ -88,6 +88,7 @@ export interface Page {
   pick?: PickRule;
   transition?: Transition;
   background?: string;
+  gradient?: Gradient;
   notes?: ReviewNote[];
   sideways?: boolean;
 }
@@ -145,6 +146,25 @@ export interface Border {
   width: number;
 }
 
+export interface GradientStop {
+  colour: string;
+  at: number;
+}
+
+export interface Gradient {
+  kind: 'linear' | 'radial';
+  angle: number;
+  stops: GradientStop[];
+}
+
+export interface Shadow {
+  colour: string;
+  opacity: number;
+  x: number;
+  y: number;
+  blur: number;
+}
+
 export type VAlign = 'top' | 'middle' | 'bottom';
 
 export interface BlockBase {
@@ -162,6 +182,8 @@ export interface HeadingBlock extends BlockBase {
   align: Align;
   textStyle?: TextStyle;
   fill?: string;
+  gradient?: Gradient;
+  shadow?: Shadow;
   radius?: number;
   corners?: Corners;
   border?: Border;
@@ -174,6 +196,8 @@ export interface TextBlock extends BlockBase {
   align: Align;
   textStyle?: TextStyle;
   fill?: string;
+  gradient?: Gradient;
+  shadow?: Shadow;
   radius?: number;
   corners?: Corners;
   border?: Border;
@@ -187,6 +211,8 @@ export interface ImageBlock extends BlockBase {
   alt: string;
   size: 'full' | 'medium' | 'small';
   fill?: string;
+  gradient?: Gradient;
+  shadow?: Shadow;
   radius?: number;
   corners?: Corners;
   border?: Border;
@@ -216,6 +242,8 @@ export interface ButtonBlock extends BlockBase {
   action: ButtonAction;
   style: 'solid' | 'outline';
   fill?: string;
+  gradient?: Gradient;
+  shadow?: Shadow;
   radius?: number;
   corners?: Corners;
   textStyle?: TextStyle;
