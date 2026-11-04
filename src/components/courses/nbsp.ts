@@ -12,7 +12,9 @@ export function useNonBreakingSpace() {
       if (!(e.ctrlKey || e.metaKey) || !e.shiftKey || (e.key !== ' ' && e.code !== 'Space')) return;
       if (!typesText(e.target)) return;
       e.preventDefault();
-      document.execCommand('insertText', false, '\u00a0');
+      if ((e.target as HTMLElement).isContentEditable)
+        document.execCommand('insertHTML', false, '&nbsp;');
+      else document.execCommand('insertText', false, '\u00a0');
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
