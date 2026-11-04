@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode, type SetStateAction } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Monitor, Redo2, Settings, Smartphone, Sparkles, Undo2 } from 'lucide-react';
@@ -16,7 +16,15 @@ import { PreviewModal } from '@/components/courses/PreviewModal';
 import { SettingsModal } from '@/components/courses/SettingsModal';
 import { VariablesModal } from '@/components/courses/VariablesModal';
 import { frameFor, newFrame } from '@/course/canvasLayout';
-import { newBlock, newPage, normalizeDoc, uid, type CourseDoc, type Layout } from '@/course/doc';
+import {
+  fixNbsp,
+  newBlock,
+  newPage,
+  normalizeDoc,
+  uid,
+  type CourseDoc,
+  type Layout,
+} from '@/course/doc';
 import * as ops from '@/course/edit';
 import { fontFaces, fontOptions } from '@/course/typography';
 import { CourseColours, courseColours } from '@/components/courses/colourContext';
@@ -51,7 +59,13 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const queryClient = useQueryClient();
   const history = useUndoable(initial);
   useNonBreakingSpace();
-  const { value: doc, set: setDoc } = history;
+  const doc = history.value;
+  const setHistory = history.set;
+  const setDoc = useCallback(
+    (next: SetStateAction<CourseDoc>) =>
+      setHistory((d) => fixNbsp(typeof next === 'function' ? next(d) : next)),
+    [setHistory],
+  );
   const [pageId, setPageId] = useState(initial.pages[0].id);
   const [blockId, setBlockId] = useState<string | null>(null);
   const [phone, setPhone] = useState(initial.screens === 'phone');

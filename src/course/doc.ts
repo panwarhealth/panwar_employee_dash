@@ -753,9 +753,13 @@ function emptyBoxToShape(b: TextBlock): ShapeBlock {
 
 const emptyHtml = (html: string) => !html.replace(/<[^>]*>|&nbsp;|\s/g, '');
 
+const PARA_LINE_HEIGHT = /\s*line-height:\s*[\d.]+(em)?;?/g;
+
 function upgradeBlock(b: Block): Block {
   if (b.type === 'text' && emptyHtml(b.html) && (b.fill || b.gradient || b.border))
     return emptyBoxToShape(b);
+  if (b.type === 'text' && b.html.includes('line-height'))
+    return { ...b, html: b.html.replace(PARA_LINE_HEIGHT, '').replace(/ style="\s*"/g, '') };
   if ((b as { type: string }).type !== 'scroll') return b;
   const text = { ...b, type: 'text', align: 'left' } as Block & { height?: number };
   delete text.height;
@@ -768,13 +772,21 @@ function upgradePage(p: Page): Page {
   return page;
 }
 
+const TYPED_NBSP = /&amp;nbsp;|&nbsp;/g;
+
+export function fixNbsp(doc: CourseDoc): CourseDoc {
+  const json = JSON.stringify(doc);
+  if (!json.includes('nbsp;')) return doc;
+  return JSON.parse(json.replace(TYPED_NBSP, '\u00a0')) as CourseDoc;
+}
+
 export function normalizeDoc(doc: CourseDoc): CourseDoc {
-  return {
+  return fixNbsp({
     ...doc,
     variables: doc.variables ?? [],
     fonts: doc.fonts ?? [],
     pages: doc.pages.map(upgradePage),
-  };
+  });
 }
 
 export const pickIds = (page: Page): string[] =>

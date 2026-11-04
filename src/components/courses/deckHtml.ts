@@ -68,7 +68,6 @@ function runHtml(r: DeckRun, base: Base): string {
 function paraStyle(p: DeckPara, base: Base, align: string): string {
   const styles: string[] = [];
   if (p.align !== align) styles.push(`text-align: ${p.align}`);
-  if (p.lineHeight) styles.push(`line-height: ${p.lineHeight}`);
   if (p.spaceBefore) styles.push(`margin-top: ${round1(p.spaceBefore / base.size)}em`);
   styles.push(`margin-bottom: ${p.spaceAfter ? round1(p.spaceAfter / base.size) : 0}em`);
   return ` style="${styles.join('; ')}"`;
