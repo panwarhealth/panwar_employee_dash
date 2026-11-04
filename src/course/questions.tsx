@@ -1,6 +1,7 @@
 import {
   useMemo,
   useState,
+  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -49,8 +50,19 @@ function QuestionFrame({
     b.length > a.length ? b : a,
   );
   const locked = submitted || ctx.edit;
+  const look = block.look ?? {};
+  const align = { left: 'flex-start', center: 'center', right: 'flex-end' }[look.submitAlign ?? 'left'];
   return (
-    <div className="cp-check">
+    <div
+      className={`cp-check${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
+      style={
+        {
+          ...(look.colour ? { '--cp-accent': look.colour } : {}),
+          ...(look.size ? { fontSize: `${look.size / 16}em` } : {}),
+          ...(look.radius !== undefined ? { '--cp-r': `calc(${look.radius} * var(--px, 1px))` } : {}),
+        } as CSSProperties
+      }
+    >
       <p className="cp-q">{prompt}</p>
       {hint && <p className="cp-hint">{hint}</p>}
       {children({ locked, submitted })}
@@ -76,6 +88,7 @@ function QuestionFrame({
         <button
           type="button"
           className="cp-btn cp-btn-solid"
+          style={{ alignSelf: align }}
           disabled={!ready || ctx.edit}
           title={ready ? undefined : 'Answer the question first'}
           onClick={() => {

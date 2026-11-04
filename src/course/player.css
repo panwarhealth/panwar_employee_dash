@@ -206,6 +206,45 @@
 .cp-obj .cp-fit-in > .cp-check {
   height: auto;
 }
+.cp-obj .cp-check.cp-bare {
+  border: 0;
+  padding: 0;
+  background: none;
+}
+.cp-check .cp-btn {
+  border-radius: var(--cp-r, 4px);
+}
+.cp-pills .cp-opt {
+  justify-content: center;
+  text-align: center;
+  font-weight: 700;
+  color: var(--cp-accent);
+  border: 2px solid var(--cp-accent);
+  border-radius: var(--cp-r, 4px);
+}
+.cp-pills .cp-opts-short .cp-opt {
+  flex: 0 1 auto;
+  min-width: 5em;
+  padding-inline: 1.5em;
+}
+.cp-pills .cp-dot,
+.cp-pills .cp-box {
+  display: none;
+}
+.cp-pills .cp-opt.cp-on {
+  background: var(--cp-accent);
+  color: #fff;
+}
+.cp-pills .cp-opt.cp-right {
+  background: #eef8f2;
+  border-color: var(--cp-ok);
+  color: var(--cp-ok);
+}
+.cp-pills .cp-opt.cp-wrong {
+  background: #fdecea;
+  border-color: var(--cp-bad);
+  color: var(--cp-bad);
+}
 .cp-q {
   font-weight: 700;
   font-size: 1.0625em;

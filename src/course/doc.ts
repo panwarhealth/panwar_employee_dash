@@ -292,6 +292,7 @@ export interface CheckBlock extends BlockBase {
   required: boolean;
   scored: boolean;
   submitLabel?: string;
+  look?: QuestionLook;
 }
 
 export interface AudioCue {
@@ -375,12 +376,22 @@ export interface PathwayBlock extends BlockBase {
   choices: { id: string; label: string; pageId: string }[];
 }
 
+export interface QuestionLook {
+  colour?: string;
+  size?: number;
+  answers?: 'list' | 'buttons';
+  radius?: number;
+  submitAlign?: 'left' | 'center' | 'right';
+  card?: boolean;
+}
+
 export interface QuestionBase extends BlockBase {
   feedbackCorrect: string;
   feedbackWrong: string;
   required: boolean;
   scored: boolean;
   submitLabel?: string;
+  look?: QuestionLook;
 }
 
 export interface DragItem {

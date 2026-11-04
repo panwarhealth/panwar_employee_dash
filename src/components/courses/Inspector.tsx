@@ -1,6 +1,7 @@
 import {
   groupsOf,
   hasPicks,
+  isQuestion,
   newPickRule,
   NO_INTERACTION,
   pickIds,
@@ -14,6 +15,7 @@ import {
 } from '@/course/doc';
 import { cn } from '@/lib/utils';
 import { BlockForm } from './BlockForm';
+import { QuestionLookFields } from './QuestionLookFields';
 import { blockLabel, blockName } from './blockMeta';
 import { AnimFields } from './AnimFields';
 import { FrameFields } from './FrameFields';
@@ -228,6 +230,16 @@ export function Inspector({
             courseId={courseId}
             onChange={(update) => onChangeBlock(block.id, update)}
           />
+          {isQuestion(block) && (
+            <QuestionLookFields
+              block={block}
+              onChange={(look) =>
+                onChangeBlock(block.id, (b) => {
+                  if (isQuestion(b)) b.look = look;
+                })
+              }
+            />
+          )}
           {canvas.frame && (
             <>
               <FrameFields frame={canvas.frame} onChange={canvas.onFrame} />
