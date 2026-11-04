@@ -1,4 +1,4 @@
-import { uid } from "@/course/doc";
+import { uid } from '@/course/doc';
 import type {
   Anchor,
   Block,
@@ -11,8 +11,8 @@ import type {
   Page,
   ShapeBlock,
   TextBlock,
-} from "@/course/doc";
-import { layoutsFor } from "@/course/canvasLayout";
+} from '@/course/doc';
+import { layoutsFor } from '@/course/canvasLayout';
 import {
   bounds,
   centreInside,
@@ -21,23 +21,19 @@ import {
   overlaps,
   round1,
   type Box,
-} from "@/course/geometry";
-import { fontIdFor, panelBlock, shadowPx, shapeBlock } from "./deckHtml";
-import { tidyDesktop } from "./desktopLayout";
-import { measureHeights } from "./pageFit";
-import { fitPhone, phoneClusters, stackPhone } from "./phoneLayout";
-import type { Deck, DeckShape, DeckSlide } from "./pptx";
+} from '@/course/geometry';
+import { fontIdFor, panelBlock, shadowPx, shapeBlock } from './deckHtml';
+import { tidyDesktop } from './desktopLayout';
+import { measureHeights } from './pageFit';
+import { fitPhone, phoneClusters, stackPhone } from './phoneLayout';
+import type { Deck, DeckShape, DeckSlide } from './pptx';
 
 const DESIGN_W = 960;
 
 type Item = { group?: number } & (
+  | { kind: 'shape'; shape: DeckShape; block: HeadingBlock | TextBlock | ShapeBlock }
   | {
-      kind: "shape";
-      shape: DeckShape;
-      block: HeadingBlock | TextBlock | ShapeBlock;
-    }
-  | {
-      kind: "image";
+      kind: 'image';
       image: Box & { r: number; light: boolean };
       block: ImageBlock;
     }
@@ -68,21 +64,21 @@ function edgeAnchor(f: Box): Anchor | undefined {
   const left = f.x <= 2;
   const right = f.x + f.w >= 98;
   if (!top && !bottom && !left && !right) return undefined;
-  const v = top && !bottom ? "t" : bottom && !top ? "b" : "";
-  const h = left && !right ? "l" : right && !left ? "r" : "";
-  return (v + h || "c") as Anchor;
+  const v = top && !bottom ? 't' : bottom && !top ? 'b' : '';
+  const h = left && !right ? 'l' : right && !left ? 'r' : '';
+  return (v + h || 'c') as Anchor;
 }
 
 function desktopAnchor(f: Box, title: boolean): Anchor {
-  if (isBackdrop(f)) return "c";
-  if (title) return f.x <= 2 ? "tl" : f.x + f.w >= 98 ? "tr" : "t";
+  if (isBackdrop(f)) return 'c';
+  if (title) return f.x <= 2 ? 'tl' : f.x + f.w >= 98 ? 'tr' : 't';
   const edge = edgeAnchor(f);
   if (edge) return edge;
   if (inFooterBand(f)) {
     const centre = f.x + f.w / 2;
-    return centre < 100 / 3 ? "bl" : centre > 200 / 3 ? "br" : "b";
+    return centre < 100 / 3 ? 'bl' : centre > 200 / 3 ? 'br' : 'b';
   }
-  return "c";
+  return 'c';
 }
 
 function insetFrame(shape: DeckShape, f: Frame, deck: Deck): Frame {
@@ -107,16 +103,11 @@ function diagramAreas(slide: DeckSlide): Box[] {
     if (hit) Object.assign(hit, bounds([hit, area]));
     else merged.push(area);
   }
-  return merged.map((m) => ({
-    x: round1(m.x),
-    y: round1(m.y),
-    w: round1(m.w),
-    h: round1(m.h),
-  }));
+  return merged.map((m) => ({ x: round1(m.x), y: round1(m.y), w: round1(m.w), h: round1(m.h) }));
 }
 
 const isTitleShape = (item: Item) =>
-  item.kind === "shape" && /title/i.test(item.shape.placeholder ?? "");
+  item.kind === 'shape' && /title/i.test(item.shape.placeholder ?? '');
 
 function idMaker(slide: DeckSlide, taken: Set<string>) {
   const prefix = `s${slide.number}`;
@@ -138,29 +129,27 @@ function slideItems(
   const pxPerPt = DESIGN_W / deck.widthPt;
   const items: Item[] = [];
   for (const entry of slide.order) {
-    if (entry.kind === "shape") {
+    if (entry.kind === 'shape') {
       const shape = slide.shapes[entry.index];
       const hasWords = !!shape.text.trim();
-      const id = makeId(hasWords ? "text" : "box");
-      const block = hasWords
-        ? shapeBlock(shape, id, pxPerPt)
-        : panelBlock(shape, id, pxPerPt);
-      items.push({ kind: "shape", shape, block, group: entry.group });
+      const id = makeId(hasWords ? 'text' : 'box');
+      const block = hasWords ? shapeBlock(shape, id, pxPerPt) : panelBlock(shape, id, pxPerPt);
+      items.push({ kind: 'shape', shape, block, group: entry.group });
       continue;
     }
-    if (entry.kind === "drawing") {
+    if (entry.kind === 'drawing') {
       const drawing = slide.drawings[entry.index];
       items.push({
-        kind: "image",
+        kind: 'image',
         group: entry.group,
         image: { ...drawing, light: false },
         block: {
-          id: makeId("shape"),
-          type: "image",
+          id: makeId('shape'),
+          type: 'image',
           src: `data:image/svg+xml;utf8,${encodeURIComponent(drawing.svg)}`,
-          fileName: "shape.svg",
-          alt: "",
-          size: "full",
+          fileName: 'shape.svg',
+          alt: '',
+          size: 'full',
           stretch: true,
           shadow: shadowPx(drawing.shadow, pxPerPt),
         },
@@ -171,16 +160,16 @@ function slideItems(
     const src = mediaUrls[image.media];
     if (!src) continue;
     items.push({
-      kind: "image",
+      kind: 'image',
       group: entry.group,
       image,
       block: {
-        id: makeId("image"),
-        type: "image",
+        id: makeId('image'),
+        type: 'image',
         src,
         fileName: image.media,
-        alt: "",
-        size: "full",
+        alt: '',
+        size: 'full',
         crop: image.crop,
         radius: image.radius,
         border: image.border,
@@ -189,19 +178,17 @@ function slideItems(
     });
   }
   for (const area of diagramAreas(slide)) {
-    const at = items.findIndex(
-      (i) => !isBackdrop(i.kind === "shape" ? i.shape : i.image),
-    );
+    const at = items.findIndex((i) => !isBackdrop(i.kind === 'shape' ? i.shape : i.image));
     items.splice(at < 0 ? items.length : at, 0, {
-      kind: "image",
+      kind: 'image',
       image: { ...area, r: 0, light: false },
       block: {
-        id: makeId("diagram"),
-        type: "image",
-        src: "",
-        fileName: "",
+        id: makeId('diagram'),
+        type: 'image',
+        src: '',
+        fileName: '',
         alt: `Picture needed: export this area of slide ${slide.number} from PowerPoint (a diagram the editor can't draw) and drop it in here.`,
-        size: "full",
+        size: 'full',
       },
     });
   }
@@ -216,47 +203,31 @@ function deckGroups(
   const members = new Map<number, string[]>();
   for (const item of items)
     if (item.group !== undefined)
-      members.set(item.group, [
-        ...(members.get(item.group) ?? []),
-        item.block.id,
-      ]);
+      members.set(item.group, [...(members.get(item.group) ?? []), item.block.id]);
   return [...members.values()]
-    .filter(
-      (ids) => ids.length > 1 && !ids.some((id) => isBackdrop(frames.get(id)!)),
-    )
-    .map((ids, i) => ({
-      id: makeId("group"),
-      name: `Group ${i + 1}`,
-      members: ids,
-    }));
+    .filter((ids) => ids.length > 1 && !ids.some((id) => isBackdrop(frames.get(id)!)))
+    .map((ids, i) => ({ id: makeId('group'), name: `Group ${i + 1}`, members: ids }));
 }
 
 function desktopFrames(items: Item[], deck: Deck): Map<string, Frame> {
   const frames = new Map<string, Frame>();
   for (const item of items) {
-    const { x, y, w, h, r } = item.kind === "shape" ? item.shape : item.image;
+    const { x, y, w, h, r } = item.kind === 'shape' ? item.shape : item.image;
     const frame = { x, y, w, h, r };
-    frames.set(
-      item.block.id,
-      item.kind === "shape" ? insetFrame(item.shape, frame, deck) : frame,
-    );
+    frames.set(item.block.id, item.kind === 'shape' ? insetFrame(item.shape, frame, deck) : frame);
   }
   return frames;
 }
 
-function backWhiteArtwork(
-  items: Item[],
-  frames: Map<string, Frame>,
-  accent: string,
-) {
+function backWhiteArtwork(items: Item[], frames: Map<string, Frame>, accent: string) {
   items.forEach((item, i) => {
-    if (item.kind !== "image" || !item.image.light) return;
+    if (item.kind !== 'image' || !item.image.light) return;
     const f = frames.get(item.block.id)!;
     const sitsOnColour = items
       .slice(0, i)
       .some(
         (o) =>
-          o.kind === "shape" &&
+          o.kind === 'shape' &&
           !!o.shape.fill &&
           !isBackdrop(frames.get(o.block.id)!) &&
           centreInside(frames.get(o.block.id)!, f),
@@ -265,10 +236,7 @@ function backWhiteArtwork(
   });
 }
 
-function anchorsFor(
-  items: Item[],
-  frames: Map<string, Frame>,
-): Map<string, Anchor> {
+function anchorsFor(items: Item[], frames: Map<string, Frame>): Map<string, Anchor> {
   const anchors = new Map<string, Anchor>();
   items.forEach((item, i) => {
     const f = frames.get(item.block.id)!;
@@ -292,12 +260,9 @@ function anchorsFor(
 function tablesOf(items: Item[]): TableCell[][] {
   const tables = new Map<string, TableCell[]>();
   for (const item of items)
-    if (item.kind === "shape" && item.shape.cell) {
+    if (item.kind === 'shape' && item.shape.cell) {
       const { table, ...cell } = item.shape.cell;
-      tables.set(table, [
-        ...(tables.get(table) ?? []),
-        { id: item.block.id, ...cell },
-      ]);
+      tables.set(table, [...(tables.get(table) ?? []), { id: item.block.id, ...cell }]);
     }
   return [...tables.values()];
 }
@@ -305,28 +270,28 @@ function tablesOf(items: Item[]): TableCell[][] {
 const firstLine = (shape: DeckShape) =>
   (
     shape.paras
-      .map((p) => p.runs.map((r) => (r.br ? " " : r.text)).join(""))
-      .find((t) => t.trim()) ?? ""
+      .map((p) => p.runs.map((r) => (r.br ? ' ' : r.text)).join(''))
+      .find((t) => t.trim()) ?? ''
   )
-    .replace(/\s+/g, " ")
+    .replace(/\s+/g, ' ')
     .trim();
 
 const looksLikeHeading = (line: string) =>
   (line.match(/[a-z]/gi) ?? []).length >= 3 &&
-  !(line === line.toUpperCase() && line.split(" ").length <= 3);
+  !(line === line.toUpperCase() && line.split(' ').length <= 3);
 
 const headingSize = (shape: DeckShape) =>
   Math.max(0, ...shape.paras.flatMap((p) => p.runs).map((r) => r.size));
 
 function pageTitle(items: Item[], slide: DeckSlide): string {
   const title = items.find(isTitleShape);
-  if (title?.kind === "shape" && firstLine(title.shape))
-    return firstLine(title.shape).slice(0, 80);
+  if (title?.kind === 'shape' && firstLine(title.shape)) return firstLine(title.shape).slice(0, 80);
   const best = slide.shapes
     .filter((s) => !s.fromLayout && looksLikeHeading(firstLine(s)))
-    .reduce<
-      DeckShape | undefined
-    >((top, s) => (!top || headingSize(s) > headingSize(top) ? s : top), undefined);
+    .reduce<DeckShape | undefined>(
+      (top, s) => (!top || headingSize(s) > headingSize(top) ? s : top),
+      undefined,
+    );
   return (best ? firstLine(best) : `Slide ${slide.number}`).slice(0, 80);
 }
 
@@ -346,9 +311,7 @@ function slideToPage(
     const placed: Partial<Record<Layout, Frame>> = {};
     for (const layout of layoutsFor(doc.screens))
       placed[layout] =
-        layout === "desktop"
-          ? { ...f, a: anchors.get(item.block.id) }
-          : { ...f, a: "c" };
+        layout === 'desktop' ? { ...f, a: anchors.get(item.block.id) } : { ...f, a: 'c' };
     return { ...item.block, frames: placed } as Block;
   });
   const groups = deckGroups(items, frames, idMaker(slide, taken));
@@ -358,19 +321,18 @@ function slideToPage(
     blocks,
     triggers: [],
     ...(groups.length ? { groups } : {}),
-    ...(slide.background && slide.background.toUpperCase() !== "#FFFFFF"
+    ...(slide.background && slide.background.toUpperCase() !== '#FFFFFF'
       ? { background: slide.background }
       : {}),
     ...(slide.backgroundGradient ? { gradient: slide.backgroundGradient } : {}),
   };
-  if (layoutsFor(doc.screens).includes("phone"))
-    stackPhone(page, phoneClusters(page));
+  if (layoutsFor(doc.screens).includes('phone')) stackPhone(page, phoneClusters(page));
   return { page, tables: tablesOf(items) };
 }
 
 async function fitTables(doc: CourseDoc, converted: ConvertedPage) {
   if (!converted.tables.length) return;
-  const measured = await measureHeights(doc, converted.page, "desktop");
+  const measured = await measureHeights(doc, converted.page, 'desktop');
   const byId = new Map(converted.page.blocks.map((b) => [b.id, b]));
   for (const cells of converted.tables) {
     const frame = (c: TableCell) => byId.get(c.id)!.frames!.desktop!;
@@ -380,10 +342,7 @@ async function fitTables(doc: CourseDoc, converted: ConvertedPage) {
         0,
         ...cells
           .filter((c) => c.row === r && c.rowSpan === 1)
-          .map(
-            (c) =>
-              Math.max(frame(c).h, measured.get(c.id) ?? 0) + c.gapT + c.gapB,
-          ),
+          .map((c) => Math.max(frame(c).h, measured.get(c.id) ?? 0) + c.gapT + c.gapB),
       ),
     );
     const rowTop: number[] = [];
@@ -394,9 +353,7 @@ async function fitTables(doc: CourseDoc, converted: ConvertedPage) {
     }
     for (const c of cells) {
       const f = frame(c);
-      const span = pitch
-        .slice(c.row, c.row + c.rowSpan)
-        .reduce((a, b) => a + b, 0);
+      const span = pitch.slice(c.row, c.row + c.rowSpan).reduce((a, b) => a + b, 0);
       f.y = round1(rowTop[c.row] + c.gapT);
       f.h = round1(Math.max(f.h, span - c.gapT - c.gapB));
     }
@@ -405,9 +362,7 @@ async function fitTables(doc: CourseDoc, converted: ConvertedPage) {
 
 function missingFonts(deck: Deck): string[] {
   const fonts = deck.slides.flatMap((s) =>
-    s.shapes.flatMap((sh) =>
-      sh.paras.flatMap((p) => p.runs.map((r) => r.font)),
-    ),
+    s.shapes.flatMap((sh) => sh.paras.flatMap((p) => p.runs.map((r) => r.font))),
   );
   return [...new Set(fonts)].filter((f): f is string => !!f && !fontIdFor(f));
 }
@@ -423,39 +378,31 @@ export async function importDeck(
   const converted = deck.slides
     .filter((slide) => !slide.hidden)
     .map((slide) => slideToPage(deck, slide, mediaUrls, doc, taken));
-  for (const c of converted)
-    while (pageIds.has(c.page.id)) c.page.id = `${c.page.id}-new`;
+  for (const c of converted) while (pageIds.has(c.page.id)) c.page.id = `${c.page.id}-new`;
   for (const [i, c] of converted.entries()) {
     onStatus(`Fitting tables (${i + 1} of ${converted.length})`);
     await fitTables(doc, c);
   }
-  if (layoutsFor(doc.screens).includes("desktop"))
+  if (layoutsFor(doc.screens).includes('desktop'))
     for (const c of converted) await tidyDesktop(doc, c.page);
   const crowded: Page[] = [];
-  if (layoutsFor(doc.screens).includes("phone"))
+  if (layoutsFor(doc.screens).includes('phone'))
     for (const [i, c] of converted.entries()) {
       onStatus(`Fitting the phone layout (${i + 1} of ${converted.length})`);
       if (!(await fitPhone(doc, c.page))) crowded.push(c.page);
     }
-  return {
-    pages: converted.map((c) => c.page),
-    crowded,
-    missingFonts: missingFonts(deck),
-  };
+  return { pages: converted.map((c) => c.page), crowded, missingFonts: missingFonts(deck) };
 }
 
 export const DOES_NOT_FIT_NOTE =
   "This page doesn't fit on a phone screen. Split it across more pages, or put its sections in a tabs block.";
 
-export async function relayout(
-  doc: CourseDoc,
-): Promise<{ doc: CourseDoc; crowded: Page[] }> {
+export async function relayout(doc: CourseDoc): Promise<{ doc: CourseDoc; crowded: Page[] }> {
   const next = structuredClone(doc);
   const crowded: Page[] = [];
-  if (layoutsFor(next.screens).includes("desktop"))
+  if (layoutsFor(next.screens).includes('desktop'))
     for (const page of next.pages) await tidyDesktop(next, page);
-  if (!layoutsFor(next.screens).includes("phone"))
-    return { doc: next, crowded };
+  if (!layoutsFor(next.screens).includes('phone')) return { doc: next, crowded };
   for (const page of next.pages) {
     if (await fitPhone(next, page)) {
       page.notes = page.notes?.filter((n) => n.text !== DOES_NOT_FIT_NOTE);
@@ -463,10 +410,7 @@ export async function relayout(
     }
     crowded.push(page);
     if (!page.notes?.some((n) => n.text === DOES_NOT_FIT_NOTE))
-      page.notes = [
-        ...(page.notes ?? []),
-        { id: uid(), text: DOES_NOT_FIT_NOTE },
-      ];
+      page.notes = [...(page.notes ?? []), { id: uid(), text: DOES_NOT_FIT_NOTE }];
   }
   return { doc: next, crowded };
 }
