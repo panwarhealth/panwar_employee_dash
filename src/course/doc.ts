@@ -383,6 +383,7 @@ export interface QuestionLook {
   radius?: number;
   submitAlign?: 'left' | 'center' | 'right';
   card?: boolean;
+  feedback?: 'under' | 'popup';
 }
 
 export interface QuestionBase extends BlockBase {

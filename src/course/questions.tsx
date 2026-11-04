@@ -1,5 +1,6 @@
 import {
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
@@ -44,6 +45,8 @@ function QuestionFrame({
   children: (state: { locked: boolean; submitted: boolean }) => ReactNode;
 }) {
   const [answered, setSubmitted] = useState(!!ctx.answers[block.id]);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const self = useRef<HTMLDivElement>(null);
   const submitted = answered || !!ctx.showFeedback;
   const shownCorrect = correct && !ctx.showFeedback;
   const longest = [block.feedbackCorrect, block.feedbackWrong].reduce((a, b) =>
@@ -51,40 +54,52 @@ function QuestionFrame({
   );
   const locked = submitted || ctx.edit;
   const look = block.look ?? {};
+  const popup = look.feedback === 'popup';
   const align = { left: 'flex-start', center: 'center', right: 'flex-end' }[look.submitAlign ?? 'left'];
+  const accent = look.colour ? ({ '--cp-accent': look.colour } as CSSProperties) : {};
+  const retry = () => {
+    setPopupOpen(false);
+    setSubmitted(false);
+    onReset();
+  };
+  const message = (
+    <div className={`cp-fb ${shownCorrect ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
+      {ctx.showFeedback ? longest : correct ? block.feedbackCorrect : block.feedbackWrong}
+    </div>
+  );
+  const tryAgain = (
+    <button type="button" className="cp-btn cp-btn-outline" onClick={retry}>
+      Try again
+    </button>
+  );
+  const player = self.current?.closest<HTMLElement>('.cp');
   return (
     <div
+      ref={self}
       className={`cp-check${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
-      style={
-        {
-          ...(look.colour ? { '--cp-accent': look.colour } : {}),
-          ...(look.size ? { fontSize: `${look.size / 16}em` } : {}),
-          ...(look.radius !== undefined ? { '--cp-r': `calc(${look.radius} * var(--px, 1px))` } : {}),
-        } as CSSProperties
-      }
+      style={{
+        ...accent,
+        ...(look.size ? { fontSize: `${look.size / 16}em` } : {}),
+        ...(look.radius !== undefined
+          ? ({ '--cp-r': `calc(${look.radius} * var(--px, 1px))` } as CSSProperties)
+          : {}),
+      }}
     >
       <p className="cp-q">{prompt}</p>
       {hint && <p className="cp-hint">{hint}</p>}
       {children({ locked, submitted })}
-      {submitted ? (
+      {submitted && !popup && (
         <div className="cp-fbrow">
-          <div className={`cp-fb ${shownCorrect ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
-            {ctx.showFeedback ? longest : correct ? block.feedbackCorrect : block.feedbackWrong}
-          </div>
-          {!shownCorrect && (
-            <button
-              type="button"
-              className="cp-btn cp-btn-outline"
-              onClick={() => {
-                setSubmitted(false);
-                onReset();
-              }}
-            >
-              Try again
-            </button>
-          )}
+          {message}
+          {!shownCorrect && tryAgain}
         </div>
-      ) : (
+      )}
+      {submitted && popup && !shownCorrect && (
+        <div className="cp-fbrow" style={{ justifyContent: align }}>
+          {tryAgain}
+        </div>
+      )}
+      {!submitted && (
         <button
           type="button"
           className="cp-btn cp-btn-solid"
@@ -93,12 +108,38 @@ function QuestionFrame({
           title={ready ? undefined : 'Answer the question first'}
           onClick={() => {
             setSubmitted(true);
+            if (popup) setPopupOpen(true);
             ctx.answer(block.id, response, correct);
           }}
         >
           {block.submitLabel || 'Submit'}
         </button>
       )}
+      {popupOpen &&
+        player &&
+        createPortal(
+          <div className="cp-layer" style={accent} onClick={() => setPopupOpen(false)}>
+            <div
+              className="cp-layer-card cp-fbcard"
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {message}
+              <div className="cp-fbactions">
+                {!correct && tryAgain}
+                <button
+                  type="button"
+                  className="cp-btn cp-btn-solid"
+                  onClick={() => setPopupOpen(false)}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>,
+          player,
+        )}
     </div>
   );
 }

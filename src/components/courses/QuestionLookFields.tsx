@@ -64,6 +64,15 @@ export function QuestionLookFields({
           onChange={(submitAlign) => set({ submitAlign })}
         />
       </div>
+      <Select
+        label="Feedback"
+        value={look.feedback ?? 'under'}
+        options={[
+          { value: 'under', label: 'Under the question' },
+          { value: 'popup', label: 'In a pop-up over the page' },
+        ]}
+        onChange={(feedback) => set({ feedback })}
+      />
       <Toggle
         label="Box around the question"
         checked={look.card !== false}

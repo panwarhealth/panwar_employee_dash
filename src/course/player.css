@@ -719,6 +719,14 @@
   background: #fff;
   box-shadow: 0 1em 3em rgba(0, 0, 0, 0.3);
 }
+.cp-fbcard {
+  width: min(100%, 440px);
+}
+.cp-fbactions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6em;
+}
 .cp-layer-body {
   display: flex;
   flex-direction: column;
