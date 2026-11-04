@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { useAuth } from '@/hooks/useAuth';
 import { appsForRoles } from '@/components/AppIcons';
 
-const GROUP_ORDER = ['Team', 'Clients', 'Marketing'];
+const GROUP_ORDER = ['Team', 'Create', 'Track'];
 
 export const Route = createFileRoute('/app/')({
   component: HomePage,

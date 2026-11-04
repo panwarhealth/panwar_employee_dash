@@ -23,7 +23,7 @@ export const APPS: readonly AppDefinition[] = [
   {
     to: '/app/clients',
     name: 'Client Dashboards',
-    group: 'Clients',
+    group: 'Track',
     colour: '#702f8f',
     roles: EDITOR_ROLES,
     glyph: (
@@ -41,7 +41,7 @@ export const APPS: readonly AppDefinition[] = [
   {
     to: '/app/links',
     name: 'UTM Links',
-    group: 'Marketing',
+    group: 'Track',
     colour: '#b41e8c',
     roles: null,
     glyph: (
@@ -54,7 +54,7 @@ export const APPS: readonly AppDefinition[] = [
   {
     to: '/app/qr',
     name: 'QR Codes',
-    group: 'Marketing',
+    group: 'Track',
     colour: '#454646',
     roles: null,
     glyph: (
@@ -77,7 +77,7 @@ export const APPS: readonly AppDefinition[] = [
   {
     to: '/app/edm',
     name: 'eDM Mailer',
-    group: 'Marketing',
+    group: 'Create',
     colour: '#702f8f',
     roles: MAILER_ROLES,
     glyph: (
@@ -92,7 +92,7 @@ export const APPS: readonly AppDefinition[] = [
   {
     to: '/app/courses',
     name: 'Course Editor',
-    group: 'Clients',
+    group: 'Create',
     colour: '#b41e8c',
     roles: COURSE_EDITOR_ROLES,
     glyph: (
