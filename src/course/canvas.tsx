@@ -5,6 +5,7 @@ import {
   type Block,
   type Frame,
   type Group,
+  type HoverLook,
   type Layout,
   type Page,
 } from './doc';
@@ -15,16 +16,56 @@ import { animClass, animStyle } from './anim';
 import { centreInside } from './geometry';
 import { paintCss } from './typography';
 
-function groupClass(group: Group, base: boolean, hot: boolean, ctx: BlockContext): string {
+interface HoverUnit {
+  key: string;
+  base: string;
+  members: string[];
+  hover: HoverLook;
+  box: Frame;
+}
+
+const area = (f: Frame) => f.w * f.h;
+
+function hoverUnits(page: Page, layout: Layout, groups: Group[]): HoverUnit[] {
+  const grouped = new Set(groups.flatMap((g) => g.members));
+  const units: HoverUnit[] = groups
+    .filter((g) => g.interact && g.interact.hover !== 'none')
+    .map((g) => ({
+      key: g.id,
+      base: baseOf(page, g, layout),
+      members: g.members,
+      hover: g.interact!.hover,
+      box: groupFrame(page, g, layout),
+    }));
+  const taken = new Set(grouped);
+  page.blocks.forEach((b, i) => {
+    const hover = b.interact?.hover ?? 'none';
+    if (hover === 'none' || taken.has(b.id) || b.type === 'button') return;
+    const box = frameFor(page, b, layout);
+    const riders = page.blocks
+      .slice(i + 1)
+      .filter((o) => {
+        if (taken.has(o.id) || isHiddenPopup(o)) return false;
+        const f = frameFor(page, o, layout);
+        return area(f) < area(box) && centreInside(box, f);
+      })
+      .map((o) => o.id);
+    if (!riders.length) return;
+    riders.forEach((id) => taken.add(id));
+    units.push({ key: b.id, base: b.id, members: [b.id, ...riders], hover, box });
+  });
+  return units;
+}
+
+function groupClass(group: Group, base: boolean, ctx: BlockContext): string {
   const i = group.interact;
-  if (!i) return '';
-  return [
-    hot && i.hover !== 'none' && `cp-g-${i.hover}`,
-    base && 'cp-gbase',
-    base && i.visited !== 'none' && ctx.clicked.includes(group.id) && `cp-visited-${i.visited}`,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  if (!i || !base || i.visited === 'none' || !ctx.clicked.includes(group.id)) return '';
+  return `cp-visited-${i.visited}`;
+}
+
+function hoverClass(unit: HoverUnit | undefined, id: string, hot: string | null): string {
+  if (!unit || hot !== unit.key) return '';
+  return `cp-g-${unit.hover}${unit.base === id ? ' cp-gbase' : ''}`;
 }
 
 function scaleOrigin(f: Frame, group: Frame): CSSProperties | undefined {
@@ -34,7 +75,7 @@ function scaleOrigin(f: Frame, group: Frame): CSSProperties | undefined {
   return { transformOrigin: `${x}% ${y}%` };
 }
 
-function objectClass(block: Block, ctx: BlockContext): string {
+function objectClass(block: Block, ctx: BlockContext, ownHover: boolean): string {
   const i = block.interact;
   const clickable = block.type !== 'button' && ctx.clickable.has(block.id);
   const round = block.type === 'shape' && block.shape === 'ellipse';
@@ -44,7 +85,7 @@ function objectClass(block: Block, ctx: BlockContext): string {
   return [
     'cp-obj',
     round && 'cp-round',
-    i.hover !== 'none' && `cp-hover-${i.hover}`,
+    ownHover && i.hover !== 'none' && `cp-hover-${i.hover}`,
     clickable && 'cp-click',
     picked && i.picked !== 'none' && i.picked !== 'dim' && `cp-picked-${i.picked}`,
     dimmed && 'cp-dim',
@@ -131,7 +172,8 @@ export function CanvasStage({
   const groups = groupsOf(page);
   const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
   const bases = new Set(groups.map((g) => baseOf(page, g, layout)));
-  const boxes = new Map(groups.map((g) => [g.id, groupFrame(page, g, layout)]));
+  const units = hoverUnits(page, layout, groups);
+  const unitOf = new Map(units.flatMap((u) => u.members.map((id) => [id, u] as const)));
   return (
     <div className={`cp-stagewrap cp-stagewrap-${layout}`}>
       <div
@@ -152,22 +194,24 @@ export function CanvasStage({
             if (own) ctx.click(b.id);
             if (viaGroup) ctx.click(g.id);
           };
+          const unit = unitOf.get(b.id);
           const look = [
-            g ? groupClass(g, bases.has(b.id), hot === g.id, ctx) : '',
+            g ? groupClass(g, bases.has(b.id), ctx) : '',
+            hoverClass(unit, b.id, hot),
             viaGroup && !own ? 'cp-click' : '',
           ].join(' ');
           return (
             <div
               key={b.id}
-              className={`${objectClass(b, ctx)} ${look} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) && !viaGroup ? ' cp-through' : ''}`}
+              className={`${objectClass(b, ctx, !unit)} ${look} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) && !viaGroup ? ' cp-through' : ''}`}
               style={{
                 ...frameStyle(frame, growsToFit(b)),
                 ...animStyle(b),
-                ...(g?.interact?.hover === 'scale' ? scaleOrigin(frame, boxes.get(g.id)!) : {}),
+                ...(unit?.hover === 'scale' ? scaleOrigin(frame, unit.box) : {}),
               }}
               onClick={clickable ? click : undefined}
-              onPointerEnter={g ? () => setHot(g.id) : undefined}
-              onPointerLeave={g ? () => setHot(null) : undefined}
+              onPointerEnter={unit ? () => setHot(unit.key) : undefined}
+              onPointerLeave={unit ? () => setHot(null) : undefined}
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}
               onKeyDown={

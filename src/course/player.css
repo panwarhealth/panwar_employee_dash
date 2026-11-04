@@ -528,7 +528,7 @@
 }
 .cp-hover-lift:hover {
   translate: 0 -0.3em;
-  box-shadow: 0 0.6em 1.2em rgba(0, 0, 0, 0.18);
+  filter: drop-shadow(0 0.5em 0.6em rgba(0, 0, 0, 0.2));
 }
 .cp-g-lift {
   translate: 0 -0.3em;
