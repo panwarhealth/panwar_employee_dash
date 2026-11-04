@@ -14,6 +14,7 @@ import {
   Underline,
 } from 'lucide-react';
 import { SIZES } from '@/course/typography';
+import { typeNonBreakingSpace } from './nbsp';
 import { FontOptions } from './fontContext';
 
 const toolClass = 'rounded p-1.5 text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple';
@@ -217,6 +218,7 @@ export function RichText({
           contentEditable
           suppressContentEditableWarning
           onInput={commit}
+          onKeyDown={typeNonBreakingSpace}
           onKeyUp={remember}
           onMouseUp={remember}
           onBlur={remember}

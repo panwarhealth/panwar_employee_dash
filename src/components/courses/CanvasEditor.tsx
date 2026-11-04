@@ -28,12 +28,23 @@ import { cn } from '@/lib/utils';
 import { InlineText } from './InlineText';
 
 const SAFE_ZONE_KEY = 'course-editor.show-safe-zone';
+const SNAP_KEY = 'course-editor.snap';
+const ZOOMS = [1, 1.5, 2, 3, 4];
+const STAGE_PX: Record<Layout, number> = { desktop: 960, phone: 360 };
 
-function readSafeZone(): boolean {
+function readFlag(key: string): boolean {
   try {
-    return localStorage.getItem(SAFE_ZONE_KEY) !== '0';
+    return localStorage.getItem(key) !== '0';
   } catch {
     return true;
+  }
+}
+
+function saveFlag(key: string, on: boolean) {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {
+    return;
   }
 }
 
@@ -116,7 +127,9 @@ export function CanvasEditor({
   const [drag, setDrag] = useState<Drag | null>(null);
   const [live, setLive] = useState<Frame | null>(null);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
-  const [showSafeZone, setShowSafeZone] = useState(readSafeZone);
+  const [showSafeZone, setShowSafeZone] = useState(() => readFlag(SAFE_ZONE_KEY));
+  const [snap, setSnap] = useState(() => readFlag(SNAP_KEY));
+  const [zoom, setZoom] = useState(1);
   const [editing, setEditing] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
@@ -258,7 +271,7 @@ export function CanvasEditor({
 
     if (drag.mode === 'move') {
       f = { ...o, x: o.x + dx, y: o.y + dy };
-      if (!e.altKey) {
+      if (snap && !e.altKey) {
         const others = page.blocks
           .filter((b) => b.id !== drag.id && !dragMembers?.includes(b.id))
           .map((b) => frameFor(page, b, layout));
@@ -331,27 +344,66 @@ export function CanvasEditor({
           Drag them into place, or copy positions from the other layout.
         </p>
       )}
-      <label className="relative z-30 flex items-center gap-1.5 text-xs text-ph-charcoal/50">
-        <input
-          type="checkbox"
-          checked={showSafeZone}
-          onChange={(e) => {
-            setShowSafeZone(e.target.checked);
-            try {
-              localStorage.setItem(SAFE_ZONE_KEY, e.target.checked ? '1' : '0');
-            } catch {
-              return;
-            }
-          }}
-        />
-        Show safe zone
-      </label>
+      <div className="sticky top-0 z-40 flex items-center gap-4 rounded-md bg-[#eceaef]/90 px-2 py-1 text-xs text-ph-charcoal/60">
+        <span className="flex items-center gap-1">
+          <button
+            type="button"
+            title="Zoom out"
+            disabled={zoom === ZOOMS[0]}
+            onClick={() => setZoom(ZOOMS[ZOOMS.indexOf(zoom) - 1])}
+            className="flex h-6 w-6 items-center justify-center rounded border border-ph-charcoal/20 bg-white text-sm font-semibold text-ph-charcoal hover:border-ph-purple hover:text-ph-purple disabled:opacity-40"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            title="Back to fit"
+            onClick={() => setZoom(1)}
+            className="w-12 text-center tabular-nums hover:text-ph-purple"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            title="Zoom in"
+            disabled={zoom === ZOOMS[ZOOMS.length - 1]}
+            onClick={() => setZoom(ZOOMS[ZOOMS.indexOf(zoom) + 1])}
+            className="flex h-6 w-6 items-center justify-center rounded border border-ph-charcoal/20 bg-white text-sm font-semibold text-ph-charcoal hover:border-ph-purple hover:text-ph-purple disabled:opacity-40"
+          >
+            +
+          </button>
+        </span>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={snap}
+            onChange={(e) => {
+              setSnap(e.target.checked);
+              saveFlag(SNAP_KEY, e.target.checked);
+            }}
+          />
+          Snap to guides
+        </label>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={showSafeZone}
+            onChange={(e) => {
+              setShowSafeZone(e.target.checked);
+              saveFlag(SAFE_ZONE_KEY, e.target.checked);
+            }}
+          />
+          Show safe zone
+        </label>
+      </div>
       <div
         ref={stage}
         className={cn(
-          'cp w-full [&_.cp-stage]:overflow-visible',
-          layout === 'phone' ? 'max-w-[360px]' : 'max-w-[960px]',
+          'cp [&_.cp-stage]:overflow-visible',
+          zoom === 1 ? 'w-full' : 'mx-auto shrink-0 self-start',
+          zoom === 1 && (layout === 'phone' ? 'max-w-[360px]' : 'max-w-[960px]'),
         )}
+        style={zoom === 1 ? undefined : { width: STAGE_PX[layout] * zoom }}
         onPointerMove={move}
         onPointerUp={end}
         onPointerDown={() => {
@@ -514,7 +566,7 @@ export function CanvasEditor({
       ) : (
         <p className="relative z-30 text-xs text-ph-charcoal/50">
           Drag to move, corners to resize, top handle to rotate. Shift-click to select several and
-          Ctrl+G to group them. Arrow keys nudge, hold Alt to stop snapping.
+          Ctrl+G to group them. Arrow keys nudge.
         </p>
       )}
     </div>
