@@ -5,6 +5,8 @@ const MAX_SWATCHES = 10;
 
 export const CourseColours = createContext<string[]>([]);
 
+export const Dropper = createContext<(() => Promise<string | undefined>) | null>(null);
+
 const gradientColours = (g: Gradient | undefined) => g?.stops.map((s) => s.colour) ?? [];
 
 function blockColours(b: Block): (string | undefined)[] {

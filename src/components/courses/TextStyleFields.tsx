@@ -1,7 +1,8 @@
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
+import { Pipette } from 'lucide-react';
 import type { Border, Gradient, Shadow, TextStyle } from '@/course/doc';
 import { gradientCss, SIZES } from '@/course/typography';
-import { CourseColours } from './colourContext';
+import { CourseColours, Dropper } from './colourContext';
 import { FontOptions } from './fontContext';
 import { Field, NumberBox, Select, Toggle } from './fields';
 
@@ -45,13 +46,36 @@ function ColourPicker({
   value: string | undefined;
   onChange: (v: string) => void;
 }) {
+  const pick = useContext(Dropper);
+  const [picking, setPicking] = useState(false);
   return (
-    <input
-      type="color"
-      value={value && /^#[0-9a-f]{6}$/i.test(value) ? value : '#2f3030'}
-      onChange={(e) => onChange(e.target.value.toUpperCase())}
-      className="h-8 w-10 shrink-0 cursor-pointer rounded border border-ph-charcoal/20"
-    />
+    <span className="flex shrink-0 items-center gap-1">
+      <input
+        type="color"
+        value={value && /^#[0-9a-f]{6}$/i.test(value) ? value : '#2f3030'}
+        onChange={(e) => onChange(e.target.value.toUpperCase())}
+        className="h-8 w-10 cursor-pointer rounded border border-ph-charcoal/20"
+      />
+      {pick && (
+        <button
+          type="button"
+          title="Pick a colour from the page"
+          disabled={picking}
+          onClick={async () => {
+            setPicking(true);
+            try {
+              const colour = await pick();
+              if (colour) onChange(colour);
+            } finally {
+              setPicking(false);
+            }
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded border border-ph-charcoal/20 text-ph-charcoal/70 hover:border-ph-purple hover:text-ph-purple disabled:cursor-wait disabled:opacity-50"
+        >
+          <Pipette size={15} />
+        </button>
+      )}
+    </span>
   );
 }
 

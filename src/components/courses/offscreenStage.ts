@@ -4,6 +4,24 @@ import { createRoot } from 'react-dom/client';
 import { CanvasStage } from '@/course/canvas';
 import type { CourseDoc, Layout, Page } from '@/course/doc';
 import { editContext } from '@/course/editContext';
+import { mediaUrls } from '@/course/exportZip';
+
+export async function withLocalMedia<T>(
+  doc: CourseDoc,
+  fetchMedia: (url: string) => Promise<Blob>,
+  render: (doc: CourseDoc) => Promise<T>,
+): Promise<T> {
+  const local = await Promise.all(
+    mediaUrls(doc).map(async (url) => [url, URL.createObjectURL(await fetchMedia(url))] as const),
+  );
+  let json = JSON.stringify(doc);
+  for (const [url, blobUrl] of local) json = json.split(url).join(blobUrl);
+  try {
+    return await render(JSON.parse(json) as CourseDoc);
+  } finally {
+    for (const [, blobUrl] of local) URL.revokeObjectURL(blobUrl);
+  }
+}
 
 export const STAGE_WIDTH: Record<Layout, number> = { desktop: 960, phone: 360 };
 
