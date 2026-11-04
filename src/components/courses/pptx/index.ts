@@ -84,7 +84,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
     return themes.get(target)!;
   };
 
-  const media: Record<string, Blob> = {};
+  const media: Record<string, File> = {};
   const light: Record<string, boolean> = {};
   const slides: DeckSlide[] = [];
 

@@ -24,3 +24,31 @@ export async function isLightArtwork(blob: Blob): Promise<boolean> {
     URL.revokeObjectURL(url);
   }
 }
+
+const MAX_SIDE = 1920;
+const SMALL_ENOUGH = 500_000;
+
+const opaque = (data: Uint8ClampedArray) => {
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return false;
+  return true;
+};
+
+export async function shrinkImage(file: File): Promise<File> {
+  if (!/^image\/(png|jpeg)$/.test(file.type) || file.size <= SMALL_ENOUGH) return file;
+  const img = await createImageBitmap(file).catch(() => null);
+  if (!img) return file;
+  const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return file;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  img.close();
+  const jpeg =
+    file.type === 'image/jpeg' || opaque(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
+  const type = jpeg ? 'image/jpeg' : 'image/png';
+  const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, type, 0.85));
+  if (!blob || blob.size >= file.size) return file;
+  return new File([blob], file.name.replace(/\.\w+$/, jpeg ? '.jpg' : '.png'), { type });
+}

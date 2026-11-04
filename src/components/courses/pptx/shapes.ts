@@ -1,6 +1,6 @@
 import type JSZip from 'jszip';
 import { round1 } from '@/course/geometry';
-import { isLightArtwork } from './artwork';
+import { isLightArtwork, shrinkImage } from './artwork';
 import { inheritedChain, placeholderOf } from './placeholders';
 import { readText, VALIGN, type TextStyles } from './text';
 import { borderOf, colourOf, effectShadow, fillOf, gradientOf, shadowOf } from './theme';
@@ -37,7 +37,7 @@ export interface SlideContext {
   styles: TextStyles;
   layout?: Part;
   master?: Part;
-  media: Record<string, Blob>;
+  media: Record<string, File>;
   light: Record<string, boolean>;
   shapes: DeckShape[];
   images: DeckImage[];
@@ -367,9 +367,11 @@ async function readPicture(ctx: SlideContext, el: Element, t: Transform, owner: 
   if (!target || !USABLE_MEDIA.test(target)) return;
   const name = target.split('/').pop()!;
   if (!ctx.media[name]) {
-    ctx.media[name] = new Blob([await ctx.zip.file(target)!.async('arraybuffer')], {
-      type: MIME[name.split('.').pop()!.toLowerCase()],
-    });
+    ctx.media[name] = await shrinkImage(
+      new File([await ctx.zip.file(target)!.async('arraybuffer')], name, {
+        type: MIME[name.split('.').pop()!.toLowerCase()],
+      }),
+    );
     ctx.light[name] = await isLightArtwork(ctx.media[name]);
   }
   const spPr = child(el, P, 'spPr');

@@ -2,6 +2,7 @@ import { useRef, useState, type InputHTMLAttributes, type ReactNode } from 'reac
 import { uploadMedia } from '@/api/courses';
 import type { Corners } from '@/course/doc';
 import { showNbsp } from './nbsp';
+import { shrinkImage } from './pptx/artwork';
 import { cn } from '@/lib/utils';
 
 const inputClass =
@@ -193,8 +194,9 @@ export function MediaInput({
     setBusy(true);
     setError(null);
     try {
-      const { url } = await uploadMedia(courseId, file);
-      onChange(url, file);
+      const small = await shrinkImage(file);
+      const { url } = await uploadMedia(courseId, small);
+      onChange(url, small);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed');
     } finally {

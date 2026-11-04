@@ -140,8 +140,7 @@ export function useCourseAssistant(
       const urls: Record<string, string> = {};
       for (const [i, name] of names.entries()) {
         setStatus(`Uploading pictures (${i + 1} of ${names.length})`);
-        const blob = deck.media[name];
-        urls[name] = (await uploadMedia(courseId, new File([blob], name, { type: blob.type }))).url;
+        urls[name] = (await uploadMedia(courseId, deck.media[name])).url;
       }
       const doc = docRef.current;
       const imported = await importDeck(deck, urls, doc, setStatus);

@@ -121,5 +121,5 @@ export interface Deck {
   widthPt: number;
   heightPt: number;
   slides: DeckSlide[];
-  media: Record<string, Blob>;
+  media: Record<string, File>;
 }
