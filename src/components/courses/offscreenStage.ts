@@ -21,7 +21,11 @@ export async function withStage<T>(
   page: Page,
   layout: Layout,
   read: (stage: HTMLElement) => T | Promise<T>,
-  { hidden, className = '' }: { hidden?: Set<string>; className?: string } = {},
+  {
+    hidden,
+    className = '',
+    showFeedback = false,
+  }: { hidden?: Set<string>; className?: string; showFeedback?: boolean } = {},
 ): Promise<T> {
   const host = document.createElement('div');
   host.className = `cp ${className}`;
@@ -31,7 +35,14 @@ export async function withStage<T>(
   const root = createRoot(host);
   try {
     flushSync(() =>
-      root.render(createElement(CanvasStage, { page, layout, ctx: editContext(doc), hidden })),
+      root.render(
+        createElement(CanvasStage, {
+          page,
+          layout,
+          ctx: { ...editContext(doc), showFeedback },
+          hidden,
+        }),
+      ),
     );
     await settle(host);
     return await read(host.querySelector<HTMLElement>('.cp-stage')!);

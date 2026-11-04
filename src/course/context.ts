@@ -17,6 +17,7 @@ export interface ResultsData {
 
 export interface BlockContext {
   edit: boolean;
+  showFeedback?: boolean;
   answers: Record<string, Answer>;
   answer(blockId: string, selected: string[], correct: boolean): void;
   next(): void;

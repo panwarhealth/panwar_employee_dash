@@ -42,7 +42,12 @@ function QuestionFrame({
   onReset: () => void;
   children: (state: { locked: boolean; submitted: boolean }) => ReactNode;
 }) {
-  const [submitted, setSubmitted] = useState(!!ctx.answers[block.id]);
+  const [answered, setSubmitted] = useState(!!ctx.answers[block.id]);
+  const submitted = answered || !!ctx.showFeedback;
+  const shownCorrect = correct && !ctx.showFeedback;
+  const longest = [block.feedbackCorrect, block.feedbackWrong].reduce((a, b) =>
+    b.length > a.length ? b : a,
+  );
   const locked = submitted || ctx.edit;
   return (
     <div className="cp-check">
@@ -51,10 +56,10 @@ function QuestionFrame({
       {children({ locked, submitted })}
       {submitted ? (
         <div className="cp-fbrow">
-          <div className={`cp-fb ${correct ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
-            {correct ? block.feedbackCorrect : block.feedbackWrong}
+          <div className={`cp-fb ${shownCorrect ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
+            {ctx.showFeedback ? longest : correct ? block.feedbackCorrect : block.feedbackWrong}
           </div>
-          {!correct && (
+          {!shownCorrect && (
             <button
               type="button"
               className="cp-btn cp-btn-outline"

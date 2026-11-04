@@ -9,8 +9,13 @@ const offscreen = <T>(
   layout: Layout,
   read: (stage: DOMRect, objects: Element[]) => T,
 ) =>
-  withStage(doc, page, layout, (stage) =>
-    read(stage.getBoundingClientRect(), Array.from(stage.querySelectorAll(':scope > .cp-obj'))),
+  withStage(
+    doc,
+    page,
+    layout,
+    (stage) =>
+      read(stage.getBoundingClientRect(), Array.from(stage.querySelectorAll(':scope > .cp-obj'))),
+    { showFeedback: true },
   );
 
 export const measureHeights = (doc: CourseDoc, page: Page, layout: Layout) =>

@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Monitor, Redo2, Settings, Smartphone, Sparkles, Undo2 } from 'lucide-react';
 import { CanvasEditor } from '@/components/courses/CanvasEditor';
+import { relayout } from '@/components/courses/deckToPages';
 import { getCourse } from '@/api/courses';
 import { Button } from '@/components/ui/button';
 import { AddBlockMenu } from '@/components/courses/AddBlockMenu';
@@ -58,6 +59,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const save = useCourseAutosave(courseId, doc);
   const assistant = useCourseAssistant(courseId, doc, setDoc);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [refitting, setRefitting] = useState(false);
 
   const page = doc.pages.find((p) => p.id === pageId) ?? doc.pages[0];
   const layout: Layout = doc.screens === 'both' ? (phone ? 'phone' : 'desktop') : doc.screens;
@@ -178,6 +180,28 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 AI assistant
+              </button>
+              <button
+                type="button"
+                disabled={refitting}
+                title="Lay out every page again for desktop and phone"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      'Lay out every page again for desktop and phone? Question boxes get room for their feedback. Ctrl+Z undoes it.',
+                    )
+                  )
+                    return;
+                  setRefitting(true);
+                  try {
+                    setDoc((await relayout(doc)).doc);
+                  } finally {
+                    setRefitting(false);
+                  }
+                }}
+                className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-50"
+              >
+                {refitting ? 'Re-fitting…' : 'Re-fit layout'}
               </button>
               <button
                 type="button"
