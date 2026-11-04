@@ -100,7 +100,12 @@ function freshState(doc: CourseDoc): PlayState {
   };
 }
 
-const hubPages = (doc: CourseDoc) => new Set(doc.pages.flatMap(linkedPages));
+function hubsOf(doc: CourseDoc): Map<string, string> {
+  const hubs = new Map<string, string>();
+  for (const p of doc.pages)
+    for (const id of linkedPages(p)) if (!hubs.has(id)) hubs.set(id, p.id);
+  return hubs;
+}
 
 const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
 
@@ -143,7 +148,7 @@ export function Player({
     () => doc.pages.filter((p) => !(state.skip ?? []).includes(p.id)),
     [doc.pages, state.skip],
   );
-  const visitedFromHub = useMemo(() => hubPages(doc), [doc]);
+  const hubOf = useMemo(() => hubsOf(doc), [doc]);
   const index = Math.max(
     0,
     pages.findIndex((p) => p.id === state.pageId),
@@ -193,12 +198,13 @@ export function Player({
   };
 
   const backToHub = () => {
-    if (!state.hub || state.hub === page.id) return false;
-    go(state.hub);
+    const hub = state.hub && state.hub !== page.id ? state.hub : hubOf.get(page.id);
+    if (!hub || hub === page.id) return false;
+    go(hub);
     return true;
   };
 
-  const step = (from: Page[]) => from.find((p) => !visitedFromHub.has(p.id));
+  const step = (from: Page[]) => from.find((p) => !hubOf.has(p.id));
 
   const next = () => {
     if (backToHub()) return;
