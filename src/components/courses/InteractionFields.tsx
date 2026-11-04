@@ -13,6 +13,7 @@ import {
 } from '@/course/doc';
 import { ConditionsEditor } from './ConditionsEditor';
 import { Select, TextInput, Toggle } from './fields';
+import { HOVER_LOOKS, VISITED_LOOKS } from './interactionLooks';
 
 const sectionClass = 'mt-1 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
@@ -38,18 +39,7 @@ export function InteractionFields({
   return (
     <>
       <h4 className={sectionClass}>States</h4>
-      <Select
-        label="On hover"
-        value={i.hover}
-        options={[
-          { value: 'none', label: 'None' },
-          { value: 'scale', label: 'Scale up 105%' },
-          { value: 'glow', label: 'Glow' },
-          { value: 'lift', label: 'Lift with shadow' },
-          { value: 'border', label: 'Border colour' },
-        ]}
-        onChange={(hover) => set({ hover })}
-      />
+      <Select label="On hover" value={i.hover} options={HOVER_LOOKS} onChange={(hover) => set({ hover })} />
       {pickable && (
         <>
           <Select
@@ -73,11 +63,7 @@ export function InteractionFields({
       <Select
         label="When visited"
         value={i.visited}
-        options={[
-          { value: 'none', label: 'No change' },
-          { value: 'fade', label: 'Fade to 60%' },
-          { value: 'tick', label: 'Show a tick' },
-        ]}
+        options={VISITED_LOOKS}
         onChange={(visited) => set({ visited })}
       />
       {block.type === 'button' && (

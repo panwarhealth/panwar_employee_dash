@@ -1,5 +1,5 @@
 import type { Block, CourseDoc, Frame, HeadingBlock, Page, TextBlock } from '@/course/doc';
-import { isHiddenPopup } from '@/course/doc';
+import { groupsOf, isHiddenPopup } from '@/course/doc';
 import {
   bounds,
   centreInside,
@@ -141,6 +141,8 @@ function reflows(b: Block): boolean {
   return !isRound(b) && (w >= 40 || blockText(b).length > 60);
 }
 
+const TOUCH = 1;
+
 export function phoneClusters(page: Page): Cluster[] {
   const blocks = page.blocks.filter((b) => b.frames?.desktop && !isHiddenPopup(b));
   const byId = new Map(blocks.map((b) => [b.id, b]));
@@ -161,10 +163,22 @@ export function phoneClusters(page: Page): Cluster[] {
       return (held.length >= 2 || (card && holdsText)) && held.length >= others.length * 0.6;
     });
   const flows = (id: string) => FLOWING.has(byId.get(id)!.type);
+  const near = (a: string, b: string) => {
+    const [p, q] = [desk(a), desk(b)];
+    const gx = Math.max(0, q.x - (p.x + p.w), p.x - (q.x + q.w));
+    const gy = Math.max(0, q.y - (p.y + p.h), p.y - (q.y + q.h));
+    return gx <= TOUCH && gy <= TOUCH;
+  };
+  const compact = groupsOf(page)
+    .map((g) => ({ ...g, members: g.members.filter((id) => byId.has(id)) }))
+    .filter((g) => g.members.length > 1 && linkedGroups(g.members, near).length === 1);
+  const groupId = new Map(compact.flatMap((g) => g.members.map((id) => [id, g.id])));
+  const together = (a: string, b: string) => !!groupId.get(a) && groupId.get(a) === groupId.get(b);
   const linked = (a: string, b: string) =>
-    flows(a) || flows(b)
+    together(a, b) ||
+    (flows(a) || flows(b)
       ? (holds(a) && inside(a, b)) || (holds(b) && inside(b, a))
-      : overlapShare(desk(a), desk(b)) > 0.1;
+      : overlapShare(desk(a), desk(b)) > 0.1);
   const build = (ids: string[]): Cluster[] => {
     const groups = linkedGroups(ids, linked).map((g) => ({ ids: g, box: bounds(g.map(desk)) }));
     const out: Cluster[] = [];

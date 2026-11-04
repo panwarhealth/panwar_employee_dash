@@ -1,5 +1,5 @@
 import { layoutsFor } from '@/course/canvasLayout';
-import { isHiddenPopup, isQuestion, type CourseDoc, type Page } from '@/course/doc';
+import { groupsOf, isHiddenPopup, isQuestion, type CourseDoc, type Page } from '@/course/doc';
 import { overlapShare } from '@/course/geometry';
 import { pageFitWarnings } from './pageFit';
 
@@ -12,7 +12,7 @@ export interface ToolOutcome {
 
 function linkWarnings(doc: CourseDoc, page: Page): string[] {
   const warnings: string[] = [];
-  const blockIds = new Set(page.blocks.map((b) => b.id));
+  const blockIds = new Set([...page.blocks.map((b) => b.id), ...groupsOf(page).map((g) => g.id)]);
   const pageIds = new Set(doc.pages.map((p) => p.id));
   const varIds = new Set(doc.variables.map((v) => v.id));
   const needBlock = (id: string, where: string) =>

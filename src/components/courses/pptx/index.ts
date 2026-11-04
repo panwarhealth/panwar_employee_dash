@@ -112,6 +112,7 @@ export async function readPptx(file: Blob): Promise<Deck> {
       diagrams: [],
       drawings: [],
       order: [],
+      groups: 0,
     };
     if (master && showsMaster(layout) && showsMaster(slide))
       await walkTree(ctx, spTree(master), IDENTITY, master, true);

@@ -6,6 +6,7 @@ import {
   type ButtonAction,
   type ButtonBlock,
   type CourseDoc,
+  type Group,
   type Page,
   type Trigger,
   type Variable,
@@ -85,12 +86,13 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'update_page',
     description:
-      "Change a page's title, triggers, pick rule or transition. triggers replaces the whole trigger list.",
+      "Change a page's title, triggers, groups, pick rule or transition. triggers and groups each replace the whole list.",
     input_schema: obj(
       {
         page_id: { type: 'string' },
         title: { type: 'string' },
         triggers: { type: 'array', items: { type: 'object' } },
+        groups: { type: 'array', items: { type: 'object' } },
         pick: { type: ['object', 'null'] },
         transition: { type: 'string' },
       },
@@ -395,6 +397,7 @@ const updatePage: Handler = (doc, input) => {
       }));
       fillIds(p.triggers);
     }
+    if (Array.isArray(input.groups)) p.groups = input.groups as Group[];
     if (input.pick === null) delete p.pick;
     else if (input.pick && typeof input.pick === 'object') p.pick = input.pick as Page['pick'];
     if (typeof input.transition === 'string') p.transition = input.transition as Page['transition'];

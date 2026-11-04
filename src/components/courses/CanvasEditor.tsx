@@ -7,8 +7,22 @@ import {
 } from 'react';
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
-import { frameFor, frameStyle, growsToFit, MENU_CORNER } from '@/course/canvasLayout';
-import { isHiddenPopup, type CourseDoc, type Frame, type Layout, type Page } from '@/course/doc';
+import {
+  frameFor,
+  frameStyle,
+  groupFrame,
+  growsToFit,
+  MENU_CORNER,
+  refit,
+} from '@/course/canvasLayout';
+import {
+  groupsOf,
+  isHiddenPopup,
+  type CourseDoc,
+  type Frame,
+  type Layout,
+  type Page,
+} from '@/course/doc';
 import { cn } from '@/lib/utils';
 import { InlineText } from './InlineText';
 
@@ -48,6 +62,13 @@ interface Guides {
 const SNAP = 1;
 const MIN = 2;
 
+function selectionOf(page: Page, selectedId: string | null): string[] {
+  if (!selectedId) return [];
+  const group = groupsOf(page).find((g) => g.id === selectedId);
+  if (group) return group.members;
+  return page.blocks.some((b) => b.id === selectedId) ? [selectedId] : [];
+}
+
 function snapAxis(
   pos: number,
   size: number,
@@ -71,8 +92,11 @@ export function CanvasEditor({
   selectedId,
   onSelect,
   onFrame,
+  onFrames,
   onRemove,
   onText,
+  onGroup,
+  onUngroup,
 }: {
   doc: CourseDoc;
   page: Page;
@@ -80,8 +104,11 @@ export function CanvasEditor({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onFrame: (blockId: string, frame: Frame) => void;
-  onRemove: (blockId: string) => void;
+  onFrames: (frames: Record<string, Frame>) => void;
+  onRemove: (ids: string[]) => void;
   onText: (blockId: string, value: string) => void;
+  onGroup: (ids: string[]) => void;
+  onUngroup: (groupId: string) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -89,42 +116,66 @@ export function CanvasEditor({
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
   const [showSafeZone, setShowSafeZone] = useState(readSafeZone);
   const [editing, setEditing] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
 
+  const groups = groupsOf(page);
+  const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
+  const selectedGroup = groups.find((g) => g.id === selectedId) ?? null;
+  const dragGroup = drag ? groups.find((g) => g.id === drag.id) : undefined;
+  const selectedIds = selectionOf(page, selectedId);
   const [box, setBox] = useState<SelectionBox | null>(null);
 
+  useEffect(() => setPicked([]), [page.id]);
+
   useLayoutEffect(() => {
-    const el = selectedId
-      ? stage.current?.querySelector<HTMLElement>(`[data-obj="${CSS.escape(selectedId)}"]`)
-      : null;
+    const els = selectionOf(page, selectedId)
+      .map((id) => stage.current?.querySelector<HTMLElement>(`[data-obj="${CSS.escape(id)}"]`))
+      .filter((el): el is HTMLElement => !!el);
     const measure = () => {
-      const next = el
-        ? {
-            left: el.offsetLeft,
-            top: el.offsetTop,
-            width: el.offsetWidth,
-            height: el.offsetHeight,
-            transform: el.style.transform,
-          }
-        : null;
+      if (!els.length) return setBox((prev) => (prev ? null : prev));
+      const left = Math.min(...els.map((el) => el.offsetLeft));
+      const top = Math.min(...els.map((el) => el.offsetTop));
+      const next = {
+        left,
+        top,
+        width: Math.max(...els.map((el) => el.offsetLeft + el.offsetWidth)) - left,
+        height: Math.max(...els.map((el) => el.offsetTop + el.offsetHeight)) - top,
+        transform: els.length === 1 ? els[0].style.transform : '',
+      };
       setBox((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     };
     measure();
-    if (!el) return;
+    if (!els.length) return;
     const resize = new ResizeObserver(measure);
-    resize.observe(el);
+    els.forEach((el) => resize.observe(el));
     resize.observe(stage.current!);
     return () => resize.disconnect();
   }, [selectedId, live, page, layout, editing]);
 
   useEffect(() => {
-    if (!selected) return;
+    const ids = selectionOf(page, selectedId);
+    const group = groupsOf(page).find((g) => g.id === selectedId);
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        if (e.shiftKey && group) onUngroup(group.id);
+        else if (!e.shiftKey && picked.length > 1) {
+          onGroup(picked);
+          setPicked([]);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        setPicked([]);
+        onSelect(null);
+        return;
+      }
+      if (!ids.length) return;
       const step = e.shiftKey ? 5 : 0.5;
-      const f = frameFor(page, selected, layout);
       const moves: Record<string, [number, number]> = {
         ArrowLeft: [-step, 0],
         ArrowRight: [step, 0],
@@ -133,17 +184,23 @@ export function CanvasEditor({
       };
       if (moves[e.key]) {
         e.preventDefault();
-        onFrame(selected.id, { ...f, x: f.x + moves[e.key][0], y: f.y + moves[e.key][1] });
+        const [dx, dy] = moves[e.key];
+        onFrames(
+          Object.fromEntries(
+            ids.map((id) => {
+              const f = frameFor(page, page.blocks.find((b) => b.id === id)!, layout);
+              return [id, { ...f, x: f.x + dx, y: f.y + dy }];
+            }),
+          ),
+        );
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        onRemove(selected.id);
-      } else if (e.key === 'Escape') {
-        onSelect(null);
+        onRemove(ids);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, page, layout, onFrame, onRemove, onSelect]);
+  }, [selectedId, picked, page, layout, onFrames, onRemove, onSelect, onGroup, onUngroup]);
 
   const toPct = (e: { clientX: number; clientY: number }) => {
     const r = stage.current!.getBoundingClientRect();
@@ -154,14 +211,29 @@ export function CanvasEditor({
     };
   };
 
+  const pick = (id: string) => {
+    const g = groupBy.get(id);
+    const add = g && selectedId !== id ? g.members : [id];
+    const current = picked.length ? picked : selectedIds;
+    const has = add.every((x) => current.includes(x));
+    setPicked(has ? current.filter((x) => !add.includes(x)) : [...new Set([...current, ...add])]);
+    onSelect(null);
+  };
+
   const begin = (e: ReactPointerEvent, id: string, mode: Mode) => {
     e.stopPropagation();
     if (e.button !== 0) return;
-    onSelect(id);
-    const block = page.blocks.find((b) => b.id === id)!;
+    if (mode === 'move' && e.shiftKey) return pick(id);
+    setPicked([]);
+    const g = groupBy.get(id);
+    const target = mode === 'move' && g && selectedId !== id ? g.id : id;
+    onSelect(target);
+    const group = groups.find((x) => x.id === target);
+    const block = page.blocks.find((b) => b.id === target);
+    const orig = group ? groupFrame(page, group, layout) : frameFor(page, block!, layout);
     const p = toPct(e);
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    setDrag({ id, mode, startX: p.x, startY: p.y, orig: frameFor(page, block, layout) });
+    setDrag({ id: target, mode, startX: p.x, startY: p.y, orig });
   };
 
   const move = (e: ReactPointerEvent) => {
@@ -177,7 +249,7 @@ export function CanvasEditor({
       f = { ...o, x: o.x + dx, y: o.y + dy };
       if (!e.altKey) {
         const others = page.blocks
-          .filter((b) => b.id !== drag.id)
+          .filter((b) => b.id !== drag.id && !dragGroup?.members.includes(b.id))
           .map((b) => frameFor(page, b, layout));
         const sx = snapAxis(f.x, f.w, [
           0,
@@ -216,7 +288,16 @@ export function CanvasEditor({
   };
 
   const end = () => {
-    if (drag && live) onFrame(drag.id, live);
+    if (drag && live && dragGroup)
+      onFrames(
+        Object.fromEntries(
+          dragGroup.members.map((id) => {
+            const f = frameFor(page, page.blocks.find((b) => b.id === id)!, layout);
+            return [id, refit(f, drag.orig, live)];
+          }),
+        ),
+      );
+    else if (drag && live) onFrame(drag.id, live);
     setDrag(null);
     setLive(null);
     setGuides({ x: [], y: [] });
@@ -255,7 +336,10 @@ export function CanvasEditor({
         )}
         onPointerMove={move}
         onPointerUp={end}
-        onPointerDown={() => onSelect(null)}
+        onPointerDown={() => {
+          setPicked([]);
+          onSelect(null);
+        }}
       >
         <div className="shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
           <CanvasStage
@@ -264,7 +348,14 @@ export function CanvasEditor({
             ctx={editContext(doc)}
             renderObject={(b, frame, content) => {
               if (isHiddenPopup(b)) return null;
-              const f = drag?.id === b.id && live ? live : frame;
+              const f =
+                drag && live
+                  ? drag.id === b.id
+                    ? live
+                    : dragGroup?.members.includes(b.id)
+                      ? refit(frame, drag.orig, live)
+                      : frame
+                  : frame;
               const on = b.id === selectedId;
               const typing = editing === b.id && (b.type === 'heading' || b.type === 'text');
               const notes = page.notes?.filter((n) => n.blockId === b.id) ?? [];
@@ -278,10 +369,14 @@ export function CanvasEditor({
                       'cursor-move touch-none select-none [&>*:first-child]:pointer-events-none',
                     !b.frames?.[layout] && 'opacity-60 outline-dashed outline-1 outline-amber-500',
                     notes.length > 0 && !on && 'outline outline-2 outline-amber-400',
+                    picked.includes(b.id) && 'outline-dashed outline-2 outline-ph-purple',
                   )}
                   style={frameStyle(f, growsToFit(b))}
                   onPointerDown={typing ? undefined : (e) => begin(e, b.id, 'move')}
-                  onDoubleClick={growsToFit(b) ? () => setEditing(b.id) : undefined}
+                  onDoubleClick={() => {
+                    if (groupBy.has(b.id) && selectedId !== b.id) onSelect(b.id);
+                    else if (growsToFit(b)) setEditing(b.id);
+                  }}
                 >
                   {typing ? (
                     <InlineText
@@ -315,7 +410,7 @@ export function CanvasEditor({
                   className="pointer-events-none absolute inset-0 z-20"
                   style={{ boxShadow: '0 0 0 2000px rgba(236, 233, 240, 0.72)' }}
                 />
-                {selected && box && (
+                {(selected || selectedGroup) && box && (
                   <div
                     className="pointer-events-none absolute z-30"
                     style={{
@@ -330,7 +425,7 @@ export function CanvasEditor({
                     {(['nw', 'ne', 'sw', 'se'] as const).map((m) => (
                       <i
                         key={m}
-                        onPointerDown={(e) => begin(e, selected.id, m)}
+                        onPointerDown={(e) => begin(e, selectedId!, m)}
                         className={cn(
                           'pointer-events-auto absolute h-2.5 w-2.5 rounded-[2px] border-2 border-ph-purple bg-white',
                           m[0] === 'n' ? '-top-[7px]' : '-bottom-[7px]',
@@ -339,11 +434,13 @@ export function CanvasEditor({
                         )}
                       />
                     ))}
-                    <i
-                      title="Rotate"
-                      onPointerDown={(e) => begin(e, selected.id, 'rotate')}
-                      className="pointer-events-auto absolute -top-6 left-1/2 h-3 w-3 -translate-x-1/2 cursor-grab rounded-full border-2 border-ph-purple bg-white"
-                    />
+                    {selected && (
+                      <i
+                        title="Rotate"
+                        onPointerDown={(e) => begin(e, selected.id, 'rotate')}
+                        className="pointer-events-auto absolute -top-6 left-1/2 h-3 w-3 -translate-x-1/2 cursor-grab rounded-full border-2 border-ph-purple bg-white"
+                      />
+                    )}
                   </div>
                 )}
                 {showSafeZone && (
@@ -377,10 +474,31 @@ export function CanvasEditor({
           />
         </div>
       </div>
-      <p className="relative z-30 text-xs text-ph-charcoal/50">
-        Drag to move, corners to resize, top handle to rotate. Arrow keys nudge, Shift for bigger
-        steps, hold Alt to stop snapping.
-      </p>
+      {picked.length > 1 ? (
+        <p className="relative z-30 flex items-center gap-2 text-xs text-ph-charcoal/70">
+          {picked.length} objects selected.
+          <button
+            type="button"
+            onClick={() => {
+              onGroup(picked);
+              setPicked([]);
+            }}
+            className="rounded-md border border-ph-purple px-2 py-0.5 font-medium text-ph-purple hover:bg-ph-purple/5"
+          >
+            Group them
+          </button>
+          <span className="text-ph-charcoal/50">or press Ctrl+G</span>
+        </p>
+      ) : selectedGroup ? (
+        <p className="relative z-30 text-xs text-ph-charcoal/50">
+          Group selected. Double-click an object to work on it on its own. Ctrl+Shift+G ungroups.
+        </p>
+      ) : (
+        <p className="relative z-30 text-xs text-ph-charcoal/50">
+          Drag to move, corners to resize, top handle to rotate. Shift-click to select several and
+          Ctrl+G to group them. Arrow keys nudge, hold Alt to stop snapping.
+        </p>
+      )}
     </div>
   );
 }

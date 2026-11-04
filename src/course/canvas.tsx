@@ -1,11 +1,38 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
-import { isHiddenPopup, type Block, type Frame, type Layout, type Page } from './doc';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  groupsOf,
+  isHiddenPopup,
+  type Block,
+  type Frame,
+  type Group,
+  type Layout,
+  type Page,
+} from './doc';
 import { BlockView } from './blocks';
 import type { BlockContext } from './context';
-import { frameFor, frameStyle, growsToFit } from './canvasLayout';
+import { baseOf, frameFor, frameStyle, groupFrame, growsToFit } from './canvasLayout';
 import { animClass, animStyle } from './anim';
 import { centreInside } from './geometry';
 import { paintCss } from './typography';
+
+function groupClass(group: Group, base: boolean, hot: boolean, ctx: BlockContext): string {
+  const i = group.interact;
+  if (!i) return '';
+  return [
+    hot && i.hover !== 'none' && `cp-g-${i.hover}`,
+    base && 'cp-gbase',
+    base && i.visited !== 'none' && ctx.clicked.includes(group.id) && `cp-visited-${i.visited}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+function scaleOrigin(f: Frame, group: Frame): CSSProperties | undefined {
+  if (f.r) return undefined;
+  const x = ((group.x + group.w / 2 - f.x) / f.w) * 100;
+  const y = ((group.y + group.h / 2 - f.y) / f.h) * 100;
+  return { transformOrigin: `${x}% ${y}%` };
+}
 
 function objectClass(block: Block, ctx: BlockContext): string {
   const i = block.interact;
@@ -100,6 +127,11 @@ export function CanvasStage({
   leaving?: boolean;
 }) {
   const throughTo = clickThrough(page, layout, ctx.clickable);
+  const [hot, setHot] = useState<string | null>(null);
+  const groups = groupsOf(page);
+  const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
+  const bases = new Set(groups.map((g) => baseOf(page, g, layout)));
+  const boxes = new Map(groups.map((g) => [g.id, groupFrame(page, g, layout)]));
   return (
     <div className={`cp-stagewrap cp-stagewrap-${layout}`}>
       <div
@@ -112,19 +144,35 @@ export function CanvasStage({
           const view = <BlockView block={b} ctx={ctx} />;
           const content = growsToFit(b) ? view : <Fit>{view}</Fit>;
           if (renderObject) return renderObject(b, frame, content);
-          const clickable = b.type !== 'button' && ctx.clickable.has(b.id);
+          const g = groupBy.get(b.id);
+          const own = b.type !== 'button' && ctx.clickable.has(b.id);
+          const viaGroup = !!g && b.type !== 'button' && ctx.clickable.has(g.id);
+          const clickable = own || viaGroup;
+          const click = () => {
+            if (own) ctx.click(b.id);
+            if (viaGroup) ctx.click(g.id);
+          };
+          const look = [
+            g ? groupClass(g, bases.has(b.id), hot === g.id, ctx) : '',
+            viaGroup && !own ? 'cp-click' : '',
+          ].join(' ');
           return (
             <div
               key={b.id}
-              className={`${objectClass(b, ctx)} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) ? ' cp-through' : ''}`}
-              style={{ ...frameStyle(frame, growsToFit(b)), ...animStyle(b) }}
-              onClick={clickable ? () => ctx.click(b) : undefined}
+              className={`${objectClass(b, ctx)} ${look} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) && !viaGroup ? ' cp-through' : ''}`}
+              style={{
+                ...frameStyle(frame, growsToFit(b)),
+                ...animStyle(b),
+                ...(g?.interact?.hover === 'scale' ? scaleOrigin(frame, boxes.get(g.id)!) : {}),
+              }}
+              onClick={clickable ? click : undefined}
+              onPointerEnter={g ? () => setHot(g.id) : undefined}
+              onPointerLeave={g ? () => setHot(null) : undefined}
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}
               onKeyDown={
                 clickable
-                  ? (e) =>
-                      (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), ctx.click(b))
+                  ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), click())
                   : undefined
               }
             >

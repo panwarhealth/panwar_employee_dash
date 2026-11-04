@@ -44,6 +44,8 @@ export interface SlideContext {
   diagrams: DeckArea[];
   drawings: DeckDrawing[];
   order: DeckSlide['order'];
+  group?: number;
+  groups: number;
 }
 
 interface Transform {
@@ -87,7 +89,7 @@ function radiusOf(ctx: SlideContext, geom: Element | undefined, at: Placed) {
 }
 
 function addDrawing(ctx: SlideContext, drawing: DeckDrawing) {
-  ctx.order.push({ kind: 'drawing', index: ctx.drawings.length });
+  ctx.order.push({ kind: 'drawing', index: ctx.drawings.length, group: ctx.group });
   ctx.drawings.push(drawing);
 }
 
@@ -129,7 +131,7 @@ function drawShape(
 }
 
 function addShape(ctx: SlideContext, shape: DeckShape) {
-  ctx.order.push({ kind: 'shape', index: ctx.shapes.length });
+  ctx.order.push({ kind: 'shape', index: ctx.shapes.length, group: ctx.group });
   ctx.shapes.push(shape);
 }
 
@@ -376,7 +378,7 @@ async function readPicture(ctx: SlideContext, el: Element, t: Transform, owner: 
   const crop = src
     ? (['t', 'r', 'b', 'l'].map((k) => num(src, k) / 1000) as [number, number, number, number])
     : undefined;
-  ctx.order.push({ kind: 'image', index: ctx.images.length });
+  ctx.order.push({ kind: 'image', index: ctx.images.length, group: ctx.group });
   ctx.images.push({
     media: name,
     ...at,
@@ -413,7 +415,13 @@ export async function walkTree(
 ): Promise<void> {
   for (const el of Array.from(tree.children)) {
     if (el.getElementsByTagNameNS(P, 'cNvPr')[0]?.getAttribute('hidden') === '1') continue;
-    if (el.localName === 'grpSp') await walkTree(ctx, el, groupTransform(el, t), owner, fromLayout);
+    if (el.localName === 'grpSp') {
+      const outer = ctx.group;
+      const holdsGroups = Array.from(el.children).filter((c) => c.localName === 'grpSp').length > 1;
+      if (outer === undefined && !fromLayout && !holdsGroups) ctx.group = ctx.groups++;
+      await walkTree(ctx, el, groupTransform(el, t), owner, fromLayout);
+      ctx.group = outer;
+    }
     else if (el.localName === 'sp' || el.localName === 'cxnSp')
       readShape(ctx, el, t, owner, fromLayout);
     else if (el.localName === 'graphicFrame') readTable(ctx, el, t, owner, fromLayout);

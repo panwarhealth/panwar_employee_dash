@@ -1,4 +1,4 @@
-import type { Block, ButtonAction, CourseDoc, Page } from '@/course/doc';
+import { groupsOf, type Block, type ButtonAction, type CourseDoc, type Page } from '@/course/doc';
 import { blockText, htmlLines, stripTags } from '@/course/text';
 
 export interface Detail {
@@ -17,6 +17,11 @@ function labelOf(b: Block | undefined): string {
   return b.type === 'image' && b.alt ? `the picture "${b.alt}"` : `the ${b.type}`;
 }
 
+const groupName = (page: Page, id: string) => {
+  const g = groupsOf(page).find((x) => x.id === id);
+  return g && `the group "${g.name}"`;
+};
+
 function revealedBy(page: Page, blockId: string): string {
   const t = page.triggers.find(
     (t) =>
@@ -26,7 +31,7 @@ function revealedBy(page: Page, blockId: string): string {
   );
   const clicked = t?.when.kind === 'click' ? t.when.blockId : undefined;
   return clicked
-    ? `Opens on a click on ${labelOf(page.blocks.find((b) => b.id === clicked))}`
+    ? `Opens on a click on ${groupName(page, clicked) ?? labelOf(page.blocks.find((b) => b.id === clicked))}`
     : 'Shown later on this page';
 }
 

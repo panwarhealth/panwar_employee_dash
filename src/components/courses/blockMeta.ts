@@ -1,5 +1,5 @@
 import { blockText } from '@/course/text';
-import type { Block, BlockType } from '@/course/doc';
+import { groupsOf, type Block, type BlockType, type Page } from '@/course/doc';
 
 export interface BlockMeta {
   type: BlockType;
@@ -108,3 +108,11 @@ function labelText(b: Block): string {
 
 export const blockLabel = (b: Block): string =>
   labelText(b).replace(/\s+/g, ' ').trim() || blockName(b.type);
+
+export const objectOptions = (page: Page): { value: string; label: string }[] => [
+  ...groupsOf(page).map((g) => ({ value: g.id, label: `Group: ${g.name}` })),
+  ...page.blocks.map((b) => ({ value: b.id, label: blockLabel(b).slice(0, 40) })),
+];
+
+export const objectLabel = (page: Page, id: string): string | undefined =>
+  objectOptions(page).find((o) => o.value === id)?.label;

@@ -75,6 +75,52 @@ export const setFrame = (
     b.frames = { ...b.frames, [layout]: roundFrame(frame) };
   });
 
+export const setFrames = (
+  doc: CourseDoc,
+  pageId: string,
+  layout: Layout,
+  frames: Record<string, Frame>,
+) =>
+  updatePage(doc, pageId, (p) =>
+    p.blocks.forEach((b) => {
+      if (frames[b.id]) b.frames = { ...b.frames, [layout]: roundFrame(frames[b.id]) };
+    }),
+  );
+
+export const removeBlocks = (doc: CourseDoc, pageId: string, ids: string[]) =>
+  updatePage(doc, pageId, (p) => {
+    p.blocks = p.blocks.filter((b) => !ids.includes(b.id));
+    p.groups = (p.groups ?? [])
+      .map((g) => ({ ...g, members: g.members.filter((m) => !ids.includes(m)) }))
+      .filter((g) => g.members.length > 1);
+    if (!p.groups.length) delete p.groups;
+  });
+
+export const groupBlocks = (doc: CourseDoc, pageId: string, ids: string[], groupId: string) =>
+  updatePage(doc, pageId, (p) => {
+    const merged = (p.groups ?? []).filter((g) => g.members.some((m) => ids.includes(m)));
+    const wanted = new Set([...ids, ...merged.flatMap((g) => g.members)]);
+    const others = (p.groups ?? []).filter((g) => !merged.includes(g));
+    const names = new Set(others.map((g) => g.name));
+    let n = 1;
+    while (names.has(`Group ${n}`)) n++;
+    p.groups = [
+      ...others,
+      {
+        id: groupId,
+        name: `Group ${n}`,
+        members: p.blocks.filter((b) => wanted.has(b.id)).map((b) => b.id),
+        ...(merged[0]?.interact ? { interact: merged[0].interact } : {}),
+      },
+    ];
+  });
+
+export const ungroup = (doc: CourseDoc, pageId: string, groupId: string) =>
+  updatePage(doc, pageId, (p) => {
+    p.groups = (p.groups ?? []).filter((g) => g.id !== groupId);
+    if (!p.groups.length) delete p.groups;
+  });
+
 export const copyLayout = (doc: CourseDoc, pageId: string, from: Layout, to: Layout) =>
   updatePage(doc, pageId, (p) =>
     p.blocks.forEach((b) => {

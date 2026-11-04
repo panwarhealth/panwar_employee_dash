@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { Action, CourseDoc, Page, SetOp, Trigger, TriggerEvent } from '@/course/doc';
-import { blockLabel } from './blockMeta';
+import { blockLabel, objectOptions } from './blockMeta';
 import { ConditionsEditor } from './ConditionsEditor';
 import { Select, TextInput, Toggle } from './fields';
 import { ACTIONS, EVENTS, SET_OPS } from './triggerText';
@@ -67,7 +67,7 @@ export function TriggerWizard({
   onClose: () => void;
 }) {
   const [t, setT] = useState(initial);
-  const objects = page.blocks.map((b) => ({ value: b.id, label: blockLabel(b).slice(0, 40) }));
+  const objects = objectOptions(page);
   const vars = doc.variables.map((v) => ({ value: v.id, label: v.name }));
   const popups = page.blocks
     .filter((b) => b.type === 'popup')

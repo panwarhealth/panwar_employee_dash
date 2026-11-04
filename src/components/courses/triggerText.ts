@@ -8,7 +8,7 @@ import type {
   Trigger,
   TriggerEvent,
 } from '@/course/doc';
-import { blockLabel } from './blockMeta';
+import { objectLabel } from './blockMeta';
 
 export const ACTIONS: { value: Action['kind']; label: string }[] = [
   { value: 'next', label: 'Go to next page' },
@@ -59,10 +59,8 @@ const opSymbol: Record<CompareOp, string> = {
 const varName = (doc: CourseDoc, id: string) =>
   doc.variables.find((v) => v.id === id)?.name ?? 'missing variable';
 
-const objectName = (page: Page, id: string) => {
-  const b = page.blocks.find((x) => x.id === id);
-  return b ? blockLabel(b).slice(0, 30) : 'missing object';
-};
+const objectName = (page: Page, id: string) =>
+  objectLabel(page, id)?.slice(0, 30) ?? 'missing object';
 
 export function actionText(a: Action, doc: CourseDoc, page: Page): string {
   switch (a.kind) {

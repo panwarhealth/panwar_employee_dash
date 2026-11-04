@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import type { CourseDoc } from './doc';
-import { scoredQuestions } from './doc';
+import { groupsOf, scoredQuestions } from './doc';
 import { layoutsFor } from './canvasLayout';
 
 const MEDIA_URL = /https:\/\/[^"\s]+\/courses\/[0-9a-f]{32}\/[0-9a-f]{32}\.[a-z0-9]+/g;
@@ -57,7 +57,10 @@ export function preflight(doc: CourseDoc): Check[] {
     ...triggerActions,
     ...blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
   ];
-  const blockIds = new Set(blocks.map((b) => b.id));
+  const blockIds = new Set([
+    ...blocks.map((b) => b.id),
+    ...doc.pages.flatMap((p) => groupsOf(p).map((g) => g.id)),
+  ]);
   const deadLinks = targets.filter(
     (a) =>
       (a.kind === 'page' && !pageIds.has(a.pageId)) ||

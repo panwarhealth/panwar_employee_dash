@@ -1,8 +1,12 @@
 import {
+  groupsOf,
   hasPicks,
   newPickRule,
+  NO_INTERACTION,
   pickIds,
   type Block,
+  type Group,
+  type Interaction,
   type CourseDoc,
   type Frame,
   type Layout,
@@ -14,6 +18,7 @@ import { blockLabel, blockName } from './blockMeta';
 import { AnimFields } from './AnimFields';
 import { FrameFields } from './FrameFields';
 import { InteractionFields, PickRuleFields } from './InteractionFields';
+import { HOVER_LOOKS, VISITED_LOOKS } from './interactionLooks';
 import { TriggersPanel } from './TriggersPanel';
 import { Select, TextInput, Toggle } from './fields';
 import { SortableList } from './SortableList';
@@ -48,6 +53,14 @@ export function Inspector({
   canvas: CanvasControls;
 }) {
   const block = page.blocks.find((b) => b.id === selectedId) ?? null;
+  const group = groupsOf(page).find((g) => g.id === selectedId) ?? null;
+  const changeGroup = (fn: (g: Group) => void) =>
+    onPage((p) => {
+      const g = p.groups?.find((x) => x.id === group?.id);
+      if (g) fn(g);
+    });
+  const look = (patch: Partial<Interaction>) =>
+    changeGroup((g) => (g.interact = { ...NO_INTERACTION, ...g.interact, ...patch }));
   const last = page.blocks.length - 1;
   const items = [...page.blocks].reverse();
   const move = (from: number, to: number) => onMoveBlock(last - from, last - to);
@@ -160,6 +173,47 @@ export function Inspector({
         selectedId={selectedId}
         onChange={(triggers) => onPage((p) => (p.triggers = triggers))}
       />
+
+      {group && (
+        <div className="mt-4 flex flex-col gap-3 border-t border-ph-charcoal/10 pt-4">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
+            Group
+          </h4>
+          <TextInput
+            label="Name"
+            value={group.name}
+            onChange={(name) => changeGroup((g) => (g.name = name))}
+          />
+          <Select
+            label="On hover"
+            value={group.interact?.hover ?? 'none'}
+            options={HOVER_LOOKS}
+            onChange={(hover) => look({ hover })}
+          />
+          <Select
+            label="When visited"
+            value={group.interact?.visited ?? 'none'}
+            options={VISITED_LOOKS}
+            onChange={(visited) => look({ visited })}
+          />
+          <p className="text-xs text-ph-charcoal/60">
+            {group.members.length} objects move, hover and click as one. Give the group a trigger
+            above to make a click anywhere on it do something.
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              onPage((p) => {
+                p.groups = p.groups?.filter((g) => g.id !== group.id);
+                if (!p.groups?.length) delete p.groups;
+              })
+            }
+            className="self-start text-sm text-ph-charcoal/60 underline underline-offset-4 hover:text-ph-purple"
+          >
+            Ungroup
+          </button>
+        </div>
+      )}
 
       {block && (
         <div className="mt-4 flex flex-col gap-3 border-t border-ph-charcoal/10 pt-4">

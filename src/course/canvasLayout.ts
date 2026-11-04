@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import type { Block, BlockType, Frame, Layout, Page, Screens } from './doc';
+import type { Block, BlockType, Frame, Group, Layout, Page, Screens } from './doc';
+import { bounds, round1, type Box } from './geometry';
 
 export function layoutsFor(screens: Screens): Layout[] {
   if (screens === 'both') return ['desktop', 'phone'];
@@ -25,6 +26,33 @@ export const frameFor = (page: Page, block: Block, layout: Layout): Frame =>
   block.frames?.[layout] ?? autoFrame(page, block, layout);
 
 export const growsToFit = (b: Block) => b.type === 'heading' || b.type === 'text';
+
+export const membersOf = (page: Page, group: Group) =>
+  group.members.map((id) => page.blocks.find((b) => b.id === id)!);
+
+export function groupFrame(page: Page, group: Group, layout: Layout): Frame {
+  return { ...bounds(membersOf(page, group).map((b) => frameFor(page, b, layout))), r: 0 };
+}
+
+export function refit(f: Frame, from: Box, to: Box): Frame {
+  const kx = to.w / from.w;
+  const ky = to.h / from.h;
+  return {
+    ...f,
+    x: round1(to.x + (f.x - from.x) * kx),
+    y: round1(to.y + (f.y - from.y) * ky),
+    w: round1(f.w * kx),
+    h: round1(f.h * ky),
+  };
+}
+
+export function baseOf(page: Page, group: Group, layout: Layout): string {
+  const area = (b: Block) => {
+    const f = frameFor(page, b, layout);
+    return f.w * f.h;
+  };
+  return membersOf(page, group).reduce((a, b) => (area(b) > area(a) ? b : a)).id;
+}
 
 const zone = (start: number, size: number) => {
   const centre = start + size / 2;

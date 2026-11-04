@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  groupsOf,
   linkedPages,
   newPickRule,
   type Block,
@@ -230,10 +231,8 @@ export function Player({
     if (to) go(to.id);
   };
 
-  const markClicked = (b: Block) =>
-    setState((s) =>
-      s.clicked?.includes(b.id) ? s : { ...s, clicked: [...(s.clicked ?? []), b.id] },
-    );
+  const markClicked = (id: string) =>
+    setState((s) => (s.clicked?.includes(id) ? s : { ...s, clicked: [...(s.clicked ?? []), id] }));
 
   const act = (a: Action) => {
     if (a.kind === 'next') next();
@@ -295,6 +294,8 @@ export function Player({
   );
   const hidden = cueHidden(page, cueTimes);
   for (const b of page.blocks) if (!(state.vis?.[b.id] ?? !b.startHidden)) hidden.add(b.id);
+  for (const g of groupsOf(page))
+    if (state.vis?.[g.id] === false) for (const id of g.members) hidden.add(id);
 
   const blocked =
     page.blocks.some((b) => mustAnswer(b) && !answered(b, state)) ||
@@ -323,16 +324,16 @@ export function Player({
       }),
     next,
     act: (a, from) => {
-      if (from) markClicked(from);
+      if (from) markClicked(from.id);
       act(a);
     },
     picked,
     clicked: [...(state.clicked ?? []), ...leadsToSeen(page, state.visited)],
     picksCorrect: pickStatus(page, picked).correct,
     linksDone,
-    click: (b) => {
-      markClicked(b);
-      dispatch({ kind: 'click', blockId: b.id });
+    click: (id) => {
+      markClicked(id);
+      dispatch({ kind: 'click', blockId: id });
     },
     openPopup: setPopup,
     audioProgress: (blockId, seconds) =>

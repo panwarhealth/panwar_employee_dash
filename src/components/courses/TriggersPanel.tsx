@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { uid, type CourseDoc, type Page, type Trigger } from '@/course/doc';
-import { blockLabel } from './blockMeta';
+import { objectOptions } from './blockMeta';
 import { TriggerWizard } from './TriggerWizard';
 import { actionText, conditionText, eventText, triggerGroup } from './triggerText';
 
@@ -19,9 +19,9 @@ export function TriggersPanel({
   const [editing, setEditing] = useState<Trigger | null>(null);
   const groups = [
     { id: null as string | null, title: 'Page triggers' },
-    ...page.blocks
-      .filter((b) => page.triggers.some((t) => triggerGroup(t) === b.id))
-      .map((b) => ({ id: b.id as string | null, title: blockLabel(b).slice(0, 34) })),
+    ...objectOptions(page)
+      .filter((o) => page.triggers.some((t) => triggerGroup(t) === o.value))
+      .map((o) => ({ id: o.value as string | null, title: o.label.slice(0, 34) })),
   ].filter((g) => g.id !== null || page.triggers.some((t) => triggerGroup(t) === null));
 
   const save = (t: Trigger) => {

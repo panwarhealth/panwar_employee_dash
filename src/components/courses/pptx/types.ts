@@ -112,7 +112,7 @@ export interface DeckSlide {
   shapes: DeckShape[];
   images: DeckImage[];
   drawings: DeckDrawing[];
-  order: { kind: 'shape' | 'image' | 'drawing'; index: number }[];
+  order: { kind: 'shape' | 'image' | 'drawing'; index: number; group?: number }[];
   notes: string;
   comments: string[];
 }

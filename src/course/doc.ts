@@ -91,6 +91,14 @@ export interface Page {
   gradient?: Gradient;
   notes?: ReviewNote[];
   sideways?: boolean;
+  groups?: Group[];
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  members: string[];
+  interact?: Interaction;
 }
 
 export interface ReviewNote {
@@ -771,6 +779,16 @@ export const newPickRule = (): PickRule => ({
 });
 
 export const hasPicks = (page: Page) => pickIds(page).length > 0;
+
+export function groupsOf(page: Page): Group[] {
+  const ids = new Set(page.blocks.map((b) => b.id));
+  return (page.groups ?? [])
+    .map((g) => ({ ...g, members: g.members.filter((id) => ids.has(id)) }))
+    .filter((g) => g.members.length > 1);
+}
+
+export const groupOf = (page: Page, blockId: string): Group | undefined =>
+  groupsOf(page).find((g) => g.members.includes(blockId));
 
 export const linkedPages = (page: Page): string[] =>
   [

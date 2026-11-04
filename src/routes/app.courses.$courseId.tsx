@@ -15,7 +15,7 @@ import { PreviewModal } from '@/components/courses/PreviewModal';
 import { SettingsModal } from '@/components/courses/SettingsModal';
 import { VariablesModal } from '@/components/courses/VariablesModal';
 import { frameFor, newFrame } from '@/course/canvasLayout';
-import { newBlock, newPage, normalizeDoc, type CourseDoc, type Layout } from '@/course/doc';
+import { newBlock, newPage, normalizeDoc, uid, type CourseDoc, type Layout } from '@/course/doc';
 import * as ops from '@/course/edit';
 import { fontFaces, fontOptions } from '@/course/typography';
 import { CourseColours, courseColours } from '@/components/courses/colourContext';
@@ -66,8 +66,8 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const selectedBlock = page.blocks.find((b) => b.id === blockId) ?? null;
   const setFrame = (id: string, frame: Parameters<typeof ops.setFrame>[4]) =>
     setDoc((d) => ops.setFrame(d, page.id, id, layout, frame));
-  const removeBlock = (id: string) => {
-    setDoc((d) => ops.removeBlock(d, page.id, id));
+  const removeBlocks = (ids: string[]) => {
+    setDoc((d) => ops.removeBlocks(d, page.id, ids));
     setBlockId(null);
   };
   const selectPage = (id: string) => {
@@ -213,7 +213,17 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               selectedId={blockId}
               onSelect={setBlockId}
               onFrame={setFrame}
-              onRemove={removeBlock}
+              onFrames={(frames) => setDoc((d) => ops.setFrames(d, page.id, layout, frames))}
+              onRemove={removeBlocks}
+              onGroup={(ids) => {
+                const id = uid();
+                setDoc((d) => ops.groupBlocks(d, page.id, ids, id));
+                setBlockId(id);
+              }}
+              onUngroup={(id) => {
+                setDoc((d) => ops.ungroup(d, page.id, id));
+                setBlockId(null);
+              }}
               onText={(id, value) =>
                 setDoc((d) =>
                   ops.updateBlock(d, page.id, id, (b) => {
@@ -241,7 +251,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             setDoc((d) => ops.insertBlock(d, page.id, id, copy));
             setBlockId(copy.id);
           }}
-          onRemoveBlock={removeBlock}
+          onRemoveBlock={(id) => removeBlocks([id])}
           canvas={{
             layout,
             otherLayout,

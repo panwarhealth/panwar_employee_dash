@@ -530,6 +530,21 @@
   translate: 0 -0.3em;
   box-shadow: 0 0.6em 1.2em rgba(0, 0, 0, 0.18);
 }
+.cp-g-lift {
+  translate: 0 -0.3em;
+}
+.cp-gbase.cp-g-lift {
+  filter: drop-shadow(0 0.5em 0.6em rgba(0, 0, 0, 0.2));
+}
+.cp-g-scale {
+  scale: 1.05;
+}
+.cp-gbase.cp-g-glow {
+  filter: drop-shadow(0 0 0.6em var(--cp-accent));
+}
+.cp-gbase.cp-g-border {
+  outline: 0.2em solid var(--cp-accent);
+}
 .cp-hover-border:hover {
   outline: 0.2em solid var(--cp-accent);
 }

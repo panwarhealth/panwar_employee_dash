@@ -4,6 +4,7 @@ import type {
   Block,
   CourseDoc,
   Frame,
+  Group,
   HeadingBlock,
   ImageBlock,
   Layout,
@@ -29,13 +30,14 @@ import type { Deck, DeckShape, DeckSlide } from './pptx';
 
 const DESIGN_W = 960;
 
-type Item =
+type Item = { group?: number } & (
   | { kind: 'shape'; shape: DeckShape; block: HeadingBlock | TextBlock | ShapeBlock }
   | {
       kind: 'image';
       image: Box & { r: number; light: boolean };
       block: ImageBlock;
-    };
+    }
+);
 
 interface TableCell {
   id: string;
@@ -132,13 +134,14 @@ function slideItems(
       const hasWords = !!shape.text.trim();
       const id = makeId(hasWords ? 'text' : 'box');
       const block = hasWords ? shapeBlock(shape, id, pxPerPt) : panelBlock(shape, id, pxPerPt);
-      items.push({ kind: 'shape', shape, block });
+      items.push({ kind: 'shape', shape, block, group: entry.group });
       continue;
     }
     if (entry.kind === 'drawing') {
       const drawing = slide.drawings[entry.index];
       items.push({
         kind: 'image',
+        group: entry.group,
         image: { ...drawing, light: false },
         block: {
           id: makeId('shape'),
@@ -158,6 +161,7 @@ function slideItems(
     if (!src) continue;
     items.push({
       kind: 'image',
+      group: entry.group,
       image,
       block: {
         id: makeId('image'),
@@ -189,6 +193,20 @@ function slideItems(
     });
   }
   return items;
+}
+
+function deckGroups(
+  items: Item[],
+  frames: Map<string, Frame>,
+  makeId: (kind: string) => string,
+): Group[] {
+  const members = new Map<number, string[]>();
+  for (const item of items)
+    if (item.group !== undefined)
+      members.set(item.group, [...(members.get(item.group) ?? []), item.block.id]);
+  return [...members.values()]
+    .filter((ids) => ids.length > 1 && !ids.some((id) => isBackdrop(frames.get(id)!)))
+    .map((ids, i) => ({ id: makeId('group'), name: `Group ${i + 1}`, members: ids }));
 }
 
 function desktopFrames(items: Item[], deck: Deck): Map<string, Frame> {
@@ -277,11 +295,13 @@ function slideToPage(
         layout === 'desktop' ? { ...f, a: anchors.get(item.block.id) } : { ...f, a: 'c' };
     return { ...item.block, frames: placed } as Block;
   });
+  const groups = deckGroups(items, frames, idMaker(slide, taken));
   const page: Page = {
     id: `slide-${slide.number}`,
     title: pageTitle(items, slide),
     blocks,
     triggers: [],
+    ...(groups.length ? { groups } : {}),
     ...(slide.background && slide.background.toUpperCase() !== '#FFFFFF'
       ? { background: slide.background }
       : {}),
