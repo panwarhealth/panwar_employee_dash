@@ -315,7 +315,14 @@ export function CanvasEditor({
   };
 
   return (
-    <div className="flex w-full flex-col items-center gap-2">
+    <div
+      className="flex min-h-full w-full flex-col items-center gap-2 p-6"
+      onPointerDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        setPicked([]);
+        onSelect(null);
+      }}
+    >
       {missing > 0 && (
         <p className="relative z-30 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
           {missing === page.blocks.length

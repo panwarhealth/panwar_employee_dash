@@ -205,7 +205,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               </Button>
             </div>
           </div>
-          <div className="flex flex-1 justify-center overflow-auto p-6">
+          <div className="flex flex-1 justify-center overflow-auto">
             <CanvasEditor
               doc={doc}
               page={page}
