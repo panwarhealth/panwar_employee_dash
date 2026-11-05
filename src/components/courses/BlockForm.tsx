@@ -73,6 +73,15 @@ function AlignFields<B extends HeadingBlock | TextBlock>({
         ]}
         onChange={(v) => set((b) => (b.valign = v))}
       />
+      <div className="col-span-2">
+        <PaddingField
+          value={
+            block.padding ??
+            (block.fill || block.gradient || block.border ? BOX_PADDING : [0, 0, 0, 0])
+          }
+          onChange={(v) => set((b) => (b.padding = v))}
+        />
+      </div>
     </>
   );
 }
@@ -103,19 +112,6 @@ function BoxFields<B extends Boxed>({
         }
       />
       <BorderField value={block.border} onChange={(v) => set((b) => (b.border = v))} />
-      {full && (block.type === 'heading' || block.type === 'text') && (
-        <PaddingField
-          value={
-            block.padding ??
-            (block.fill || block.gradient || block.border ? BOX_PADDING : [0, 0, 0, 0])
-          }
-          onChange={(v) =>
-            set((b) => {
-              if (b.type === 'heading' || b.type === 'text') b.padding = v;
-            })
-          }
-        />
-      )}
       {full && !(block.type === 'shape' && block.shape === 'ellipse') && (
         <RadiusField
           value={block.radius}
