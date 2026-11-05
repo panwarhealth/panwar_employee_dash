@@ -10,7 +10,16 @@ import type {
   TextBlock,
 } from '@/course/doc';
 import { uid } from '@/course/doc';
-import { MediaInput, RadiusField, Select, TextArea, TextInput, Toggle } from './fields';
+import {
+  MediaInput,
+  PaddingField,
+  RadiusField,
+  Select,
+  TextArea,
+  TextInput,
+  Toggle,
+} from './fields';
+import { BOX_PADDING } from '@/course/typography';
 import { RichText } from './RichText';
 import { BorderField, PaintField, ShadowField, TextStyleFields } from './TextStyleFields';
 import {
@@ -72,6 +81,19 @@ function BoxFields<B extends Boxed>({
           onChange={(v) =>
             set((b) => {
               if (b.type === 'heading' || b.type === 'text') b.valign = v;
+            })
+          }
+        />
+      )}
+      {(block.type === 'heading' || block.type === 'text') && (
+        <PaddingField
+          value={
+            block.padding ??
+            (block.fill || block.gradient || block.border ? BOX_PADDING : [0, 0, 0, 0])
+          }
+          onChange={(v) =>
+            set((b) => {
+              if (b.type === 'heading' || b.type === 'text') b.padding = v;
             })
           }
         />

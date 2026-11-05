@@ -217,9 +217,12 @@ export function useCourseAssistant(
         },
         setStatus,
       );
-      log('activity', 'Polished spacing and sizes on every page');
-      if (failed.length)
-        log('error', `Couldn't polish these pages, so they're as imported: ${failed.join(', ')}.`);
+      if (!failed.length) log('activity', 'Polished spacing and sizes on every page');
+      else
+        log(
+          'error',
+          `Couldn't polish ${failed.length} pages, so they're as imported: ${failed.map((f) => f.pageId).join(', ')}. First error: ${failed[0].error}`,
+        );
       setStatus('Laying out the phone pages again');
       const relaid = await relayout(docRef.current);
       apply(relaid.doc);

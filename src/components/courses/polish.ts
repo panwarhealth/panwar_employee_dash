@@ -1,5 +1,5 @@
 import type { AssistantMessage, AssistantReply } from '@/api/courses';
-import type { Block, CourseDoc, Frame, Page, TextStyle } from '@/course/doc';
+import type { Block, CourseDoc, Frame, Insets, Page, TextStyle } from '@/course/doc';
 import { round1 } from '@/course/geometry';
 import { blockText } from '@/course/text';
 import * as ops from '@/course/edit';
@@ -8,6 +8,7 @@ import { snapshotWithBoxes, withLocalMedia } from './pageShot';
 
 const ROUNDS = 2;
 const AT_ONCE = 8;
+const TRIES = 2;
 const MIN_TEXT_PX = 10;
 const MAX_TEXT_PX = 96;
 const BODY_CHARS = 40;
@@ -16,6 +17,7 @@ const POLISH_SYSTEM = `You are a senior visual designer giving the final polish 
 
 - Icon buttons (round or square buttons holding one character like <, x, i, R, or a small icon): the character is about half the button's height and centred. Buttons with the same job are the same size everywhere on the page and line up with each other. Round buttons stay perfectly round (width = height).
 - Text buttons: the label has comfortable room around it, at least 12 px above and below and 24 px either side, and never crowds or overflows the button. Buttons on a page share one height and label size.
+- Text boxes with a background or border: the text has even, comfortable padding inside the box, never crammed against its edges. Icon buttons use padding 0 so the character centres.
 - Panels and cards: everything sitting on a panel is at least 24 px in from its edges. Text that starts together shares one left edge. A panel hugs its content: no big dead areas; shrink the panel or spread the content so the space is balanced.
 - Text: sizes follow a clear hierarchy (heading bigger than body). Never make body text smaller (make its box bigger instead); bring body text under 14 px up to the course's body size when there's room. Leave at least 12 px between a heading and the text under it and between separate blocks of text. Nothing touches, clips or unintentionally overlaps another object, and nothing leaves the stage.
 - Match the course standards you're given, so every page looks like part of the same course.
@@ -25,7 +27,7 @@ Keep the design: never change wording, colours, pictures or layer order, never d
 const TIDY_TOOL = {
   name: 'tidy',
   description:
-    'Adjust objects on the page. box is [x, y, width, height] in stage pixels; size is the font size in px; line_height is a multiple of the font size; radius is the corner radius in px. Send only what changes.',
+    'Adjust objects on the page. box is [x, y, width, height] in stage pixels; size is the font size in px; line_height is a multiple of the font size; radius is the corner radius in px; padding is the room between the edges of a text box and its text, [top, right, bottom, left] in px. Send only what changes.',
   input_schema: {
     type: 'object',
     properties: {
@@ -39,6 +41,7 @@ const TIDY_TOOL = {
             size: { type: 'number' },
             line_height: { type: 'number' },
             radius: { type: 'number' },
+            padding: { type: 'array', items: { type: 'number' } },
           },
           required: ['id'],
         },
@@ -54,9 +57,10 @@ interface Tidy {
   size?: unknown;
   line_height?: unknown;
   radius?: unknown;
+  padding?: unknown;
 }
 
-type Styled = Block & { textStyle?: TextStyle; radius?: number };
+type Styled = Block & { textStyle?: TextStyle; radius?: number; padding?: Insets };
 
 const pxBox = (f: Frame) => [
   Math.round((f.x / 100) * DESIGN.w),
@@ -105,6 +109,7 @@ function describe(page: Page, shown: Map<string, number[]>): string {
         b.textStyle?.size && `size ${b.textStyle.size}`,
         b.textStyle?.lineHeight && `line_height ${b.textStyle.lineHeight}`,
         b.radius && `radius ${b.radius}`,
+        b.padding && `padding [${b.padding.join(', ')}]`,
         text && `"${text.slice(0, 70)}${text.length > 70 ? '...' : ''}"`,
       ];
       return `- ${parts.filter(Boolean).join(', ')}`;
@@ -141,6 +146,13 @@ function applyTidy(doc: CourseDoc, pageId: string, changes: Tidy[]): CourseDoc {
         b.textStyle = { ...b.textStyle, lineHeight };
       const radius = num(c.radius);
       if ('radius' in b && radius !== undefined && radius >= 0) b.radius = Math.round(radius);
+      const padding = Array.isArray(c.padding) ? c.padding.map(num) : [];
+      if (
+        (b.type === 'text' || b.type === 'heading') &&
+        padding.length === 4 &&
+        padding.every((v) => v !== undefined && v >= 0)
+      )
+        b.padding = padding.map((v) => Math.round(v!)) as Insets;
     }
   });
 }
@@ -202,7 +214,7 @@ async function polishPage(ctx: PolishContext, pageId: string, house: string) {
 export async function polishCourse(
   ctx: PolishContext,
   onStatus: (message: string) => void,
-): Promise<string[]> {
+): Promise<{ pageId: string; error: string }[]> {
   const house = standards(ctx.getDoc());
   const queue = ctx
     .getDoc()
@@ -210,15 +222,19 @@ export async function polishCourse(
     .map((p) => p.id);
   const total = queue.length;
   let done = 0;
-  const failed: string[] = [];
+  const failed: { pageId: string; error: string }[] = [];
+  const attempt = async (id: string, tries: number): Promise<void> => {
+    try {
+      await polishPage(ctx, id, house);
+    } catch (e) {
+      if (ctx.signal.aborted) throw e;
+      if (tries > 1) return attempt(id, tries - 1);
+      failed.push({ pageId: id, error: e instanceof Error ? e.message : String(e) });
+    }
+  };
   const worker = async () => {
     for (let id = queue.shift(); id; id = queue.shift()) {
-      try {
-        await polishPage(ctx, id, house);
-      } catch (e) {
-        if (ctx.signal.aborted) throw e;
-        failed.push(id);
-      }
+      await attempt(id, TRIES);
       onStatus(`Polishing the design (${++done} of ${total} pages)`);
     }
   };

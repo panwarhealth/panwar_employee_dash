@@ -1,5 +1,14 @@
 import type { CSSProperties } from 'react';
-import type { Border, CourseDoc, Corners, Gradient, Shadow, TextStyle, VAlign } from './doc';
+import type {
+  Border,
+  CourseDoc,
+  Corners,
+  Gradient,
+  Insets,
+  Shadow,
+  TextStyle,
+  VAlign,
+} from './doc';
 
 export const BUILTIN_FONTS: { id: string; label: string; css: string }[] = [
   { id: 'course', label: 'Course default', css: '' },
@@ -84,6 +93,8 @@ export const shadowCss = (s: Shadow | undefined, on: 'box' | 'text' | 'image'): 
 export const borderCss = (border: Border | undefined): CSSProperties =>
   border ? { border: `${px(border.width)} solid ${border.colour}`, boxSizing: 'border-box' } : {};
 
+export const BOX_PADDING: Insets = [3.6, 7.2, 3.6, 7.2];
+
 const JUSTIFY: Record<VAlign, string> = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
 
 export function boxCss(box: {
@@ -94,13 +105,15 @@ export function boxCss(box: {
   corners?: Corners;
   border?: Border;
   valign?: VAlign;
+  padding?: Insets;
 }): CSSProperties {
   const filled = !!(box.fill || box.gradient);
   const valign = box.valign ?? (filled ? 'middle' : undefined);
+  const padding = box.padding ?? (filled || box.border ? BOX_PADDING : undefined);
   return {
     ...paintCss(box.fill, box.gradient),
     ...shadowCss(box.shadow, filled || box.border ? 'box' : 'text'),
-    ...(filled || box.border ? { padding: `${px(3.6)} ${px(7.2)}` } : {}),
+    ...(padding ? { padding: padding.map(px).join(' ') } : {}),
     ...(valign
       ? { display: 'flex', flexDirection: 'column', justifyContent: JUSTIFY[valign] }
       : {}),

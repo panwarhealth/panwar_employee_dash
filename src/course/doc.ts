@@ -137,6 +137,8 @@ export interface Interaction {
 
 export type Corners = 'all' | 'top' | 'bottom' | 'left' | 'right';
 
+export type Insets = [number, number, number, number];
+
 export type Anchor = 'auto' | 'tl' | 't' | 'tr' | 'l' | 'c' | 'r' | 'bl' | 'b' | 'br';
 
 export interface Frame {
@@ -196,6 +198,7 @@ export interface HeadingBlock extends BlockBase {
   corners?: Corners;
   border?: Border;
   valign?: VAlign;
+  padding?: Insets;
 }
 
 export interface TextBlock extends BlockBase {
@@ -210,6 +213,7 @@ export interface TextBlock extends BlockBase {
   corners?: Corners;
   border?: Border;
   valign?: VAlign;
+  padding?: Insets;
 }
 
 export interface ImageBlock extends BlockBase {

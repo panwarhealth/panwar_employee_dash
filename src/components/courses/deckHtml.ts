@@ -1,4 +1,11 @@
-import type { HeadingBlock, Shadow, ShapeBlock, TextBlock, TextStyle } from '@/course/doc';
+import type {
+  HeadingBlock,
+  Insets,
+  Shadow,
+  ShapeBlock,
+  TextBlock,
+  TextStyle,
+} from '@/course/doc';
 import { round1 } from '@/course/geometry';
 import { BUILTIN_FONTS } from '@/course/typography';
 import type { DeckPara, DeckRun, DeckShadow, DeckShape } from './pptx';
@@ -157,6 +164,10 @@ export function shapeBlock(
     radius: shape.radius ?? (shape.fill || shape.border ? 0 : undefined),
     corners: shape.corners,
     valign: shape.valign,
+    padding:
+      shape.fill || shape.border
+        ? (shape.insets.map((pt) => round1(pt * pxPerPt)) as Insets)
+        : undefined,
   };
   const title = shape.placeholder === 'title' || shape.placeholder === 'ctrTitle';
   if (title && isUniform(shape.paras, base))

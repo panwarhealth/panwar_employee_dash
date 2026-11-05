@@ -1,6 +1,6 @@
 import { useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react';
 import { uploadMedia } from '@/api/courses';
-import type { Corners } from '@/course/doc';
+import type { Corners, Insets } from '@/course/doc';
 import { showNbsp } from './nbsp';
 import { shrinkImage } from './pptx/artwork';
 import { cn } from '@/lib/utils';
@@ -67,6 +67,38 @@ export function RadiusField({
         ]}
         onChange={(v) => onChange(r, v)}
       />
+    </div>
+  );
+}
+
+const SIDES = ['Top', 'Right', 'Bottom', 'Left'];
+
+export function PaddingField({
+  value,
+  onChange,
+}: {
+  value: Insets;
+  onChange: (padding: Insets) => void;
+}) {
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">Padding (px)</span>
+      <div className="grid grid-cols-4 gap-2">
+        {SIDES.map((side, i) => (
+          <label key={side} className="block">
+            <NumberBox
+              min={0}
+              value={value[i]}
+              title={side}
+              onChange={(n) =>
+                onChange(value.map((v, j) => (j === i ? Math.max(0, n) : v)) as Insets)
+              }
+              className={inputClass}
+            />
+            <span className="mt-0.5 block text-center text-[10px] text-ph-charcoal/50">{side}</span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
