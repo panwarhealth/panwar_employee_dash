@@ -190,7 +190,7 @@ export function CanvasStage({
         style={paintCss(...pagePaint(page, layout))}
       >
         {page.blocks.map((b) => {
-          if (isHiddenPopup(b)) return <div key={b.id} className="cp-obj" hidden />;
+          if (isHiddenPopup(b) || b.hidden) return <div key={b.id} className="cp-obj" hidden />;
           const frame = frameFor(page, b, layout);
           const shown = lookFor(b, layout);
           const view = <BlockView block={shown} ctx={ctx} />;

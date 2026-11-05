@@ -35,8 +35,6 @@ export function Inspector({
   page,
   courseId,
   selectedId,
-  hidden,
-  onToggleHidden,
   onSelect,
   onPage,
   onAddBlock,
@@ -51,8 +49,6 @@ export function Inspector({
   courseId: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  hidden: Set<string>;
-  onToggleHidden: (id: string) => void;
   onPage: (fn: (p: Page) => void) => void;
   onAddBlock: () => void;
   onMoveBlock: (from: number, to: number) => void;
@@ -175,21 +171,26 @@ export function Inspector({
           >
             <button
               type="button"
-              title={hidden.has(b.id) ? 'Show while editing' : 'Hide while editing'}
-              onClick={() => onToggleHidden(b.id)}
+              title={b.hidden ? 'Show' : 'Hide'}
+              onClick={() =>
+                onChangeBlock(b.id, (x) => {
+                  if (x.hidden) delete x.hidden;
+                  else x.hidden = true;
+                })
+              }
               className={cn(
                 'ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ph-charcoal/40 hover:bg-ph-charcoal/5 hover:text-ph-purple',
-                hidden.has(b.id) || b.id === selectedId ? 'visible' : 'invisible group-hover:visible',
+                b.hidden || b.id === selectedId ? 'visible' : 'invisible group-hover:visible',
               )}
             >
-              {hidden.has(b.id) ? <EyeOff size={15} /> : <Eye size={15} />}
+              {b.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
             <button
               type="button"
               onClick={() => onSelect(b.id)}
               className={cn(
                 'flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left',
-                hidden.has(b.id) && 'opacity-50',
+                b.hidden && 'opacity-50',
               )}
             >
               <span className="cursor-grab font-mono text-xs text-ph-charcoal/40">::</span>

@@ -186,6 +186,7 @@ export interface BlockBase {
   id: string;
   frames?: Partial<Record<Layout, Frame>>;
   looks?: Partial<Record<Layout, Record<string, unknown>>>;
+  hidden?: boolean;
   interact?: Interaction;
   anim?: Anim;
   startHidden?: boolean;
@@ -711,6 +712,11 @@ const panel = (n: number) => ({
 });
 
 export const isHiddenPopup = (b: Block) => b.type === 'popup' && !b.showButton;
+
+export const withoutHidden = (doc: CourseDoc): CourseDoc => ({
+  ...doc,
+  pages: doc.pages.map((p) => ({ ...p, blocks: p.blocks.filter((b) => !b.hidden) })),
+});
 
 export const isQuestion = (b: Block): b is GradedBlock =>
   b.type === 'check' ||

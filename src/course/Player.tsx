@@ -3,6 +3,7 @@ import {
   groupsOf,
   linkedPages,
   newPickRule,
+  withoutHidden,
   type Block,
   type Action,
   type CourseDoc,
@@ -135,7 +136,7 @@ function mustAnswer(b: Block): boolean {
 }
 
 export function Player({
-  doc,
+  doc: full,
   lms,
   layout: forced,
 }: {
@@ -143,6 +144,7 @@ export function Player({
   lms: Lms;
   layout?: Layout;
 }) {
+  const doc = useMemo(() => withoutHidden(full), [full]);
   const detected = useCanvasLayout(doc.screens);
   const layout = forced ?? detected;
   const [state, setState] = useState<PlayState>(() => {

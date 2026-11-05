@@ -77,7 +77,7 @@ export function deadControls(doc: CourseDoc): string[] {
     for (const g of groupsOf(page)) if (clicked.has(g.id)) g.members.forEach((id) => clicked.add(id));
     const noted = new Set((page.notes ?? []).flatMap((n) => (n.blockId ? [n.blockId] : [])));
     for (const b of page.blocks)
-      if (looksClickable(b) && !clicked.has(b.id) && !noted.has(b.id))
+      if (!b.hidden && looksClickable(b) && !clicked.has(b.id) && !noted.has(b.id))
         dead.push(`${page.id} ${b.id} "${blockText(b).replace(/\s+/g, ' ').trim()}"`);
   }
   return dead;

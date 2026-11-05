@@ -106,7 +106,6 @@ export function CanvasEditor({
   layout,
   selectedId,
   onSelect,
-  hidden,
   onFrame,
   onFrames,
   onRemove,
@@ -119,7 +118,6 @@ export function CanvasEditor({
   layout: Layout;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  hidden: Set<string>;
   onFrame: (blockId: string, frame: Frame) => void;
   onFrames: (frames: Record<string, Frame>) => void;
   onRemove: (ids: string[]) => void;
@@ -427,7 +425,7 @@ export function CanvasEditor({
             layout={layout}
             ctx={editContext(doc)}
             renderObject={(b, frame, content) => {
-              if (isHiddenPopup(b) || hidden.has(b.id)) return null;
+              if (isHiddenPopup(b)) return null;
               const f =
                 drag && live
                   ? drag.id === b.id
