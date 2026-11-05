@@ -5,8 +5,11 @@ import { showNbsp } from './nbsp';
 import { shrinkImage } from './pptx/artwork';
 import { cn } from '@/lib/utils';
 
-const inputClass =
-  'w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 py-2 text-sm text-ph-charcoal focus:border-ph-purple focus:outline-none';
+export const inputClass =
+  'h-9 w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 text-sm text-ph-charcoal focus:border-ph-purple focus:outline-none';
+
+export const sectionClass =
+  'mt-3 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
 export function NumberBox({
   value,
@@ -46,7 +49,7 @@ export function RadiusField({
   const r = value ?? fallback;
   const c = corners ?? 'all';
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-x-2 gap-y-3">
       <Field label="Corner radius (px)">
         <NumberBox
           min={0}
@@ -83,7 +86,7 @@ export function PaddingField({
   return (
     <div>
       <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">Padding (px)</span>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-x-2">
         {SIDES.map((side, i) => (
           <label key={side} className="block">
             <NumberBox
@@ -95,7 +98,7 @@ export function PaddingField({
               }
               className={inputClass}
             />
-            <span className="mt-0.5 block text-center text-[10px] text-ph-charcoal/50">{side}</span>
+            <span className="mt-1 block text-center text-[10px] text-ph-charcoal/50">{side}</span>
           </label>
         ))}
       </div>
@@ -148,7 +151,7 @@ export function TextArea({
   return (
     <Field label={label}>
       <textarea
-        className={cn(inputClass, 'min-h-[80px] resize-y')}
+        className={cn(inputClass, 'h-auto min-h-[80px] resize-y py-2')}
         value={showNbsp(value)}
         data-nbsp-code
         onChange={(e) => onChange(e.target.value)}

@@ -12,10 +12,9 @@ import {
   type PickRule,
 } from '@/course/doc';
 import { ConditionsEditor } from './ConditionsEditor';
-import { Select, TextInput, Toggle } from './fields';
+import { sectionClass, Select, TextInput, Toggle } from './fields';
 import { HOVER_LOOKS, VISITED_LOOKS } from './interactionLooks';
 
-const sectionClass = 'mt-1 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
 export type EnabledWhen = NonNullable<ButtonBlock['enabledWhen']>;
 

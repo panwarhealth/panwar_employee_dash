@@ -14,6 +14,7 @@ import {
   MediaInput,
   PaddingField,
   RadiusField,
+  sectionClass,
   Select,
   TextArea,
   TextInput,
@@ -97,7 +98,7 @@ function BoxFields<B extends Boxed>({
   const full = !textual || !!(block.fill || block.gradient || block.border);
   return (
     <>
-      <h4 className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
+      <h4 className={sectionClass}>
         Box
       </h4>
       <PaintField

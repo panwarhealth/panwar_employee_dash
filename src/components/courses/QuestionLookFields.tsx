@@ -1,9 +1,7 @@
 import type { GradedBlock, QuestionLook } from '@/course/doc';
-import { Field, NumberBox, Select, Toggle } from './fields';
+import { Field, inputClass, NumberBox, Select, Toggle } from './fields';
 import { ColourField } from './TextStyleFields';
 
-const numberClass =
-  'w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2 py-1.5 text-sm focus:border-ph-purple focus:outline-none';
 
 export function QuestionLookFields({
   block,
@@ -41,7 +39,7 @@ export function QuestionLookFields({
           min={10}
           value={look.size ?? 16}
           onChange={(size) => set({ size: Math.max(10, size) })}
-          className={numberClass}
+          className={inputClass}
         />
       </Field>
       <div className="grid grid-cols-2 gap-2">
@@ -50,7 +48,7 @@ export function QuestionLookFields({
             min={0}
             value={look.radius ?? 4}
             onChange={(radius) => set({ radius: Math.max(0, radius) })}
-            className={numberClass}
+            className={inputClass}
           />
         </Field>
         <Select

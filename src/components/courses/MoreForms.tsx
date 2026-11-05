@@ -22,14 +22,21 @@ import {
   type WrittenBlock,
 } from '@/course/doc';
 import { blockLabel } from './blockMeta';
-import { Field, MediaInput, NumberBox, Select, TextArea, TextInput, Toggle } from './fields';
+import {
+  Field,
+  inputClass,
+  MediaInput,
+  NumberBox,
+  Select,
+  TextArea,
+  TextInput,
+  Toggle,
+} from './fields';
 import { RichText } from './RichText';
 
 type Edit<B> = (fn: (b: B) => void) => void;
 
 const linkClass = 'text-sm text-ph-charcoal/60 underline underline-offset-4 hover:text-ph-purple';
-const numClass =
-  'w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 py-1.5 text-sm focus:border-ph-purple focus:outline-none';
 
 function ListEditor<T extends { id: string }>({
   label,
@@ -90,7 +97,7 @@ function NumberInput({
 }) {
   return (
     <Field label={label}>
-      <NumberBox className={numClass} step={step} value={value} onChange={onChange} />
+      <NumberBox className={inputClass} step={step} value={value} onChange={onChange} />
     </Field>
   );
 }

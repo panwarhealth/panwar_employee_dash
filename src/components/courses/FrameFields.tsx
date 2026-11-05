@@ -1,7 +1,7 @@
 import { anchorOf } from '@/course/canvasLayout';
 import type { Anchor, Frame } from '@/course/doc';
 import { cn } from '@/lib/utils';
-import { NumberBox } from './fields';
+import { inputClass, NumberBox } from './fields';
 
 const FIELDS: { key: 'x' | 'y' | 'w' | 'h' | 'r'; label: string }[] = [
   { key: 'x', label: 'X %' },
@@ -40,7 +40,7 @@ export function FrameFields({ frame, onChange }: { frame: Frame; onChange: (f: F
               step={f.key === 'r' ? 1 : 0.5}
               value={frame[f.key]}
               onChange={(n) => onChange({ ...frame, [f.key]: n })}
-              className="w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 py-1.5 text-sm focus:border-ph-purple focus:outline-none"
+              className={inputClass}
             />
           </label>
         ))}
@@ -51,7 +51,7 @@ export function FrameFields({ frame, onChange }: { frame: Frame; onChange: (f: F
             min={10}
             value={Math.round((frame.s ?? 1) * 100)}
             onChange={(n) => onChange({ ...frame, s: n > 0 && n !== 100 ? n / 100 : undefined })}
-            className="w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 py-1.5 text-sm focus:border-ph-purple focus:outline-none"
+            className={inputClass}
           />
         </label>
       </div>

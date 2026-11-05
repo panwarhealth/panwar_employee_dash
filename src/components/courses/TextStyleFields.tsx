@@ -5,10 +5,7 @@ import { gradientCss, SIZES } from '@/course/typography';
 import { CourseColours } from './colourContext';
 import { pickColour } from './eyedropper';
 import { FontOptions } from './fontContext';
-import { Field, NumberBox, Select, Toggle } from './fields';
-
-const inputClass =
-  'w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2 py-1.5 text-sm focus:border-ph-purple focus:outline-none';
+import { Field, inputClass, NumberBox, sectionClass, Select, Toggle } from './fields';
 
 export function ColourField({
   label,
@@ -57,7 +54,7 @@ function ColourPicker({
         type="color"
         value={shown || '#2f3030'}
         onChange={(e) => onChange(e.target.value.toUpperCase())}
-        className="h-8 w-10 cursor-pointer rounded border border-ph-charcoal/20"
+        className="h-9 w-10 cursor-pointer rounded border border-ph-charcoal/20"
       />
       <button
         type="button"
@@ -72,7 +69,7 @@ function ColourPicker({
             setPicking(false);
           }
         }}
-        className="flex h-8 w-8 items-center justify-center rounded border border-ph-charcoal/20 text-ph-charcoal/70 hover:border-ph-purple hover:text-ph-purple disabled:cursor-wait disabled:opacity-50"
+        className="flex h-9 w-9 items-center justify-center rounded border border-ph-charcoal/20 text-ph-charcoal/70 hover:border-ph-purple hover:text-ph-purple disabled:cursor-wait disabled:opacity-50"
       >
         <Pipette size={15} />
       </button>
@@ -88,7 +85,7 @@ function ColourPicker({
           if (HEX.test(full)) onChange(full.toUpperCase());
         }}
         onBlur={() => setDraft(null)}
-        className="h-8 w-20 rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-1.5 font-mono text-xs uppercase focus:border-ph-purple focus:outline-none"
+        className="h-9 w-20 rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-1.5 font-mono text-xs uppercase focus:border-ph-purple focus:outline-none"
       />
     </span>
   );
@@ -141,7 +138,7 @@ export function PaintField({
     };
   };
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {!gradient && (
         <ColourField label={label} value={fill} onChange={(v) => onChange(v, undefined)} />
       )}
@@ -182,7 +179,7 @@ function GradientFields({ value, onChange }: { value: Gradient; onChange: (g: Gr
         className="h-6 rounded border border-ph-charcoal/15"
         style={{ background: gradientCss(value) }}
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-3">
         <Select
           label="Type"
           value={value.kind}
@@ -267,7 +264,7 @@ export function ShadowField({
   onChange: (v: Shadow | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <Toggle
         label="Drop shadow"
         checked={!!value}
@@ -295,7 +292,7 @@ function ShadowFields({ value, onChange }: { value: Shadow; onChange: (v: Shadow
       <Field label="Colour">
         <ColourPicker value={value.colour} onChange={(colour) => set({ colour })} />
       </Field>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-3">
         <Field label="Strength (%)">
           <NumberBox
             min={0}
@@ -308,7 +305,7 @@ function ShadowFields({ value, onChange }: { value: Shadow; onChange: (v: Shadow
         </Field>
         {offset('Blur (px)', 'blur', 0)}
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-3">
         {offset('Across (px)', 'x', -100)}
         {offset('Down (px)', 'y', -100)}
       </div>
@@ -324,7 +321,7 @@ export function BorderField({
   onChange: (v: Border | undefined) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-x-2 gap-y-3">
       <ColourField
         label="Border colour"
         value={value?.colour}
@@ -365,10 +362,10 @@ export function TextStyleFields({
 
   return (
     <>
-      <h4 className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
+      <h4 className={sectionClass}>
         Text style
       </h4>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-3">
         <Field label="Font">
           <select
             className={inputClass}

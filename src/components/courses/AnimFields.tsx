@@ -1,5 +1,5 @@
 import type { Anim, AnimKind } from '@/course/doc';
-import { Field, NumberBox, Select } from './fields';
+import { Field, inputClass, NumberBox, Select } from './fields';
 
 const KINDS: { value: AnimKind; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -45,7 +45,7 @@ export function AnimFields({
             step={0.25}
             value={a.delay}
             onChange={(n) => onChange({ ...a, delay: Math.max(0, n) })}
-            className="w-full rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-2.5 py-1.5 text-sm focus:border-ph-purple focus:outline-none"
+            className={inputClass}
           />
         </Field>
       )}
