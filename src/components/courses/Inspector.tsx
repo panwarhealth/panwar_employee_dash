@@ -15,8 +15,8 @@ import {
 } from '@/course/doc';
 import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { layoutsFor, lookFor } from '@/course/canvasLayout';
-import { changeLook } from '@/course/edit';
+import { layoutsFor, lookFor, pagePaint } from '@/course/canvasLayout';
+import { changeLook, changePagePaint } from '@/course/edit';
 import { BlockForm } from './BlockForm';
 import { QuestionLookFields } from './QuestionLookFields';
 import { blockLabel, blockName } from './blockMeta';
@@ -111,15 +111,33 @@ export function Inspector({
         <div className="mt-2">
           <PaintField
             label="Page background"
-            fill={page.background}
-            gradient={page.gradient}
+            fill={pagePaint(page, canvas.layout)[0]}
+            gradient={pagePaint(page, canvas.layout)[1]}
             onChange={(fill, gradient) =>
-              onPage((p) => {
-                p.background = fill;
-                p.gradient = gradient;
-              })
+              onPage((p) =>
+                changePagePaint(p, canvas.layout, layoutsFor(doc.screens)[0], fill, gradient),
+              )
             }
           />
+          {page.looks?.[canvas.layout] && (
+            <p className="mt-1 text-xs text-ph-charcoal/60">
+              Different on {canvas.layout}.{' '}
+              <button
+                type="button"
+                onClick={() =>
+                  onPage((p) => {
+                    const looks = { ...p.looks };
+                    delete looks[canvas.layout];
+                    if (Object.keys(looks).length) p.looks = looks;
+                    else delete p.looks;
+                  })
+                }
+                className="text-ph-purple underline underline-offset-2"
+              >
+                Match desktop
+              </button>
+            </p>
+          )}
         </div>
       </div>
 

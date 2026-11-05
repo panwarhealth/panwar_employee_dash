@@ -4,6 +4,7 @@ import {
   type Block,
   type CourseDoc,
   type Frame,
+  type Gradient,
   type Layout,
   type Page,
 } from './doc';
@@ -71,7 +72,6 @@ const LOOK_KEYS = new Set([
   'border',
   'level',
   'size',
-  'style',
   'look',
   'crop',
   'stretch',
@@ -94,7 +94,7 @@ export function changeLook(b: Block, layout: Layout, base: Layout, fn: (b: Block
   const own: Record<string, unknown> = { ...b.looks?.[layout] };
   for (const key of new Set([...Object.keys(block), ...Object.keys(shown)])) {
     if (key === 'looks' || key === 'frames') continue;
-    if (LOOK_KEYS.has(key)) {
+    if (LOOK_KEYS.has(key) || (key === 'style' && b.type === 'button')) {
       const objects = MERGED_LOOKS.has(key) && shown[key] && block[key];
       const change = objects
         ? diff(shown[key] as Record<string, unknown>, block[key] as Record<string, unknown>)
@@ -191,3 +191,20 @@ const roundFrame = (f: Frame): Frame => ({
   ...(f.a && f.a !== 'auto' ? { a: f.a } : {}),
   ...(f.s && f.s !== 1 ? { s: f.s } : {}),
 });
+
+export function changePagePaint(
+  p: Page,
+  layout: Layout,
+  base: Layout,
+  fill: string | undefined,
+  gradient: Gradient | undefined,
+) {
+  const looks = { ...p.looks };
+  if (layout === base) {
+    p.background = fill;
+    p.gradient = gradient;
+  } else if (same(fill, p.background) && same(gradient, p.gradient)) delete looks[layout];
+  else looks[layout] = { background: fill ?? null, gradient: gradient ?? null };
+  if (Object.keys(looks).length) p.looks = looks;
+  else delete p.looks;
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import type { Block, BlockType, Frame, Group, Layout, Page, Screens } from './doc';
+import type { Block, BlockType, Frame, Gradient, Group, Layout, Page, Screens } from './doc';
 import { bounds, isBackdrop, round1, type Box } from './geometry';
 
 export function layoutsFor(screens: Screens): Layout[] {
@@ -150,4 +150,11 @@ function overlay(base: Record<string, unknown>, own: Record<string, unknown>) {
 export function lookFor<B extends Block>(b: B, layout: Layout): B {
   const own = b.looks?.[layout];
   return own ? (overlay(b as unknown as Record<string, unknown>, own) as unknown as B) : b;
+}
+
+export function pagePaint(page: Page, layout: Layout): [string | undefined, Gradient | undefined] {
+  const own = page.looks?.[layout];
+  return own
+    ? [own.background ?? undefined, own.gradient ?? undefined]
+    : [page.background, page.gradient];
 }

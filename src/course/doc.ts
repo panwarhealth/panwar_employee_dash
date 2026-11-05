@@ -89,6 +89,7 @@ export interface Page {
   transition?: Transition;
   background?: string;
   gradient?: Gradient;
+  looks?: Partial<Record<Layout, PageLook>>;
   notes?: ReviewNote[];
   groups?: Group[];
 }
@@ -148,6 +149,11 @@ export interface Frame {
   r: number;
   a?: Anchor;
   s?: number;
+}
+
+export interface PageLook {
+  background: string | null;
+  gradient: Gradient | null;
 }
 
 export interface Border {
