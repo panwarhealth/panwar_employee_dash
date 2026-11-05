@@ -238,6 +238,7 @@ class PhoneStack {
   private readonly taps: Set<string>;
   unreadable = false;
   private rows = -1000;
+  private readonly hintOff: boolean;
 
   constructor(
     page: Page,
@@ -246,6 +247,7 @@ class PhoneStack {
     private readonly shrink: Shrink,
   ) {
     this.byId = new Map(page.blocks.map((b) => [b.id, b]));
+    this.hintOff = page.sideways === false;
     this.gap = (PHONE.gap / 100) * PHONE.h * shrink.gaps;
     this.taps = new Set([
       ...page.blocks.filter((b) => b.type === 'button').map((b) => b.id),
@@ -456,7 +458,7 @@ class PhoneStack {
       top += this.place(unit, left, width, top, 'center') + this.gap;
       this.anchor(unit, (c) => (c.title ? 't' : 'c'));
     }
-    let bottom = end - (this.unreadable ? (PHONE.hint / 100) * PHONE.h : 0);
+    let bottom = end - (this.unreadable && !this.hintOff ? (PHONE.hint / 100) * PHONE.h : 0);
     for (const unit of this.units(clusters.filter((c) => c.footer)).reverse()) {
       bottom -= this.place(unit, left, width, 0, this.alignOf(unit));
       this.anchor(unit, () => 'b', bottom);
@@ -522,7 +524,9 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
       shrink.gaps = MIN_GAP_SHRINK;
     } else break;
   }
-  if (result.sideways) page.sideways = true;
-  else delete page.sideways;
+  if (page.sideways !== false) {
+    if (result.sideways) page.sideways = true;
+    else delete page.sideways;
+  }
   return result.used <= FITS;
 }
