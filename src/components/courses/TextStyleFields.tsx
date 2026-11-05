@@ -7,19 +7,57 @@ import { pickColour } from './eyedropper';
 import { FontOptions } from './fontContext';
 import { Field, inputClass, NumberBox, sectionClass, Select, Toggle } from './fields';
 
+const RGBA = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i;
+
+function colourParts(value: string | undefined): { hex: string | undefined; alpha: number } {
+  const m = value?.match(RGBA);
+  if (!m) return { hex: value, alpha: 1 };
+  const hex = `#${[m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`;
+  return { hex: hex.toUpperCase(), alpha: m[4] === undefined ? 1 : Number(m[4]) };
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  if (alpha >= 1) return hex;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${Math.round(alpha * 100) / 100})`;
+}
+
 export function ColourField({
   label,
   value,
   onChange,
+  alpha,
 }: {
   label: string;
   value: string | undefined;
   onChange: (v: string | undefined) => void;
+  alpha?: boolean;
 }) {
+  const parts = colourParts(value);
+  const pick = (hex: string) => onChange(alpha ? withAlpha(hex, parts.alpha) : hex);
   return (
     <Field label={label}>
       <span className="flex items-center gap-1">
-        <ColourPicker value={value} onChange={onChange} />
+        <ColourPicker value={parts.hex} onChange={pick} />
+        {alpha && (
+          <span className="flex shrink-0 items-center gap-0.5 text-xs text-ph-charcoal/60">
+            <NumberBox
+              aria-label="Opacity"
+              title="Opacity"
+              min={0}
+              max={100}
+              disabled={!parts.hex || !HEX.test(parts.hex)}
+              value={Math.round(parts.alpha * 100)}
+              onChange={(n) =>
+                parts.hex &&
+                HEX.test(parts.hex) &&
+                onChange(withAlpha(parts.hex, Math.min(100, Math.max(0, n)) / 100))
+              }
+              className="h-9 w-12 rounded-md border-[1.5px] border-ph-charcoal/15 bg-white px-1 text-right text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none disabled:opacity-50"
+            />
+            %
+          </span>
+        )}
         {value && (
           <button
             type="button"
@@ -31,7 +69,7 @@ export function ColourField({
           </button>
         )}
       </span>
-      <Swatches value={value} onPick={onChange} />
+      <Swatches value={parts.hex} onPick={pick} />
     </Field>
   );
 }
@@ -140,7 +178,12 @@ export function PaintField({
   return (
     <div className="flex flex-col gap-3">
       {!gradient && (
-        <ColourField label={label} value={fill} onChange={(v) => onChange(v, undefined)} />
+        <ColourField
+          label={label}
+          alpha
+          value={fill}
+          onChange={(v) => onChange(v, undefined)}
+        />
       )}
       <Toggle
         label={gradient ? `${label}: gradient` : 'Use a gradient'}
