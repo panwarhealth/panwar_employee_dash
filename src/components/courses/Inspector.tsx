@@ -13,6 +13,7 @@ import {
   type Layout,
   type Page,
 } from '@/course/doc';
+import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlockForm } from './BlockForm';
 import { QuestionLookFields } from './QuestionLookFields';
@@ -134,22 +135,37 @@ export function Inspector({
       </p>
       <SortableList items={items} onMove={move}>
         {(b) => (
-          <button
-            type="button"
-            onClick={() => onSelect(b.id)}
+          <div
             className={cn(
-              'flex w-full items-center gap-2 rounded-md border-[1.5px] bg-white px-2.5 py-1.5 text-left',
+              'group flex w-full items-center rounded-md border-[1.5px] bg-white',
               b.id === selectedId
                 ? 'border-ph-purple font-semibold text-ph-purple'
                 : 'border-transparent text-ph-charcoal hover:border-ph-charcoal/15',
             )}
           >
-            <span className="cursor-grab font-mono text-xs text-ph-charcoal/40">::</span>
-            <span className="min-w-0 flex-1 truncate">{blockLabel(b)}</span>
-            <span className="text-[10px] font-normal uppercase tracking-wide text-ph-charcoal/40">
-              {blockName(b.type)}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => onSelect(b.id)}
+              className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left"
+            >
+              <span className="cursor-grab font-mono text-xs text-ph-charcoal/40">::</span>
+              <span className="min-w-0 flex-1 truncate">{blockLabel(b)}</span>
+              <span className="text-[10px] font-normal uppercase tracking-wide text-ph-charcoal/40">
+                {blockName(b.type)}
+              </span>
+            </button>
+            <button
+              type="button"
+              title="Delete"
+              onClick={() => onRemoveBlock(b.id)}
+              className={cn(
+                'mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ph-charcoal/40 hover:bg-red-50 hover:text-red-700',
+                b.id === selectedId ? 'visible' : 'invisible group-hover:visible',
+              )}
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
         )}
       </SortableList>
       <button
