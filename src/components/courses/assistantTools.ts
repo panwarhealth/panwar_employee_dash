@@ -1,6 +1,8 @@
 import {
+  groupsOf,
   newBlock,
   uid,
+  type Action,
   type Block,
   type BlockType,
   type ButtonAction,
@@ -14,7 +16,7 @@ import {
 import { blockText } from '@/course/text';
 import * as ops from '@/course/edit';
 import { BLOCKS, blockLabel } from './blockMeta';
-import { checkedOutcome, type ToolOutcome } from './assistantChecks';
+import { checkedOutcome, deadControls, type ToolOutcome } from './assistantChecks';
 import { replacement } from './blockPlacement';
 
 export interface ToolContext {
@@ -81,6 +83,28 @@ export const ASSISTANT_TOOLS = [
         label: { type: 'string' },
       },
       ['page_id', 'block_id', 'action'],
+    ),
+  },
+  {
+    name: 'set_clicks',
+    description:
+      'Make objects do something when clicked, many at once and across pages: each click adds a click trigger on that block or group (replacing any click trigger it already has). action is {"kind":"next"}, {"kind":"prev"} (back one page, or back to the hub the learner came from), {"kind":"page","pageId":...,"back":true} (open a page and return here after), {"kind":"popup","blockId":...}, {"kind":"closePopup"}, {"kind":"link","url":...} or {"kind":"finish"}.',
+    input_schema: obj(
+      {
+        clicks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              page_id: { type: 'string' },
+              block_id: { type: 'string' },
+              action: { type: 'object' },
+            },
+            required: ['page_id', 'block_id', 'action'],
+          },
+        },
+      },
+      ['clicks'],
     ),
   },
   {
@@ -368,6 +392,48 @@ const makeButton: Handler = (doc, input) => {
   return checkedOutcome(next, page.id, new Set([old.id]), `Made a button on ${page.title}`);
 };
 
+const CLICK_ACTIONS = new Set(['next', 'prev', 'page', 'popup', 'closePopup', 'link', 'finish']);
+
+const setClicks: Handler = (doc, input) => {
+  const clicks = list<Input>(input.clicks);
+  if (!clicks.length) return fail(doc, 'clicks is required.');
+  const pageIds = new Set(doc.pages.map((p) => p.id));
+  for (const c of clicks) {
+    const page = pageOf(doc, c);
+    const where = `${String(c.page_id)} ${String(c.block_id)}`;
+    if (!page) return fail(doc, `${where}: no page with that id.`);
+    const ids = new Set([...page.blocks.map((b) => b.id), ...groupsOf(page).map((g) => g.id)]);
+    if (!ids.has(String(c.block_id))) return fail(doc, `${where}: no block or group with that id.`);
+    const a = c.action as Action | undefined;
+    if (!a || !CLICK_ACTIONS.has(a.kind)) return fail(doc, `${where}: unsupported action.`);
+    if (a.kind === 'page' && !pageIds.has(a.pageId))
+      return fail(doc, `${where}: page "${a.pageId}" doesn't exist.`);
+    if (a.kind === 'popup' && !ids.has(a.blockId))
+      return fail(doc, `${where}: popup "${a.blockId}" isn't on this page.`);
+  }
+  let next = doc;
+  for (const c of clicks) {
+    const blockId = String(c.block_id);
+    next = ops.updatePage(next, String(c.page_id), (p) => {
+      p.triggers = [
+        ...p.triggers.filter((t) => !(t.when.kind === 'click' && t.when.blockId === blockId)),
+        {
+          id: `${blockId}-click`,
+          when: { kind: 'click', blockId },
+          action: c.action as Action,
+          conditions: [],
+        },
+      ];
+    });
+  }
+  const left = deadControls(next).length;
+  return {
+    doc: next,
+    result: JSON.stringify({ ok: true, wired: clicks.length, still_dead: left }),
+    activity: `Wired ${clicks.length} click${clicks.length === 1 ? '' : 's'}`,
+  };
+};
+
 const addNote: Handler = (doc, input) => {
   const page = pageOf(doc, input);
   if (!page) return fail(doc, 'No page with that id.');
@@ -463,6 +529,7 @@ const HANDLERS: Record<string, Handler> = {
   add_blocks: addBlocks,
   remove_blocks: removeBlocks,
   make_button: makeButton,
+  set_clicks: setClicks,
   add_note: addNote,
   update_page: updatePage,
   delete_page: deletePage,

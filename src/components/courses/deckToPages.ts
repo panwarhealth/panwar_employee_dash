@@ -120,6 +120,56 @@ function idMaker(slide: DeckSlide, taken: Set<string>) {
   };
 }
 
+const GLYPH_SHARE = 0.5;
+
+const isGlyph = (shape: DeckShape) => {
+  const text = shape.text.trim();
+  return text.length > 0 && text.length <= 3;
+};
+
+const isControl = (shape: DeckShape) => !!shape.fill && shape.w <= 12 && shape.h <= 20;
+
+function fitGlyph(shape: DeckShape, deck: Deck): DeckShape {
+  const sidePt = Math.min((shape.w / 100) * deck.widthPt, (shape.h / 100) * deck.heightPt);
+  const maxPt = Math.round(sidePt * GLYPH_SHARE);
+  return {
+    ...shape,
+    valign: 'middle',
+    insets: [0, 0, 0, 0],
+    paras: shape.paras.map((p) => ({
+      ...p,
+      align: 'center',
+      lineHeight: 1,
+      spaceBefore: 0,
+      spaceAfter: 0,
+      runs: p.runs.map((r) => ({ ...r, size: Math.min(r.size, maxPt) })),
+    })),
+  };
+}
+
+function controlShapes(slide: DeckSlide, deck: Deck): Map<number, DeckShape | null> {
+  const out = new Map<number, DeckShape | null>();
+  const shapes = slide.shapes;
+  shapes.forEach((label, li) => {
+    if (!isGlyph(label) || label.fill || label.fromLayout) return;
+    const pi = shapes.findIndex(
+      (p, i) =>
+        i !== li &&
+        !out.has(i) &&
+        !p.text.trim() &&
+        isControl(p) &&
+        centreInside(p, label),
+    );
+    if (pi < 0) return;
+    out.set(pi, fitGlyph({ ...shapes[pi], text: label.text, paras: label.paras }, deck));
+    out.set(li, null);
+  });
+  shapes.forEach((s, i) => {
+    if (!out.has(i) && isGlyph(s) && isControl(s)) out.set(i, fitGlyph(s, deck));
+  });
+  return out;
+}
+
 function slideItems(
   deck: Deck,
   slide: DeckSlide,
@@ -127,10 +177,13 @@ function slideItems(
   makeId: (kind: string) => string,
 ): Item[] {
   const pxPerPt = DESIGN_W / deck.widthPt;
+  const controls = controlShapes(slide, deck);
   const items: Item[] = [];
   for (const entry of slide.order) {
     if (entry.kind === 'shape') {
-      const shape = slide.shapes[entry.index];
+      const merged = controls.get(entry.index);
+      if (merged === null) continue;
+      const shape = merged ?? slide.shapes[entry.index];
       const hasWords = !!shape.text.trim();
       const id = makeId(hasWords ? 'text' : 'box');
       const block = hasWords ? shapeBlock(shape, id, pxPerPt) : panelBlock(shape, id, pxPerPt);

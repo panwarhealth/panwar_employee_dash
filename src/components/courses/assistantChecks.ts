@@ -1,6 +1,14 @@
 import { layoutsFor } from '@/course/canvasLayout';
-import { groupsOf, isHiddenPopup, isQuestion, type CourseDoc, type Page } from '@/course/doc';
+import {
+  groupsOf,
+  isHiddenPopup,
+  isQuestion,
+  type Block,
+  type CourseDoc,
+  type Page,
+} from '@/course/doc';
 import { overlapShare } from '@/course/geometry';
+import { blockText } from '@/course/text';
 import { pageFitWarnings } from './pageFit';
 
 export interface ToolOutcome {
@@ -49,6 +57,30 @@ function linkWarnings(doc: CourseDoc, page: Page): string[] {
       );
   }
   return warnings;
+}
+
+function looksClickable(b: Block): boolean {
+  if (b.type !== 'text' && b.type !== 'heading') return false;
+  if (!b.fill && !b.gradient) return false;
+  const text = blockText(b).replace(/\s+/g, ' ').trim();
+  if (!text) return false;
+  if (text.length <= 3) return true;
+  return /[A-Z]/.test(text) && text === text.toUpperCase() && text.split(' ').length <= 4;
+}
+
+export function deadControls(doc: CourseDoc): string[] {
+  const dead: string[] = [];
+  for (const page of doc.pages) {
+    const clicked = new Set(
+      page.triggers.flatMap((t) => (t.when.kind === 'click' ? [t.when.blockId] : [])),
+    );
+    for (const g of groupsOf(page)) if (clicked.has(g.id)) g.members.forEach((id) => clicked.add(id));
+    const noted = new Set((page.notes ?? []).flatMap((n) => (n.blockId ? [n.blockId] : [])));
+    for (const b of page.blocks)
+      if (looksClickable(b) && !clicked.has(b.id) && !noted.has(b.id))
+        dead.push(`${page.id} ${b.id} "${blockText(b).replace(/\s+/g, ' ').trim()}"`);
+  }
+  return dead;
 }
 
 function desktopWarnings(page: Page): string[] {

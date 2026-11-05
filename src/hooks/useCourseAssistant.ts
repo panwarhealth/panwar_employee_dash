@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { assistantTurn, importMedia, uploadMedia, type AssistantMessage } from '@/api/courses';
+import {
+  assistantTurn,
+  downloadMedia,
+  importMedia,
+  uploadMedia,
+  type AssistantMessage,
+} from '@/api/courses';
 import { uid, type CourseDoc } from '@/course/doc';
 import { ASSISTANT_SYSTEM, deckMessage } from '@/components/courses/assistantPrompt';
 import { ASSISTANT_TOOLS, courseOutline, runTool } from '@/components/courses/assistantTools';
+import { deadControls } from '@/components/courses/assistantChecks';
+import { polishCourse } from '@/components/courses/polish';
 import { readPptx } from '@/components/courses/pptx';
 import { importDeck, relayout } from '@/components/courses/deckToPages';
 import { updateCourse } from '@/course/edit';
@@ -14,6 +22,9 @@ export interface ChatEntry {
 }
 
 const MAX_STEPS = 80;
+const FINISH_STEPS = 160;
+const MAX_GATES = 3;
+const LISTED_DEAD = 60;
 
 export function useCourseAssistant(
   courseId: string,
@@ -49,12 +60,14 @@ export function useCourseAssistant(
     return last.content as { type: string; text?: string }[];
   };
 
-  async function run(prompt: string, controller: AbortController) {
+  async function run(prompt: string, controller: AbortController, finishing = false) {
     const text = `${prompt}\n\n<course_outline>${courseOutline(docRef.current)}</course_outline>`;
     const pending = userBlocks();
     if (pending) pending.push({ type: 'text', text });
     else history.current.push({ role: 'user', content: text });
-    for (let step = 0; step < MAX_STEPS; step++) {
+    const steps = finishing ? FINISH_STEPS : MAX_STEPS;
+    let gates = 0;
+    for (let step = 0; step < steps; step++) {
       const reply = await assistantTurn(
         courseId,
         { system: ASSISTANT_SYSTEM, tools: ASSISTANT_TOOLS, messages: history.current },
@@ -88,7 +101,24 @@ export function useCourseAssistant(
       }
       history.current.push({ role: 'assistant', content: reply.content });
       const uses = reply.content.filter((b) => b.type === 'tool_use');
-      if (!uses.length) return;
+      if (!uses.length) {
+        const dead = finishing ? deadControls(docRef.current) : [];
+        if (!dead.length || gates >= MAX_GATES) return;
+        gates++;
+        log('activity', `${dead.length} objects look like buttons but do nothing yet, sending it back`);
+        const more = dead.length > LISTED_DEAD ? [`...and ${dead.length - LISTED_DEAD} more`] : [];
+        history.current.push({
+          role: 'user',
+          content: [
+            "Not finished: these objects look like buttons but nothing happens when they're clicked (page, block, text):",
+            ...dead.slice(0, LISTED_DEAD),
+            ...more,
+            '',
+            "Wire each one with set_clicks, many per call. If one really isn't meant to be clicked, add_note on it saying why.",
+          ].join('\n'),
+        });
+        continue;
+      }
       const results = [];
       for (const use of uses) {
         const outcome = await runTool(docRef.current, use.name ?? '', use.input ?? {}, {
@@ -105,7 +135,7 @@ export function useCourseAssistant(
       }
       history.current.push({ role: 'user', content: results });
     }
-    log('error', `Stopped after ${MAX_STEPS} steps. Ask it to carry on if there's more to do.`);
+    log('error', `Stopped after ${steps} steps. Ask it to carry on if there's more to do.`);
   }
 
   async function start(work: (controller: AbortController) => Promise<void>) {
@@ -173,8 +203,23 @@ export function useCourseAssistant(
     start(async (controller) => {
       if (!deckPrompt) return;
       log('user', 'Add the questions, popups and buttons');
-      await run(deckPrompt, controller);
+      await run(deckPrompt, controller, true);
       setDeckPrompt(null);
+      setStatus('Polishing the design');
+      const failed = await polishCourse(
+        {
+          getDoc: () => docRef.current,
+          apply,
+          turn: (body) => assistantTurn(courseId, body, () => {}, controller.signal),
+          fetchMedia: (url) => downloadMedia(courseId, url),
+          addCost: (usd) => setCost((c) => c + usd),
+          signal: controller.signal,
+        },
+        setStatus,
+      );
+      log('activity', 'Polished spacing and sizes on every page');
+      if (failed.length)
+        log('error', `Couldn't polish these pages, so they're as imported: ${failed.join(', ')}.`);
       setStatus('Laying out the phone pages again');
       const relaid = await relayout(docRef.current);
       apply(relaid.doc);
