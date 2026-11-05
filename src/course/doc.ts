@@ -179,6 +179,7 @@ export type VAlign = 'top' | 'middle' | 'bottom';
 export interface BlockBase {
   id: string;
   frames?: Partial<Record<Layout, Frame>>;
+  looks?: Partial<Record<Layout, Record<string, unknown>>>;
   interact?: Interaction;
   anim?: Anim;
   startHidden?: boolean;

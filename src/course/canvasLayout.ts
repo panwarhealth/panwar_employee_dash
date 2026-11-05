@@ -130,3 +130,24 @@ export function newFrame(type: BlockType, layout: Layout): Frame {
   const [x, y, w, h] = DEFAULT_FRAMES[type][layout];
   return { x, y, w, h, r: 0 };
 }
+
+export const MERGED_LOOKS = new Set(['textStyle', 'look']);
+
+function overlay(base: Record<string, unknown>, own: Record<string, unknown>) {
+  const out = { ...base };
+  for (const [key, value] of Object.entries(own)) {
+    if (value === null) delete out[key];
+    else if (MERGED_LOOKS.has(key) && typeof value === 'object')
+      out[key] = overlay(
+        (base[key] ?? {}) as Record<string, unknown>,
+        value as Record<string, unknown>,
+      );
+    else out[key] = value;
+  }
+  return out;
+}
+
+export function lookFor<B extends Block>(b: B, layout: Layout): B {
+  const own = b.looks?.[layout];
+  return own ? (overlay(b as unknown as Record<string, unknown>, own) as unknown as B) : b;
+}

@@ -7,7 +7,7 @@ import {
   type Layout,
   type Page,
 } from './doc';
-import { frameFor } from './canvasLayout';
+import { frameFor, lookFor, MERGED_LOOKS } from './canvasLayout';
 import { round1 } from './geometry';
 
 function draft(doc: CourseDoc, fn: (d: CourseDoc) => void): CourseDoc {
@@ -57,6 +57,60 @@ export const updateBlock = (
   blockId: string,
   fn: (b: Block) => void,
 ) => updatePage(doc, pageId, (p) => fn(p.blocks.find((b) => b.id === blockId)!));
+
+const LOOK_KEYS = new Set([
+  'textStyle',
+  'align',
+  'valign',
+  'padding',
+  'fill',
+  'gradient',
+  'shadow',
+  'radius',
+  'corners',
+  'border',
+  'level',
+  'size',
+  'style',
+  'look',
+  'crop',
+  'stretch',
+]);
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+function diff(shown: Record<string, unknown>, base: Record<string, unknown>) {
+  const out: Record<string, unknown> = {};
+  for (const key of new Set([...Object.keys(base), ...Object.keys(shown)]))
+    if (!same(shown[key], base[key])) out[key] = shown[key] ?? null;
+  return out;
+}
+
+export function changeLook(b: Block, layout: Layout, base: Layout, fn: (b: Block) => void) {
+  if (layout === base) return fn(b);
+  const shown = structuredClone(lookFor(b, layout)) as unknown as Record<string, unknown>;
+  fn(shown as unknown as Block);
+  const block = b as unknown as Record<string, unknown>;
+  const own: Record<string, unknown> = { ...b.looks?.[layout] };
+  for (const key of new Set([...Object.keys(block), ...Object.keys(shown)])) {
+    if (key === 'looks' || key === 'frames') continue;
+    if (LOOK_KEYS.has(key)) {
+      const objects = MERGED_LOOKS.has(key) && shown[key] && block[key];
+      const change = objects
+        ? diff(shown[key] as Record<string, unknown>, block[key] as Record<string, unknown>)
+        : shown[key];
+      if (same(shown[key], block[key]) || (objects && !Object.keys(change as object).length))
+        delete own[key];
+      else own[key] = change ?? null;
+    } else if (shown[key] === undefined) delete block[key];
+    else if (!same(shown[key], block[key])) block[key] = shown[key];
+  }
+  const looks = { ...b.looks };
+  if (Object.keys(own).length) looks[layout] = own;
+  else delete looks[layout];
+  if (Object.keys(looks).length) b.looks = looks;
+  else delete b.looks;
+}
 
 export const removeBlock = (doc: CourseDoc, pageId: string, blockId: string) =>
   updatePage(doc, pageId, (p) => (p.blocks = p.blocks.filter((b) => b.id !== blockId)));

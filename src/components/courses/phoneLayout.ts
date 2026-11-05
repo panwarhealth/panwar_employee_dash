@@ -8,6 +8,7 @@ import {
   round1,
   type Box,
 } from '@/course/geometry';
+import { lookFor } from '@/course/canvasLayout';
 import { blockText, hasText } from '@/course/text';
 import { mostCommon } from './deckHtml';
 import { measureHeights } from './pageFit';
@@ -281,7 +282,7 @@ class PhoneStack {
       (this.textScale.get(b.id) ?? 1) * this.shrink.text,
       this.readableScale(c.ids),
     );
-    const h = ((this.measured.get(b.id) ?? estimateHeight(b, s, width)) / 100) * PHONE.h;
+    const h = ((this.measured.get(b.id) ?? estimateHeight(lookFor(b, 'phone'), s, width)) / 100) * PHONE.h;
     this.setFrame(b.id, left, top, width, h, s, 0);
     return h;
   }

@@ -15,6 +15,8 @@ import {
 } from '@/course/doc';
 import { Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { layoutsFor, lookFor } from '@/course/canvasLayout';
+import { changeLook } from '@/course/edit';
 import { BlockForm } from './BlockForm';
 import { QuestionLookFields } from './QuestionLookFields';
 import { blockLabel, blockName } from './blockMeta';
@@ -56,6 +58,12 @@ export function Inspector({
   canvas: CanvasControls;
 }) {
   const block = page.blocks.find((b) => b.id === selectedId) ?? null;
+  const shown = block && lookFor(block, canvas.layout);
+  const styled = (fn: (b: Block) => void) =>
+    block &&
+    onChangeBlock(block.id, (b) =>
+      changeLook(b, canvas.layout, layoutsFor(doc.screens)[0], fn),
+    );
   const group = groupsOf(page).find((g) => g.id === selectedId) ?? null;
   const changeGroup = (fn: (g: Group) => void) =>
     onPage((p) => {
@@ -233,24 +241,43 @@ export function Inspector({
         </div>
       )}
 
-      {block && (
+      {block && shown && (
         <div className="mt-4 flex flex-col gap-3 border-t border-ph-charcoal/10 pt-4">
           <h4 className="text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
             {blockName(block.type)}
           </h4>
+          {block.looks?.[canvas.layout] && (
+            <p className="-mt-2 text-xs text-ph-charcoal/60">
+              Styled differently on {canvas.layout}.{' '}
+              <button
+                type="button"
+                onClick={() =>
+                  onChangeBlock(block.id, (b) => {
+                    const looks = { ...b.looks };
+                    delete looks[canvas.layout];
+                    if (Object.keys(looks).length) b.looks = looks;
+                    else delete b.looks;
+                  })
+                }
+                className="text-ph-purple underline underline-offset-2"
+              >
+                Match {canvas.layout === 'phone' ? 'desktop' : 'phone'}
+              </button>
+            </p>
+          )}
           <BlockForm
-            key={block.id}
-            block={block}
+            key={`${block.id}-${canvas.layout}`}
+            block={shown}
             page={page}
             doc={doc}
             courseId={courseId}
-            onChange={(update) => onChangeBlock(block.id, update)}
+            onChange={styled}
           />
-          {isQuestion(block) && (
+          {isQuestion(shown) && (
             <QuestionLookFields
-              block={block}
+              block={shown}
               onChange={(look) =>
-                onChangeBlock(block.id, (b) => {
+                styled((b) => {
                   if (isQuestion(b)) b.look = look;
                 })
               }

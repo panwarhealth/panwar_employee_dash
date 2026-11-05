@@ -18,6 +18,7 @@ import {
   frameStyle,
   groupFrame,
   growsToFit,
+  lookFor,
 } from './canvasLayout';
 import { animClass, animStyle } from './anim';
 import { centreInside } from './geometry';
@@ -190,9 +191,10 @@ export function CanvasStage({
         {page.blocks.map((b) => {
           if (isHiddenPopup(b)) return <div key={b.id} className="cp-obj" hidden />;
           const frame = frameFor(page, b, layout);
-          const view = <BlockView block={b} ctx={ctx} />;
+          const shown = lookFor(b, layout);
+          const view = <BlockView block={shown} ctx={ctx} />;
           const content = growsToFit(b) ? view : <Fit>{view}</Fit>;
-          if (renderObject) return renderObject(b, frame, content);
+          if (renderObject) return renderObject(shown, frame, content);
           const g = groupBy.get(b.id);
           const own = b.type !== 'button' && ctx.clickable.has(b.id);
           const viaGroup = !!g && b.type !== 'button' && ctx.clickable.has(g.id);
