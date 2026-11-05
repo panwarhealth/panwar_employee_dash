@@ -101,18 +101,36 @@ function BoxFields<B extends Boxed>({
       <h4 className={sectionClass}>
         Box
       </h4>
-      <PaintField
-        label="Background colour"
-        fill={block.fill}
-        gradient={block.gradient}
-        onChange={(fill, gradient) =>
-          set((b) => {
-            b.fill = fill;
-            b.gradient = gradient;
-          })
-        }
-      />
-      <BorderField value={block.border} onChange={(v) => set((b) => (b.border = v))} />
+      {textual && (
+        <Toggle
+          label="Background"
+          checked={full}
+          onChange={(on) =>
+            set((b) => {
+              b.fill = on ? '#f1eaf5' : undefined;
+              b.gradient = undefined;
+              b.border = undefined;
+              b.radius = undefined;
+              b.corners = undefined;
+              b.shadow = undefined;
+            })
+          }
+        />
+      )}
+      {full && (
+        <PaintField
+          label="Background colour"
+          fill={block.fill}
+          gradient={block.gradient}
+          onChange={(fill, gradient) =>
+            set((b) => {
+              b.fill = fill;
+              b.gradient = gradient;
+            })
+          }
+        />
+      )}
+      {full && <BorderField value={block.border} onChange={(v) => set((b) => (b.border = v))} />}
       {full && !(block.type === 'shape' && block.shape === 'ellipse') && (
         <RadiusField
           value={block.radius}
