@@ -176,6 +176,7 @@ export function BlockForm({
           />
           <TextStyleFields
             value={block.textStyle}
+            emphasis={false}
             align={<AlignFields block={block} set={set<typeof block>} />}
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />

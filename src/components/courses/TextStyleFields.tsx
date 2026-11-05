@@ -349,10 +349,12 @@ export function TextStyleFields({
   value,
   onChange,
   boldByDefault = false,
+  emphasis = true,
   align,
 }: {
   value: TextStyle | undefined;
   boldByDefault?: boolean;
+  emphasis?: boolean;
   align?: ReactNode;
   onChange: (s: TextStyle) => void;
 }) {
@@ -396,7 +398,6 @@ export function TextStyleFields({
             ))}
           </select>
         </Field>
-        <ColourField label="Colour" value={s.color} onChange={(color) => set({ color })} />
         <Field label="Line height">
           <input
             type="number"
@@ -418,19 +419,24 @@ export function TextStyleFields({
             onChange={(e) => set({ letterSpacing: num(e.target.value) })}
           />
         </Field>
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-1 pb-2">
-          <Toggle
-            label="Bold"
-            checked={s.weight ? s.weight === 700 : boldByDefault}
-            onChange={(v) => set({ weight: v ? 700 : 400 })}
-          />
-          <Toggle label="Italic" checked={!!s.italic} onChange={(italic) => set({ italic })} />
-          <Toggle
-            label="Underline"
-            checked={!!s.underline}
-            onChange={(underline) => set({ underline })}
-          />
+        <div className="col-span-2">
+          <ColourField label="Colour" value={s.color} onChange={(color) => set({ color })} />
         </div>
+        {emphasis && (
+          <div className="col-span-2 flex flex-wrap gap-4">
+            <Toggle
+              label="Bold"
+              checked={s.weight ? s.weight === 700 : boldByDefault}
+              onChange={(v) => set({ weight: v ? 700 : 400 })}
+            />
+            <Toggle label="Italic" checked={!!s.italic} onChange={(italic) => set({ italic })} />
+            <Toggle
+              label="Underline"
+              checked={!!s.underline}
+              onChange={(underline) => set({ underline })}
+            />
+          </div>
+        )}
         {align}
       </div>
     </>
