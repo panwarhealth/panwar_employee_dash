@@ -165,6 +165,12 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
               ? { borderRadius: '50%' }
               : radiusCss(block.radius, block.corners)),
             ...shadowCss(block.shadow, 'box'),
+            ...(block.blur
+              ? {
+                  backdropFilter: `blur(${px(block.blur)})`,
+                  WebkitBackdropFilter: `blur(${px(block.blur)})`,
+                }
+              : {}),
           }}
         />
       );

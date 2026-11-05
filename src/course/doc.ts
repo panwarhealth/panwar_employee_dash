@@ -259,6 +259,7 @@ export interface DividerBlock extends BlockBase {
 export interface ShapeBlock extends BlockBase {
   type: 'shape';
   shape: 'rect' | 'ellipse';
+  blur?: number;
   fill?: string;
   gradient?: Gradient;
   shadow?: Shadow;

@@ -152,6 +152,37 @@ function BoxFields<B extends Boxed>({
   );
 }
 
+function BlurField<B extends { blur?: number }>({
+  label,
+  block,
+  set,
+}: {
+  label: string;
+  block: B;
+  set: (fn: (b: B) => void) => void;
+}) {
+  return (
+    <>
+      <h4 className={sectionClass}>Effects</h4>
+      <Field label={label}>
+        <NumberBox
+          min={0}
+          max={100}
+          value={block.blur ?? 0}
+          onChange={(n) =>
+            set((b) => {
+              const blur = Math.min(100, Math.max(0, n));
+              if (blur) b.blur = blur;
+              else delete b.blur;
+            })
+          }
+          className={inputClass}
+        />
+      </Field>
+    </>
+  );
+}
+
 export function BlockForm({
   block,
   page,
@@ -237,22 +268,7 @@ export function BlockForm({
             onChange={(v) => set<typeof block>((b) => (b.alt = v))}
           />
           <BoxFields block={block} set={set<typeof block>} />
-          <h4 className={sectionClass}>Effects</h4>
-          <Field label="Blur (px)">
-            <NumberBox
-              min={0}
-              max={100}
-              value={block.blur ?? 0}
-              onChange={(n) =>
-                set<typeof block>((b) => {
-                  const blur = Math.min(100, Math.max(0, n));
-                  if (blur) b.blur = blur;
-                  else delete b.blur;
-                })
-              }
-              className={inputClass}
-            />
-          </Field>
+          <BlurField label="Blur (px)" block={block} set={set<typeof block>} />
         </>
       );
     case 'video':
@@ -305,6 +321,7 @@ export function BlockForm({
             onChange={(v) => set<typeof block>((b) => (b.shape = v))}
           />
           <BoxFields block={block} set={set<typeof block>} />
+          <BlurField label="Blur what's behind (px)" block={block} set={set<typeof block>} />
         </>
       );
     case 'button':
