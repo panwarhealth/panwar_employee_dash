@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import { Pipette, X } from 'lucide-react';
 import type { Border, Gradient, Shadow, TextStyle } from '@/course/doc';
 import { gradientCss, SIZES } from '@/course/typography';
@@ -350,9 +350,11 @@ export function TextStyleFields({
   value,
   onChange,
   boldByDefault = false,
+  align,
 }: {
   value: TextStyle | undefined;
   boldByDefault?: boolean;
+  align?: ReactNode;
   onChange: (s: TextStyle) => void;
 }) {
   const fonts = useContext(FontOptions);
@@ -407,6 +409,7 @@ export function TextStyleFields({
             onChange={(e) => set({ lineHeight: num(e.target.value) })}
           />
         </Field>
+        {align}
         <Field label="Letter spacing (em)">
           <input
             type="number"

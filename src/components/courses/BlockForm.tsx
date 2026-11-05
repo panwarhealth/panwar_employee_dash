@@ -48,6 +48,35 @@ const ALIGN = [
 
 type Boxed = HeadingBlock | TextBlock | ImageBlock | ShapeBlock;
 
+function AlignFields<B extends HeadingBlock | TextBlock>({
+  block,
+  set,
+}: {
+  block: B;
+  set: (fn: (b: B) => void) => void;
+}) {
+  return (
+    <>
+      <Select
+        label="Align"
+        value={block.align}
+        options={ALIGN}
+        onChange={(v) => set((b) => (b.align = v))}
+      />
+      <Select
+        label="Vertical align"
+        value={block.valign ?? (block.fill || block.gradient ? 'middle' : 'top')}
+        options={[
+          { value: 'top', label: 'Top' },
+          { value: 'middle', label: 'Middle' },
+          { value: 'bottom', label: 'Bottom' },
+        ]}
+        onChange={(v) => set((b) => (b.valign = v))}
+      />
+    </>
+  );
+}
+
 function BoxFields<B extends Boxed>({
   block,
   set,
@@ -57,6 +86,9 @@ function BoxFields<B extends Boxed>({
 }) {
   return (
     <>
+      <h4 className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
+        Box
+      </h4>
       <PaintField
         label="Background colour"
         fill={block.fill}
@@ -69,22 +101,6 @@ function BoxFields<B extends Boxed>({
         }
       />
       <BorderField value={block.border} onChange={(v) => set((b) => (b.border = v))} />
-      {(block.type === 'heading' || block.type === 'text') && (
-        <Select
-          label="Vertical align"
-          value={block.valign ?? (block.fill || block.gradient ? 'middle' : 'top')}
-          options={[
-            { value: 'top', label: 'Top' },
-            { value: 'middle', label: 'Middle' },
-            { value: 'bottom', label: 'Bottom' },
-          ]}
-          onChange={(v) =>
-            set((b) => {
-              if (b.type === 'heading' || b.type === 'text') b.valign = v;
-            })
-          }
-        />
-      )}
       {(block.type === 'heading' || block.type === 'text') && (
         <PaddingField
           value={
@@ -150,15 +166,10 @@ export function BlockForm({
             ]}
             onChange={(v) => set<typeof block>((b) => (b.level = v === '1' ? 1 : 2))}
           />
-          <Select
-            label="Align"
-            value={block.align}
-            options={ALIGN}
-            onChange={(v) => set<typeof block>((b) => (b.align = v))}
-          />
           <TextStyleFields
             value={block.textStyle}
             boldByDefault
+            align={<AlignFields block={block} set={set<typeof block>} />}
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />
           <BoxFields block={block} set={set<typeof block>} />
@@ -173,14 +184,9 @@ export function BlockForm({
             html={block.html}
             onChange={(v) => set<typeof block>((b) => (b.html = v))}
           />
-          <Select
-            label="Align"
-            value={block.align}
-            options={ALIGN}
-            onChange={(v) => set<typeof block>((b) => (b.align = v))}
-          />
           <TextStyleFields
             value={block.textStyle}
+            align={<AlignFields block={block} set={set<typeof block>} />}
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />
           <BoxFields block={block} set={set<typeof block>} />
