@@ -68,6 +68,16 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   );
   const [pageId, setPageId] = useState(initial.pages[0].id);
   const [blockId, setBlockId] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const toggleHidden = (id: string) => {
+    const next = new Set(hidden);
+    if (next.has(id)) next.delete(id);
+    else {
+      next.add(id);
+      if (blockId === id) setBlockId(null);
+    }
+    setHidden(next);
+  };
   const [phone, setPhone] = useState(initial.screens === 'phone');
   const [modal, setModal] = useState<
     'add' | 'export' | 'pdf' | 'settings' | 'preview' | 'variables' | null
@@ -229,6 +239,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               layout={layout}
               selectedId={blockId}
               onSelect={setBlockId}
+              hidden={hidden}
               onFrame={setFrame}
               onFrames={(frames) => setDoc((d) => ops.setFrames(d, page.id, layout, frames))}
               onRemove={removeBlocks}
@@ -259,6 +270,8 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           courseId={courseId}
           selectedId={blockId}
           onSelect={setBlockId}
+          hidden={hidden}
+          onToggleHidden={toggleHidden}
           onPage={(fn) => setDoc((d) => ops.updatePage(d, page.id, fn))}
           onAddBlock={() => setModal('add')}
           onMoveBlock={(from, to) => setDoc((d) => ops.moveBlock(d, page.id, from, to))}
