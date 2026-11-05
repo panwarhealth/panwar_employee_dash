@@ -11,7 +11,14 @@ import {
 } from './doc';
 import { BlockView } from './blocks';
 import type { BlockContext } from './context';
-import { baseOf, frameFor, frameStyle, groupFrame, growsToFit } from './canvasLayout';
+import {
+  backdropClass,
+  baseOf,
+  frameFor,
+  frameStyle,
+  groupFrame,
+  growsToFit,
+} from './canvasLayout';
 import { animClass, animStyle } from './anim';
 import { centreInside } from './geometry';
 import { paintCss } from './typography';
@@ -203,7 +210,7 @@ export function CanvasStage({
           return (
             <div
               key={b.id}
-              className={`${objectClass(b, ctx, !unit)} ${look} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) && !viaGroup ? ' cp-through' : ''}`}
+              className={`${objectClass(b, ctx, !unit)} ${backdropClass(b, frame)} ${look} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) && !viaGroup ? ' cp-through' : ''}`}
               style={{
                 ...frameStyle(frame, growsToFit(b)),
                 ...animStyle(b),
@@ -224,9 +231,6 @@ export function CanvasStage({
             </div>
           );
         })}
-        {layout === 'phone' && page.sideways && (
-          <div className="cp-sideways">Turn your phone sideways to read the diagram</div>
-        )}
         {overlay}
       </div>
     </div>

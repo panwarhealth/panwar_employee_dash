@@ -14,7 +14,7 @@ import { measureHeights } from './pageFit';
 import { boxed, DESIGN, EDGE_PX, FLOWING, isDecor, isHolder, isRound, isText } from './blockKinds';
 import { cardOf } from './desktopLayout';
 
-const PHONE = { w: 360, h: 640, top: 7, gap: 2, hint: 6 };
+const PHONE = { w: 360, h: 640, top: 7, gap: 2 };
 const PHONE_BODY_PX = 15;
 const PHONE_TITLE_PX = 24;
 const MIN_CARD_SCALE = 0.7;
@@ -236,9 +236,7 @@ class PhoneStack {
   private readonly byId: Map<string, Block>;
   private readonly gap: number;
   private readonly taps: Set<string>;
-  unreadable = false;
   private rows = -1000;
-  private readonly hintOff: boolean;
 
   constructor(
     page: Page,
@@ -247,7 +245,6 @@ class PhoneStack {
     private readonly shrink: Shrink,
   ) {
     this.byId = new Map(page.blocks.map((b) => [b.id, b]));
-    this.hintOff = page.sideways === false;
     this.gap = (PHONE.gap / 100) * PHONE.h * shrink.gaps;
     this.taps = new Set([
       ...page.blocks.filter((b) => b.type === 'button').map((b) => b.id),
@@ -324,7 +321,6 @@ class PhoneStack {
 
   private scaleFor(ids: string[], fitWidth: number, fitHeight: number): number {
     const readable = this.readableScale(ids);
-    if (readable > fitWidth + 0.001) this.unreadable = true;
     const fit = Math.min(1, fitWidth, fitHeight);
     const video = ids.some((id) => this.byId.get(id)!.type === 'video');
     const sides = ids.filter((id) => this.taps.has(id)).map((id) => this.minSidePx(id) * fit);
@@ -458,7 +454,7 @@ class PhoneStack {
       top += this.place(unit, left, width, top, 'center') + this.gap;
       this.anchor(unit, (c) => (c.title ? 't' : 'c'));
     }
-    let bottom = end - (this.unreadable && !this.hintOff ? (PHONE.hint / 100) * PHONE.h : 0);
+    let bottom = end;
     for (const unit of this.units(clusters.filter((c) => c.footer)).reverse()) {
       bottom -= this.place(unit, left, width, 0, this.alignOf(unit));
       this.anchor(unit, () => 'b', bottom);
@@ -474,10 +470,8 @@ export function stackPhone(
   measured: Map<string, number> = new Map(),
   textScale: Map<string, number> = phoneTextScale(page),
   shrink: Shrink = { text: 1, pictures: 1, gaps: 1 },
-): { used: number; sideways: boolean } {
-  const stack = new PhoneStack(page, measured, textScale, shrink);
-  const used = stack.run(clusters, cardOf(page));
-  return { used, sideways: stack.unreadable };
+): number {
+  return new PhoneStack(page, measured, textScale, shrink).run(clusters, cardOf(page));
 }
 
 const hasPictures = (list: Cluster[]): boolean =>
@@ -496,20 +490,19 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
     pictures: hasPictures(clusters) ? 1 : MIN_PICTURE_SHRINK,
     gaps: 1,
   };
-  let result = { used: 1, sideways: false };
+  let used = 1;
   let last = Infinity;
   let lever = shrink.pictures > MIN_PICTURE_SHRINK ? 0 : 1;
   for (let attempt = 0; attempt < 16; attempt++) {
     stackPhone(page, clusters, new Map(), scale, shrink);
     const measured = await measureHeights(doc, page, 'phone');
-    result = stackPhone(
+    used = stackPhone(
       page,
       clusters,
       new Map([...measured].filter(([id]) => flowing.has(id))),
       scale,
       shrink,
     );
-    const used = result.used;
     if (used <= FITS) break;
     if (used > last - 0.002) lever++;
     last = used;
@@ -524,9 +517,5 @@ export async function fitPhone(doc: CourseDoc, page: Page): Promise<boolean> {
       shrink.gaps = MIN_GAP_SHRINK;
     } else break;
   }
-  if (page.sideways !== false) {
-    if (result.sideways) page.sideways = true;
-    else delete page.sideways;
-  }
-  return result.used <= FITS;
+  return used <= FITS;
 }

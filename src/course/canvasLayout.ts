@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Block, BlockType, Frame, Group, Layout, Page, Screens } from './doc';
-import { bounds, round1, type Box } from './geometry';
+import { bounds, isBackdrop, round1, type Box } from './geometry';
 
 export function layoutsFor(screens: Screens): Layout[] {
   if (screens === 'both') return ['desktop', 'phone'];
@@ -26,6 +26,9 @@ export const frameFor = (page: Page, block: Block, layout: Layout): Frame =>
   block.frames?.[layout] ?? autoFrame(page, block, layout);
 
 export const growsToFit = (b: Block) => b.type === 'heading' || b.type === 'text';
+
+export const backdropClass = (b: Block, frame: Frame) =>
+  b.type === 'image' && isBackdrop(frame) ? 'cp-backdrop' : '';
 
 export const membersOf = (page: Page, group: Group) =>
   group.members.map((id) => page.blocks.find((b) => b.id === id)!);

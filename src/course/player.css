@@ -449,19 +449,6 @@
   width: min(100cqw, 56.25cqh);
   height: min(177.7778cqw, 100cqh);
 }
-.cp-sideways {
-  position: absolute;
-  left: 50%;
-  bottom: calc(3% + 20 * var(--px));
-  transform: translateX(-50%);
-  padding: calc(5 * var(--px)) calc(12 * var(--px));
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
-  font-size: calc(12 * var(--px));
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 5;
-}
 .cp-stage-desktop .cp-obj {
   font-size: calc(var(--dw) / 60 * var(--ts, 1));
 }
@@ -505,6 +492,9 @@
   margin: 0;
   border-radius: 0;
   object-fit: contain;
+}
+.cp-backdrop .cp-img {
+  object-fit: cover;
 }
 .cp-crop {
   position: relative;

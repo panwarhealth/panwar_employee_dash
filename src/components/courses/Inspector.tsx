@@ -112,15 +112,6 @@ export function Inspector({
             }
           />
         </div>
-        {canvas.layout === 'phone' && (
-          <div className="mt-3">
-            <Toggle
-              label="Show the turn-sideways hint"
-              checked={page.sideways === true}
-              onChange={(on) => onPage((p) => (p.sideways = on))}
-            />
-          </div>
-        )}
       </div>
 
       <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">

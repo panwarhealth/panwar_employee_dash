@@ -90,7 +90,6 @@ export interface Page {
   background?: string;
   gradient?: Gradient;
   notes?: ReviewNote[];
-  sideways?: boolean;
   groups?: Group[];
 }
 
@@ -773,6 +772,7 @@ function upgradeBlock(b: Block): Block {
 function upgradePage(p: Page): Page {
   const page = { ...p, triggers: p.triggers ?? [], blocks: p.blocks.map(upgradeBlock) };
   delete (page as Page & { kind?: string }).kind;
+  delete (page as Page & { sideways?: boolean }).sideways;
   return page;
 }
 

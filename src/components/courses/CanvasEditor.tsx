@@ -8,6 +8,7 @@ import {
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
 import {
+  backdropClass,
   frameFor,
   frameStyle,
   groupFrame,
@@ -242,7 +243,8 @@ export function CanvasEditor({
     e.stopPropagation();
     if (e.button !== 0) return;
     const backdrop = page.blocks.find((b) => b.id === id);
-    if (mode === 'move' && backdrop && isDecor(backdrop) && selectedId !== id) {
+    const deselects = selectedId !== null || picked.length > 0;
+    if (mode === 'move' && backdrop && isDecor(backdrop) && selectedId !== id && deselects) {
       setPicked([]);
       return onSelect(null);
     }
@@ -441,6 +443,7 @@ export function CanvasEditor({
                   data-obj={b.id}
                   className={cn(
                     'cp-obj',
+                    backdropClass(b, f),
                     !typing &&
                       'cursor-move touch-none select-none [&>*:first-child]:pointer-events-none',
                     !b.frames?.[layout] && 'opacity-60 outline-dashed outline-1 outline-amber-500',
