@@ -11,7 +11,10 @@ import type {
 } from '@/course/doc';
 import { uid } from '@/course/doc';
 import {
+  Field,
+  inputClass,
   MediaInput,
+  NumberBox,
   PaddingField,
   RadiusField,
   sectionClass,
@@ -234,6 +237,22 @@ export function BlockForm({
             onChange={(v) => set<typeof block>((b) => (b.alt = v))}
           />
           <BoxFields block={block} set={set<typeof block>} />
+          <h4 className={sectionClass}>Effects</h4>
+          <Field label="Blur (px)">
+            <NumberBox
+              min={0}
+              max={100}
+              value={block.blur ?? 0}
+              onChange={(n) =>
+                set<typeof block>((b) => {
+                  const blur = Math.min(100, Math.max(0, n));
+                  if (blur) b.blur = blur;
+                  else delete b.blur;
+                })
+              }
+              className={inputClass}
+            />
+          </Field>
         </>
       );
     case 'video':

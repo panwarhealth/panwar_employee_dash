@@ -236,6 +236,7 @@ export interface ImageBlock extends BlockBase {
   border?: Border;
   crop?: [number, number, number, number];
   stretch?: boolean;
+  blur?: number;
 }
 
 export interface VideoBlock extends BlockBase {

@@ -75,6 +75,7 @@ const LOOK_KEYS = new Set([
   'look',
   'crop',
   'stretch',
+  'blur',
 ]);
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);

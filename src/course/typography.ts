@@ -59,7 +59,7 @@ const ROUNDED: Record<Corners, [number, number, number, number]> = {
   right: [0, 1, 1, 0],
 };
 
-const px = (n: number) => `calc(${n} * var(--px, 1px))`;
+export const px = (n: number) => `calc(${n} * var(--px, 1px))`;
 
 export const radiusCss = (radius: number | undefined, corners: Corners = 'all'): CSSProperties =>
   radius === undefined

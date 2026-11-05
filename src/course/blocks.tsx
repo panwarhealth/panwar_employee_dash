@@ -1,7 +1,7 @@
 import type { Block } from './doc';
 import type { BlockContext } from './context';
 import { sanitizeHtml } from './sanitize';
-import { borderCss, boxCss, paintCss, radiusCss, shadowCss } from './typography';
+import { borderCss, boxCss, paintCss, px, radiusCss, shadowCss } from './typography';
 import { embedUrl } from './util';
 import { AnimationView, AudioView } from './media';
 import {
@@ -50,7 +50,9 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.merge(block.html, true)) }}
         />
       );
-    case 'image':
+    case 'image': {
+      const blur = block.blur ? { filter: `blur(${px(block.blur)})` } : {};
+      const bleed = px((block.blur ?? 0) * 2);
       if (block.src && block.crop) {
         const [t, r, b, l] = block.crop;
         return (
@@ -67,18 +69,46 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
               src={block.src}
               alt={block.alt}
               style={{
-                left: `${(-l / (100 - l - r)) * 100}%`,
-                top: `${(-t / (100 - t - b)) * 100}%`,
-                width: `${(100 / (100 - l - r)) * 100}%`,
-                height: `${(100 / (100 - t - b)) * 100}%`,
+                left: `calc(${(-l / (100 - l - r)) * 100}% - ${bleed})`,
+                top: `calc(${(-t / (100 - t - b)) * 100}% - ${bleed})`,
+                width: `calc(${(100 / (100 - l - r)) * 100}% + 2 * ${bleed})`,
+                height: `calc(${(100 / (100 - t - b)) * 100}% + 2 * ${bleed})`,
+                ...blur,
               }}
             />
           </div>
         );
       }
+      const look = `cp-img cp-img-${block.size}${block.fill || block.gradient ? ' cp-img-fill' : ''}`;
+      if (block.src && block.blur)
+        return (
+          <div
+            className="cp-crop"
+            style={{
+              ...radiusCss(block.radius, block.corners),
+              ...borderCss(block.border),
+              ...shadowCss(block.shadow, 'image'),
+            }}
+          >
+            <img
+              className={look}
+              style={{
+                ...paintCss(block.fill, block.gradient),
+                ...(block.stretch ? { objectFit: 'fill' } : {}),
+                left: `calc(-1 * ${bleed})`,
+                top: `calc(-1 * ${bleed})`,
+                width: `calc(100% + 2 * ${bleed})`,
+                height: `calc(100% + 2 * ${bleed})`,
+                ...blur,
+              }}
+              src={block.src}
+              alt={block.alt}
+            />
+          </div>
+        );
       return block.src ? (
         <img
-          className={`cp-img cp-img-${block.size}${block.fill || block.gradient ? ' cp-img-fill' : ''}`}
+          className={look}
           style={{
             ...paintCss(block.fill, block.gradient),
             ...shadowCss(block.shadow, 'image'),
@@ -92,6 +122,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       ) : (
         <div className="cp-empty">Image</div>
       );
+    }
     case 'video':
       return block.src ? (
         <video
