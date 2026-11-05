@@ -21,18 +21,17 @@ export function ColourField({
 }) {
   return (
     <Field label={label}>
-      <span className="flex items-center gap-2">
+      <span className="flex items-center gap-1">
         <ColourPicker value={value} onChange={onChange} />
-        {value ? (
+        {value && (
           <button
             type="button"
-            className="text-xs text-ph-charcoal/60 underline underline-offset-2"
+            title="Reset to default"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple"
             onClick={() => onChange(undefined)}
           >
-            Reset
+            <X size={14} />
           </button>
-        ) : (
-          <span className="text-xs text-ph-charcoal/50">Default</span>
         )}
       </span>
       <Swatches value={value} onPick={onChange} />
@@ -420,19 +419,19 @@ export function TextStyleFields({
             onChange={(e) => set({ letterSpacing: num(e.target.value) })}
           />
         </Field>
-      </div>
-      <div className="flex flex-wrap gap-4">
-        <Toggle
-          label="Bold"
-          checked={s.weight ? s.weight === 700 : boldByDefault}
-          onChange={(v) => set({ weight: v ? 700 : 400 })}
-        />
-        <Toggle label="Italic" checked={!!s.italic} onChange={(italic) => set({ italic })} />
-        <Toggle
-          label="Underline"
-          checked={!!s.underline}
-          onChange={(underline) => set({ underline })}
-        />
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-1 pb-2">
+          <Toggle
+            label="Bold"
+            checked={s.weight ? s.weight === 700 : boldByDefault}
+            onChange={(v) => set({ weight: v ? 700 : 400 })}
+          />
+          <Toggle label="Italic" checked={!!s.italic} onChange={(italic) => set({ italic })} />
+          <Toggle
+            label="Underline"
+            checked={!!s.underline}
+            onChange={(underline) => set({ underline })}
+          />
+        </div>
       </div>
     </>
   );

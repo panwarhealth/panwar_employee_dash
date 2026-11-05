@@ -84,6 +84,8 @@ function BoxFields<B extends Boxed>({
   block: B;
   set: (fn: (b: B) => void) => void;
 }) {
+  const textual = block.type === 'heading' || block.type === 'text';
+  const full = !textual || !!(block.fill || block.gradient || block.border);
   return (
     <>
       <h4 className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
@@ -101,7 +103,7 @@ function BoxFields<B extends Boxed>({
         }
       />
       <BorderField value={block.border} onChange={(v) => set((b) => (b.border = v))} />
-      {(block.type === 'heading' || block.type === 'text') && (
+      {full && (block.type === 'heading' || block.type === 'text') && (
         <PaddingField
           value={
             block.padding ??
@@ -114,7 +116,7 @@ function BoxFields<B extends Boxed>({
           }
         />
       )}
-      {!(block.type === 'shape' && block.shape === 'ellipse') && (
+      {full && !(block.type === 'shape' && block.shape === 'ellipse') && (
         <RadiusField
           value={block.radius}
           fallback={0}
@@ -127,7 +129,7 @@ function BoxFields<B extends Boxed>({
           }
         />
       )}
-      <ShadowField value={block.shadow} onChange={(v) => set((b) => (b.shadow = v))} />
+      {full && <ShadowField value={block.shadow} onChange={(v) => set((b) => (b.shadow = v))} />}
     </>
   );
 }
@@ -157,15 +159,6 @@ export function BlockForm({
             value={block.text}
             onChange={(v) => set<typeof block>((b) => (b.text = v))}
           />
-          <Select
-            label="Size"
-            value={String(block.level) as '1' | '2'}
-            options={[
-              { value: '1', label: 'Large' },
-              { value: '2', label: 'Small' },
-            ]}
-            onChange={(v) => set<typeof block>((b) => (b.level = v === '1' ? 1 : 2))}
-          />
           <TextStyleFields
             value={block.textStyle}
             boldByDefault
@@ -181,6 +174,7 @@ export function BlockForm({
           <RichText
             key={block.id}
             label="Text"
+            boxStyled
             html={block.html}
             onChange={(v) => set<typeof block>((b) => (b.html = v))}
           />

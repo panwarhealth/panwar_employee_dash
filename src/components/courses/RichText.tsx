@@ -25,10 +25,12 @@ export function RichText({
   label,
   html,
   onChange,
+  boxStyled = false,
 }: {
   label: string;
   html: string;
   onChange: (v: string) => void;
+  boxStyled?: boolean;
 }) {
   const fonts = useContext(FontOptions);
   const ref = useRef<HTMLDivElement>(null);
@@ -79,7 +81,7 @@ export function RichText({
     commit();
   };
 
-  const tools: { icon: ReactNode; title: string; act: () => void }[] = [
+  const styleTools: { icon: ReactNode; title: string; act: () => void }[] = [
     { icon: <Bold className="h-3.5 w-3.5" />, title: 'Bold', act: () => run('bold') },
     { icon: <Italic className="h-3.5 w-3.5" />, title: 'Italic', act: () => run('italic') },
     {
@@ -92,6 +94,8 @@ export function RichText({
       title: 'Strikethrough',
       act: () => run('strikeThrough'),
     },
+  ];
+  const alignTools: { icon: ReactNode; title: string; act: () => void }[] = [
     {
       icon: <AlignLeft className="h-3.5 w-3.5" />,
       title: 'Align left',
@@ -112,6 +116,8 @@ export function RichText({
       title: 'Justify',
       act: () => run('justifyFull'),
     },
+  ];
+  const listTools: { icon: ReactNode; title: string; act: () => void }[] = [
     {
       icon: <List className="h-3.5 w-3.5" />,
       title: 'Bullet list',
@@ -142,28 +148,30 @@ export function RichText({
       <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">{label}</span>
       <div className="rounded-md border-[1.5px] border-ph-charcoal/15 bg-white focus-within:border-ph-purple">
         <div className="flex flex-wrap items-center gap-1 border-b border-ph-charcoal/10 px-1.5 py-1">
-          <select
-            className={`${pickClass} w-28`}
-            title="Font"
-            value=""
-            onMouseDown={remember}
-            onChange={(e) => {
-              const f = fonts.find((x) => x.id === e.target.value);
-              if (f?.css) run('fontName', f.css);
-            }}
-          >
-            <option value="">Font…</option>
-            {fonts
-              .filter((f) => f.css)
-              .map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-          </select>
+          {!boxStyled && (
+            <select
+              className={`${pickClass} w-28`}
+              title="Font"
+              value=""
+              onMouseDown={remember}
+              onChange={(e) => {
+                const f = fonts.find((x) => x.id === e.target.value);
+                if (f?.css) run('fontName', f.css);
+              }}
+            >
+              <option value="">Font…</option>
+              {fonts
+                .filter((f) => f.css)
+                .map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+            </select>
+          )}
           <select
             className={`${pickClass} w-16`}
-            title="Size"
+            title={boxStyled ? 'Size of the selected words' : 'Size'}
             value=""
             onMouseDown={remember}
             onChange={(e) => e.target.value && setSize(Number(e.target.value))}
@@ -200,7 +208,7 @@ export function RichText({
               onChange={(e) => run('hiliteColor', e.target.value)}
             />
           </label>
-          {tools.map((t) => (
+          {[...styleTools, ...(boxStyled ? [] : alignTools), ...listTools].map((t) => (
             <button
               key={t.title}
               type="button"
