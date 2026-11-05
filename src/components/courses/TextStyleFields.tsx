@@ -408,7 +408,6 @@ export function TextStyleFields({
             onChange={(e) => set({ lineHeight: num(e.target.value) })}
           />
         </Field>
-        {align}
         <Field label="Letter spacing (em)">
           <input
             type="number"
@@ -432,6 +431,7 @@ export function TextStyleFields({
             onChange={(underline) => set({ underline })}
           />
         </div>
+        {align}
       </div>
     </>
   );
