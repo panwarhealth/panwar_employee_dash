@@ -177,7 +177,7 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-.cp-btn-solid:disabled {
+.cp .cp-btn-solid:disabled {
   opacity: 1;
   background: #c9c9d1;
 }
@@ -185,13 +185,13 @@
   opacity: 0.5;
   filter: grayscale(1);
 }
-.cp-btn-solid {
+.cp .cp-btn-solid {
   background: var(--cp-accent);
-  color: #fff !important;
+  color: #fff;
 }
-.cp-btn-outline {
+.cp .cp-btn-outline {
   background: #fff;
-  color: var(--cp-accent) !important;
+  color: var(--cp-accent);
 }
 
 .cp-check {
