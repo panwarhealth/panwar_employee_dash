@@ -34,7 +34,7 @@ export function TrackTimeModal({
   const [taskId, setTaskId] = useState('');
   const [notes, setNotes] = useState('');
   const [hoursText, setHoursText] = useState('');
-  const [star, setStar] = useState(true);
+  const [star, setStar] = useState(false);
 
   useEffect(() => {
     const last = readLastPick();
