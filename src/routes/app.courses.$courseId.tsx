@@ -353,6 +353,8 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             onFinishDeck={() => void assistant.finishDeck()}
             onStop={assistant.stop}
             onUndo={assistant.undo}
+            canClear={assistant.canClear}
+            onClear={assistant.clear}
             onClose={() => setAssistantOpen(false)}
           />
         )}

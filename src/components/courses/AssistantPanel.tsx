@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileUp, Loader2, Undo2, X } from 'lucide-react';
+import { FileUp, Loader2, MessageSquarePlus, Undo2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ChatEntry } from '@/hooks/useCourseAssistant';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,8 @@ export function AssistantPanel({
   onFinishDeck,
   onStop,
   onUndo,
+  canClear,
+  onClear,
   onClose,
 }: {
   entries: ChatEntry[];
@@ -29,6 +31,8 @@ export function AssistantPanel({
   onFinishDeck: () => void;
   onStop: () => void;
   onUndo: () => void;
+  canClear: boolean;
+  onClear: () => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState('');
@@ -57,27 +61,37 @@ export function AssistantPanel({
             US${cost.toFixed(2)}
           </span>
         )}
-        {canUndo && (
+        <span className="ml-auto flex items-center gap-3">
+          {canUndo && (
+            <button
+              type="button"
+              onClick={onUndo}
+              className="flex items-center gap-1 text-xs text-ph-charcoal/60 hover:text-ph-purple"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              Undo last changes
+            </button>
+          )}
+          {canClear && (
+            <button
+              type="button"
+              title="Start a fresh chat. Changes already made stay."
+              onClick={onClear}
+              className="flex items-center gap-1 text-xs text-ph-charcoal/60 hover:text-ph-purple"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" />
+              New chat
+            </button>
+          )}
           <button
             type="button"
-            onClick={onUndo}
-            className="ml-auto flex items-center gap-1 text-xs text-ph-charcoal/60 hover:text-ph-purple"
+            title="Close"
+            onClick={onClose}
+            className="rounded-full p-1 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple"
           >
-            <Undo2 className="h-3.5 w-3.5" />
-            Undo last changes
+            <X className="h-4 w-4" />
           </button>
-        )}
-        <button
-          type="button"
-          title="Close"
-          onClick={onClose}
-          className={cn(
-            'rounded-full p-1 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple',
-            !canUndo && 'ml-auto',
-          )}
-        >
-          <X className="h-4 w-4" />
-        </button>
+        </span>
       </div>
 
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4 text-sm">

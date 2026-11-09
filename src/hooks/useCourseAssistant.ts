@@ -244,6 +244,12 @@ export function useCourseAssistant(
     importDeck: importFile,
     canFinishDeck: !busy && deckPrompt !== null,
     finishDeck,
+    canClear: !busy && entries.length > 0,
+    clear: () => {
+      history.current = [];
+      setEntries([]);
+      setDeckPrompt(null);
+    },
     stop: () => abort.current?.abort(),
     undo: () => {
       if (!undo) return;
