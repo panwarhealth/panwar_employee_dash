@@ -30,6 +30,7 @@ import {
 import { bounds } from '@/course/geometry';
 import { cn } from '@/lib/utils';
 import { isDecor } from './blockKinds';
+import { readFlag, saveFlag } from './flags';
 import { InlineText } from './InlineText';
 import { ObjectMenu } from './ObjectMenu';
 import { objectMenuItems } from './objectMenuItems';
@@ -38,22 +39,6 @@ const SAFE_ZONE_KEY = 'course-editor.show-safe-zone';
 const SNAP_KEY = 'course-editor.snap';
 const ZOOMS = [1, 1.5, 2, 3, 4];
 const STAGE_PX: Record<Layout, number> = { desktop: 960, phone: 360 };
-
-function readFlag(key: string): boolean {
-  try {
-    return localStorage.getItem(key) !== '0';
-  } catch {
-    return true;
-  }
-}
-
-function saveFlag(key: string, on: boolean) {
-  try {
-    localStorage.setItem(key, on ? '1' : '0');
-  } catch {
-    return;
-  }
-}
 
 type Mode = 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 
