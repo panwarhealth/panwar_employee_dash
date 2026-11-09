@@ -9,19 +9,24 @@ export interface BlockMeta {
 }
 
 export const BLOCKS: BlockMeta[] = [
-  { type: 'heading', name: 'Heading', group: 'Content' },
+  { type: 'heading', name: 'Heading', detail: 'One line of title text', group: 'Content' },
   { type: 'text', name: 'Text', detail: 'Bold, links, lists', group: 'Content' },
   { type: 'image', name: 'Image', detail: 'jpg, png, svg, gif', group: 'Content' },
   { type: 'video', name: 'Video', detail: 'mp4 upload, captions', group: 'Content' },
   { type: 'embed', name: 'Embed', detail: 'YouTube, Vimeo, web page', group: 'Content' },
   { type: 'audio', name: 'Audio', detail: 'Narration with reveal cue points', group: 'Content' },
   { type: 'animation', name: 'Animation', detail: 'Lottie or GIF', group: 'Content' },
-  { type: 'divider', name: 'Divider', group: 'Content' },
+  { type: 'divider', name: 'Divider', detail: 'Thin line', group: 'Content' },
   { type: 'shape', name: 'Shape', detail: 'Box or circle, gradient, shadow', group: 'Content' },
   { type: 'popup', name: 'Pop-up', detail: 'Button that opens a layer', group: 'Interactive' },
-  { type: 'accordion', name: 'Accordion', group: 'Interactive' },
-  { type: 'tabs', name: 'Tabs', group: 'Interactive' },
-  { type: 'flip', name: 'Flip cards', group: 'Interactive' },
+  {
+    type: 'accordion',
+    name: 'Accordion',
+    detail: 'Stacked panels, open one to read it',
+    group: 'Interactive',
+  },
+  { type: 'tabs', name: 'Tabs', detail: 'One panel at a time behind tabs', group: 'Interactive' },
+  { type: 'flip', name: 'Flip cards', detail: 'Cards that flip to show a back', group: 'Interactive' },
   {
     type: 'reveal',
     name: 'Reveal card',
@@ -54,7 +59,7 @@ export const BLOCKS: BlockMeta[] = [
     group: 'Questions',
   },
   { type: 'match', name: 'Matching', detail: 'Pair items, drag or dropdown', group: 'Questions' },
-  { type: 'blank', name: 'Fill in the blank', group: 'Questions' },
+  { type: 'blank', name: 'Fill in the blank', detail: 'Type the missing words', group: 'Questions' },
   { type: 'slider', name: 'Slider', detail: 'Pick a number on a scale', group: 'Questions' },
   {
     type: 'written',
@@ -62,7 +67,12 @@ export const BLOCKS: BlockMeta[] = [
     detail: 'Short answer or essay',
     group: 'Questions',
   },
-  { type: 'likert', name: 'Likert scale', group: 'Questions' },
+  {
+    type: 'likert',
+    name: 'Likert scale',
+    detail: 'Agree to disagree ratings, not graded',
+    group: 'Questions',
+  },
   {
     type: 'results',
     name: 'Results page',
