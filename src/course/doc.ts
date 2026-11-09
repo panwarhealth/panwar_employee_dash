@@ -379,6 +379,7 @@ export interface RevealBlock extends BlockBase {
   type: 'reveal';
   cover: RevealFace;
   under: RevealFace;
+  textStyle?: TextStyle;
   radius?: number;
   corners?: Corners;
   border?: Border;

@@ -12,7 +12,7 @@ function Face({ face, className }: { face: RevealFace; className: string }) {
       {face.src && (
         <img
           className={size ? 'cp-reveal-img cp-reveal-img-fit' : 'cp-reveal-img'}
-          style={size ? { width: size, height: size } : undefined}
+          style={size ? { maxWidth: size, maxHeight: size } : undefined}
           src={face.src}
           alt=""
         />
@@ -40,6 +40,7 @@ export function RevealView({ block, ctx }: { block: RevealBlock; ctx: BlockConte
         ...radiusCss(block.radius, block.corners),
         ...borderCss(block.border),
         ...shadowCss(block.shadow, 'box'),
+        ...ctx.textStyle(block.textStyle),
       }}
       onClick={() => !ctx.edit && setRevealed(true)}
     >

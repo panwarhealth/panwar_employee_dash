@@ -11,7 +11,7 @@ import {
   Toggle,
 } from './fields';
 import { RichText } from './RichText';
-import { BorderField, ColourField, ShadowField } from './TextStyleFields';
+import { BorderField, ColourField, ShadowField, TextStyleFields } from './TextStyleFields';
 
 type Side = 'cover' | 'under';
 
@@ -89,6 +89,12 @@ export function RevealForm({
       />
       {face('cover', 'Card on top')}
       {face('under', 'Underneath')}
+      <TextStyleFields
+        value={block.textStyle}
+        emphasis={false}
+        colour={false}
+        onChange={(v) => set((b) => (b.textStyle = v))}
+      />
       <h4 className={sectionClass}>Box</h4>
       <RadiusField
         value={block.radius}
