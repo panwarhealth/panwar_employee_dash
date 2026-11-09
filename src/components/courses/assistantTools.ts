@@ -374,6 +374,7 @@ const makeButton: Handler = (doc, input) => {
   const button: ButtonBlock = {
     id: old.id,
     type: 'button',
+    ...(old.name ? { name: old.name } : {}),
     label:
       typeof input.label === 'string' ? input.label : blockText(old).replace(/\s+/g, ' ').trim(),
     action: input.action as ButtonAction,

@@ -184,6 +184,7 @@ export type VAlign = 'top' | 'middle' | 'bottom';
 
 export interface BlockBase {
   id: string;
+  name?: string;
   frames?: Partial<Record<Layout, Frame>>;
   looks?: Partial<Record<Layout, Record<string, unknown>>>;
   hidden?: boolean;
@@ -756,6 +757,7 @@ function emptyBoxToShape(b: TextBlock): ShapeBlock {
     id: b.id,
     type: 'shape',
     shape: circle ? 'ellipse' : 'rect',
+    ...(b.name ? { name: b.name } : {}),
     ...(b.frames ? { frames: b.frames } : {}),
     ...(b.interact ? { interact: b.interact } : {}),
     ...(b.anim ? { anim: b.anim } : {}),

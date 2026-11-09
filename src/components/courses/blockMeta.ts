@@ -107,6 +107,7 @@ function labelText(b: Block): string {
 }
 
 export const blockLabel = (b: Block): string =>
+  b.name?.trim() ||
   labelText(b).replace(/\s+/g, ' ').trim() || blockName(b.type);
 
 export const objectOptions = (page: Page): { value: string; label: string }[] => [

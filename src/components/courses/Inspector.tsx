@@ -13,6 +13,7 @@ import {
   type Layout,
   type Page,
 } from '@/course/doc';
+import { useState } from 'react';
 import { Eye, EyeOff, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { layoutsFor, lookFor, pagePaint } from '@/course/canvasLayout';
@@ -76,6 +77,15 @@ export function Inspector({
   const items = [...page.blocks].reverse();
   const move = (from: number, to: number) => onMoveBlock(last - from, last - to);
   const index = block ? page.blocks.indexOf(block) : -1;
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const rename = (id: string, value: string) => {
+    setRenaming(null);
+    onChangeBlock(id, (b) => {
+      const name = value.replace(/\s+/g, ' ').trim();
+      delete b.name;
+      if (name && name !== blockLabel(b)) b.name = name;
+    });
+  };
 
   return (
     <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-ph-charcoal/10 bg-[#faf9fb] px-4 py-4 text-sm">
@@ -185,20 +195,36 @@ export function Inspector({
             >
               {b.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
-            <button
-              type="button"
-              onClick={() => onSelect(b.id)}
-              className={cn(
-                'flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left',
-                b.hidden && 'opacity-50',
-              )}
-            >
-              <span className="cursor-grab font-mono text-xs text-ph-charcoal/40">::</span>
-              <span className="min-w-0 flex-1 truncate">{blockLabel(b)}</span>
-              <span className="text-[10px] font-normal uppercase tracking-wide text-ph-charcoal/40">
-                {blockName(b.type)}
-              </span>
-            </button>
+            {renaming === b.id ? (
+              <input
+                autoFocus
+                defaultValue={blockLabel(b)}
+                onFocus={(e) => e.target.select()}
+                onBlur={(e) => rename(b.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                  if (e.key === 'Escape') setRenaming(null);
+                }}
+                className="my-0.5 mr-1 min-w-0 flex-1 rounded border border-ph-purple/40 px-2 py-1 font-normal text-ph-charcoal outline-none"
+              />
+            ) : (
+              <button
+                type="button"
+                title="Double-click to rename"
+                onClick={() => onSelect(b.id)}
+                onDoubleClick={() => setRenaming(b.id)}
+                className={cn(
+                  'flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left',
+                  b.hidden && 'opacity-50',
+                )}
+              >
+                <span className="cursor-grab font-mono text-xs text-ph-charcoal/40">::</span>
+                <span className="min-w-0 flex-1 truncate">{blockLabel(b)}</span>
+                <span className="text-[10px] font-normal uppercase tracking-wide text-ph-charcoal/40">
+                  {blockName(b.type)}
+                </span>
+              </button>
+            )}
             <button
               type="button"
               title="Delete"
