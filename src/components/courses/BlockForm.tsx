@@ -224,7 +224,6 @@ export function BlockForm({
             key={block.id}
             label="Text"
             boxStyled
-            baseColour={block.textStyle?.color}
             html={block.html}
             onChange={(v) => set<typeof block>((b) => (b.html = v))}
           />

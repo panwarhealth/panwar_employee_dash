@@ -1,10 +1,11 @@
-import type {
-  HeadingBlock,
-  Insets,
-  Shadow,
-  ShapeBlock,
-  TextBlock,
-  TextStyle,
+import {
+  bakeTextColour,
+  type HeadingBlock,
+  type Insets,
+  type Shadow,
+  type ShapeBlock,
+  type TextBlock,
+  type TextStyle,
 } from '@/course/doc';
 import { round1 } from '@/course/geometry';
 import {
@@ -189,7 +190,7 @@ export function shapeBlock(
       textStyle,
       ...style,
     };
-  return {
+  const block: TextBlock = {
     id,
     type: 'text',
     html: textRuns(shape.paras).length ? parasHtml(shape.paras, base, align) : '',
@@ -197,4 +198,6 @@ export function shapeBlock(
     textStyle,
     ...style,
   };
+  bakeTextColour(block);
+  return block;
 }

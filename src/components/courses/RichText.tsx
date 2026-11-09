@@ -36,13 +36,11 @@ export function RichText({
   html,
   onChange,
   boxStyled = false,
-  baseColour,
 }: {
   label: string;
   html: string;
   onChange: (v: string) => void;
   boxStyled?: boolean;
-  baseColour?: string;
 }) {
   const fonts = useContext(FontOptions);
   const ref = useRef<HTMLDivElement>(null);
@@ -249,7 +247,6 @@ export function RichText({
           onKeyUp={remember}
           onMouseUp={remember}
           onBlur={remember}
-          style={baseColour ? { color: baseColour } : undefined}
           className="min-h-[110px] px-2.5 py-2 text-sm text-ph-charcoal focus:outline-none [&_a]:text-ph-purple [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5"
         />
       </div>

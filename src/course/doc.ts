@@ -775,7 +775,33 @@ const emptyHtml = (html: string) => !html.replace(/<[^>]*>|&nbsp;|\s/g, '');
 
 const PARA_LINE_HEIGHT = /\s*line-height:\s*[\d.]+(em)?;?/g;
 
-function upgradeBlock(b: Block): Block {
+const PARAGRAPH_TAGS = new Set(['P', 'UL', 'OL', 'DIV']);
+
+export function bakeTextColour(b: Block): void {
+  if (b.type !== 'text' || !b.textStyle?.color) return;
+  const { color, ...rest } = b.textStyle;
+  b.textStyle = rest;
+  const body = new DOMParser().parseFromString(`<body>${b.html}</body>`, 'text/html').body;
+  let run: HTMLSpanElement | null = null;
+  for (const node of [...body.childNodes]) {
+    if (node instanceof HTMLElement && PARAGRAPH_TAGS.has(node.tagName)) {
+      if (!node.style.color) node.style.color = color;
+      run = null;
+      continue;
+    }
+    if (!run) {
+      run = body.ownerDocument.createElement('span');
+      run.style.color = color;
+      body.insertBefore(run, node);
+    }
+    run.appendChild(node);
+  }
+  b.html = body.innerHTML;
+}
+
+function upgradeBlock(original: Block): Block {
+  const b = { ...original };
+  bakeTextColour(b);
   if (b.type === 'text' && emptyHtml(b.html) && (b.fill || b.gradient || b.border))
     return emptyBoxToShape(b);
   if (b.type === 'text' && b.html.includes('line-height'))

@@ -1,4 +1,5 @@
 import {
+  bakeTextColour,
   groupsOf,
   newBlock,
   uid,
@@ -210,6 +211,7 @@ function toBlock(raw: Record<string, unknown>): Block | string {
     block.valign ??= 'top';
     block.textStyle = { lineHeight: DEFAULT_LINE_HEIGHT, ...block.textStyle };
   }
+  bakeTextColour(block);
   fillIds([block]);
   return block;
 }
@@ -278,6 +280,7 @@ function mergeBlockChanges(block: Record<string, unknown>, change: Input) {
     } else if (value === null) delete block[key];
     else block[key] = value;
   }
+  bakeTextColour(block as unknown as Block);
   fillIds([block]);
 }
 
