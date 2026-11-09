@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode, type SetStateAction } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Monitor, Redo2, Settings, Smartphone, Sparkles, Undo2, Wand2 } from 'lucide-react';
+import { ArrowLeft, Monitor, Redo2, Settings, Smartphone, Sparkles, Undo2 } from 'lucide-react';
 import { CanvasEditor } from '@/components/courses/CanvasEditor';
 import { relayout } from '@/components/courses/deckToPages';
 import { getCourse } from '@/api/courses';
@@ -216,19 +216,6 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               </button>
               <button
                 type="button"
-                title={`AI tidies the spacing and sizes on this page, in the ${layout} layout. Undo puts it back.`}
-                disabled={assistant.busy}
-                onClick={() => {
-                  setAssistantOpen(true);
-                  void assistant.polishPage(page.id, layout);
-                }}
-                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-40"
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Polish page
-              </button>
-              <button
-                type="button"
                 onClick={() => setModal('variables')}
                 className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
               >
@@ -369,6 +356,8 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               )
             }
             onDeck={assistant.importDeck}
+            layout={layout}
+            onPolish={() => void assistant.polishPage(page.id, layout)}
             pendingDeck={assistant.pendingDeck}
             onDeckChoice={assistant.resolveDeck}
             canFinishDeck={assistant.canFinishDeck}
