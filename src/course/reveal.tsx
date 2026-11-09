@@ -24,7 +24,7 @@ function Face({
       {face.src && (
         <img
           className={size ? 'cp-reveal-img cp-reveal-img-fit' : 'cp-reveal-img'}
-          style={size ? { width: size, height: size } : undefined}
+          style={size ? { width: size } : undefined}
           src={face.src}
           alt=""
         />

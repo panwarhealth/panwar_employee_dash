@@ -48,7 +48,7 @@ export function RevealForm({
         onChange={(url) => set((b) => (b[side].src = url))}
       />
       {block[side].src && (
-        <Field label="Picture size (% of the card, 100 fills it)">
+        <Field label="Picture size (% of the card width, 100 fills the card)">
           <NumberBox
             min={10}
             max={100}
