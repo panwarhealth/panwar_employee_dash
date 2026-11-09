@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, type ReactNode } from 'react';
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   AlignCenter,
   AlignJustify,
@@ -17,6 +17,16 @@ import { SIZES } from '@/course/typography';
 import { FontOptions } from './fontContext';
 import { showNbspHtml } from './nbsp';
 
+function colourAt(node: Node): string {
+  const el = node instanceof Element ? node : node.parentElement;
+  const m = el && getComputedStyle(el).color.match(/\d+/g);
+  if (!m) return '#000000';
+  return `#${m
+    .slice(0, 3)
+    .map((n) => Number(n).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
 const toolClass = 'rounded p-1.5 text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple';
 const pickClass =
   'h-7 rounded border border-ph-charcoal/15 bg-white px-1 text-xs text-ph-charcoal focus:border-ph-purple focus:outline-none';
@@ -26,16 +36,19 @@ export function RichText({
   html,
   onChange,
   boxStyled = false,
+  baseColour,
 }: {
   label: string;
   html: string;
   onChange: (v: string) => void;
   boxStyled?: boolean;
+  baseColour?: string;
 }) {
   const fonts = useContext(FontOptions);
   const ref = useRef<HTMLDivElement>(null);
   const initial = useRef(showNbspHtml(html));
   const saved = useRef<Range | null>(null);
+  const [colour, setColour] = useState('#000000');
 
   useEffect(() => {
     if (ref.current) ref.current.innerHTML = initial.current;
@@ -43,8 +56,10 @@ export function RichText({
 
   const remember = () => {
     const sel = window.getSelection();
-    if (sel && sel.rangeCount && ref.current?.contains(sel.anchorNode))
+    if (sel && sel.rangeCount && sel.anchorNode && ref.current?.contains(sel.anchorNode)) {
       saved.current = sel.getRangeAt(0).cloneRange();
+      setColour(colourAt(sel.anchorNode));
+    }
   };
 
   const restore = () => {
@@ -190,9 +205,13 @@ export function RichText({
             A
             <input
               type="color"
+              value={colour}
               className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
               onMouseDown={remember}
-              onChange={(e) => run('foreColor', e.target.value)}
+              onChange={(e) => {
+                setColour(e.target.value);
+                run('foreColor', e.target.value);
+              }}
             />
           </label>
           <label
@@ -230,6 +249,7 @@ export function RichText({
           onKeyUp={remember}
           onMouseUp={remember}
           onBlur={remember}
+          style={baseColour ? { color: baseColour } : undefined}
           className="min-h-[110px] px-2.5 py-2 text-sm text-ph-charcoal focus:outline-none [&_a]:text-ph-purple [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5"
         />
       </div>

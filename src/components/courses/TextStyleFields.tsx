@@ -390,11 +390,13 @@ export function TextStyleFields({
   onChange,
   boldByDefault = false,
   emphasis = true,
+  colour = true,
   align,
 }: {
   value: TextStyle | undefined;
   boldByDefault?: boolean;
   emphasis?: boolean;
+  colour?: boolean;
   align?: ReactNode;
   onChange: (s: TextStyle) => void;
 }) {
@@ -459,9 +461,11 @@ export function TextStyleFields({
             onChange={(e) => set({ letterSpacing: num(e.target.value) })}
           />
         </Field>
-        <div className="col-span-2">
-          <ColourField label="Colour" value={s.color} onChange={(color) => set({ color })} />
-        </div>
+        {colour && (
+          <div className="col-span-2">
+            <ColourField label="Colour" value={s.color} onChange={(color) => set({ color })} />
+          </div>
+        )}
         {emphasis && (
           <div className="col-span-2 flex flex-wrap gap-4">
             <Toggle

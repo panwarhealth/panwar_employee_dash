@@ -224,12 +224,14 @@ export function BlockForm({
             key={block.id}
             label="Text"
             boxStyled
+            baseColour={block.textStyle?.color}
             html={block.html}
             onChange={(v) => set<typeof block>((b) => (b.html = v))}
           />
           <TextStyleFields
             value={block.textStyle}
             emphasis={false}
+            colour={false}
             align={<AlignFields block={block} set={set<typeof block>} />}
             onChange={(v) => set<typeof block>((b) => (b.textStyle = v))}
           />
