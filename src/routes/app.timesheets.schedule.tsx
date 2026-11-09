@@ -188,6 +188,10 @@ function SchedulePage() {
     mutationFn: (id: string) => ts.setJobArchived(id, true),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ts'] }),
   });
+  const archivePerson = useMutation({
+    mutationFn: (p: Person) => ts.updatePerson(p.id, { ...p, archived: true }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ts'] }),
+  });
   const shift = useMutation({
     mutationFn: (v: { id: string; days: number }) => ts.shiftJob(v.id, v.days),
     onSuccess: () => {
@@ -400,7 +404,9 @@ function SchedulePage() {
 
   return (
     <>
-      {schedule.error && <p className="err">{errorText(schedule.error)}</p>}
+      {(schedule.error || archivePerson.error) && (
+        <p className="err">{errorText(schedule.error ?? archivePerson.error)}</p>
+      )}
       <div className="card fc">
         <div className="fc-bar">
           <div className="fc-lt" style={{ gap: 18 }}>
@@ -664,6 +670,13 @@ function SchedulePage() {
                                         setEditingPerson(
                                           staff.data?.find((x) => x.id === p.id) ?? null,
                                         ),
+                                    },
+                                    {
+                                      label: 'Archive',
+                                      onSelect: () => {
+                                        const person = staff.data?.find((x) => x.id === p.id);
+                                        if (person) archivePerson.mutate(person);
+                                      },
                                     },
                                   ]
                                 : []),

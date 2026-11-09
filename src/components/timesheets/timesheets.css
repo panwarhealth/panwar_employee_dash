@@ -948,10 +948,8 @@
   display: inline-block;
 }
 .ts .menu-list {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 20;
+  position: fixed;
+  z-index: 1000;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 12px;
