@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
+import { PopupLayer } from '@/course/interactive';
 import {
   backdropClass,
   frameFor,
@@ -596,6 +597,14 @@ export function CanvasEditor({
                         className="pointer-events-auto absolute -top-6 left-1/2 h-3 w-3 -translate-x-1/2 cursor-grab rounded-full border-2 border-ph-purple bg-white"
                       />
                     )}
+                  </div>
+                )}
+                {selected?.type === 'popup' && isHiddenPopup(selected) && (
+                  <div
+                    className="absolute inset-0 z-[35] [&_.cp-layer]:absolute"
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <PopupLayer block={selected} onClose={() => onSelect(null)} />
                   </div>
                 )}
                 {showSafeZone && (
