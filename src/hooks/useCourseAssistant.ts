@@ -10,11 +10,12 @@ import { uid, type CourseDoc, type Layout } from '@/course/doc';
 import { ASSISTANT_SYSTEM, deckMessage } from '@/components/courses/assistantPrompt';
 import { ASSISTANT_TOOLS, courseOutline, runTool } from '@/components/courses/assistantTools';
 import { deadControls } from '@/components/courses/assistantChecks';
-import { polishCourse } from '@/components/courses/polish';
+import { polishCourse, polishOnePage, type PolishContext } from '@/components/courses/polish';
 import { readPptx } from '@/components/courses/pptx';
 import { importDeck, relayout } from '@/components/courses/deckToPages';
 import { deckOverlap, deckReference, usedMedia } from '@/components/courses/deckReference';
 import { updateCourse } from '@/course/edit';
+import { snapshot, withLocalMedia } from '@/components/courses/pageShot';
 
 export interface ChatEntry {
   id: string;
@@ -159,13 +160,21 @@ export function useCourseAssistant(
       for (const use of uses) {
         const outcome = await runTool(docRef.current, use.name ?? '', use.input ?? {}, {
           importMedia: (url) => importMedia(courseId, url).then((r) => r.url),
+          picture: (doc, page, layout) =>
+            withLocalMedia(
+              { ...doc, pages: [page] },
+              (url) => downloadMedia(courseId, url),
+              (local) => snapshot(local, local.pages[0], layout),
+            ),
         });
         if (outcome.doc !== docRef.current) apply(outcome.doc);
         if (outcome.activity) log('activity', outcome.activity);
         results.push({
           type: 'tool_result',
           tool_use_id: use.id,
-          content: outcome.result,
+          content: outcome.image
+            ? [imageBlock(outcome.image), { type: 'text', text: outcome.result }]
+            : outcome.result,
           ...(outcome.error ? { is_error: true } : {}),
         });
       }
@@ -267,6 +276,30 @@ export function useCourseAssistant(
     }
   };
 
+  const polishContext = (controller: AbortController): PolishContext => ({
+    getDoc: () => docRef.current,
+    apply,
+    turn: (body) => assistantTurn(courseId, body, () => {}, controller.signal),
+    fetchMedia: (url) => downloadMedia(courseId, url),
+    addCost: (usd) => setCost((c) => c + usd),
+    signal: controller.signal,
+  });
+
+  const polishPage = (pageId: string, layout: Layout) =>
+    start(async (controller) => {
+      const page = docRef.current.pages.find((p) => p.id === pageId);
+      log('user', `Polish "${page?.title || pageId}" (${layout})`);
+      setStatus(`Polishing the ${layout} layout`);
+      const before = docRef.current;
+      await polishOnePage(polishContext(controller), pageId, layout);
+      log(
+        'activity',
+        docRef.current === before
+          ? 'It already looked right, so nothing changed.'
+          : `Polished the ${layout} layout of this page. Undo puts it back.`,
+      );
+    });
+
   const finishDeck = () =>
     start(async (controller) => {
       if (!deckPrompt) return;
@@ -274,17 +307,7 @@ export function useCourseAssistant(
       await run(deckPrompt, controller, true);
       setDeckPrompt(null);
       setStatus('Polishing the design');
-      const failed = await polishCourse(
-        {
-          getDoc: () => docRef.current,
-          apply,
-          turn: (body) => assistantTurn(courseId, body, () => {}, controller.signal),
-          fetchMedia: (url) => downloadMedia(courseId, url),
-          addCost: (usd) => setCost((c) => c + usd),
-          signal: controller.signal,
-        },
-        setStatus,
-      );
+      const failed = await polishCourse(polishContext(controller), setStatus);
       if (!failed.length) log('activity', 'Polished spacing and sizes on every page');
       else
         log(
@@ -318,6 +341,7 @@ export function useCourseAssistant(
     },
     canFinishDeck: !busy && deckPrompt !== null,
     finishDeck,
+    polishPage,
     canClear: !busy && entries.length > 0,
     clear: () => {
       history.current = [];

@@ -11,6 +11,7 @@ import {
   type ButtonBlock,
   type CourseDoc,
   type Group,
+  type Layout,
   type Page,
   type Trigger,
   type Variable,
@@ -21,9 +22,11 @@ import * as ops from '@/course/edit';
 import { BLOCKS, blockLabel } from './blockMeta';
 import { checkedOutcome, deadControls, type ToolOutcome } from './assistantChecks';
 import { replacement } from './blockPlacement';
+import { layoutsFor } from '@/course/canvasLayout';
 
 export interface ToolContext {
   importMedia: (url: string) => Promise<string>;
+  picture: (doc: CourseDoc, page: Page, layout: Layout) => Promise<string>;
 }
 
 const obj = (properties: Record<string, unknown>, required: string[]) => ({
@@ -37,6 +40,18 @@ export const ASSISTANT_TOOLS = [
     name: 'get_page',
     description: 'Read the full JSON of one page.',
     input_schema: obj({ page_id: { type: 'string' } }, ['page_id']),
+  },
+  {
+    name: 'look_at_page',
+    description:
+      'See a picture of one page in one layout, as the learner first sees it. Hidden popups and objects that start hidden are left out. Use it to judge how a page looks, and to check your changes.',
+    input_schema: obj(
+      {
+        page_id: { type: 'string' },
+        layout: { type: 'string', enum: ['desktop', 'phone'] },
+      },
+      ['page_id', 'layout'],
+    ),
   },
   {
     name: 'update_blocks',
@@ -290,6 +305,16 @@ const getPage: Handler = (doc, input) => {
   return page ? { doc, result: JSON.stringify(page) } : fail(doc, 'No page with that id.');
 };
 
+const lookAtPage: Handler = async (doc, input, ctx) => {
+  const page = pageOf(doc, input);
+  if (!page) return fail(doc, 'No page with that id.');
+  const layout = input.layout === 'phone' ? 'phone' : 'desktop';
+  if (!layoutsFor(doc.screens).includes(layout))
+    return fail(doc, `This course has no ${layout} layout.`);
+  const image = await ctx.picture(doc, page, layout);
+  return { doc, image, result: `Page ${page.id} in the ${layout} layout.` };
+};
+
 const addPage: Handler = (doc, input) => {
   if (!input.page || typeof input.page !== 'object') return fail(doc, 'page is required.');
   const page = toPage(input.page as Input);
@@ -539,6 +564,7 @@ const importMediaTool: Handler = async (doc, input, ctx) => {
 
 const HANDLERS: Record<string, Handler> = {
   get_page: getPage,
+  look_at_page: lookAtPage,
   add_page: addPage,
   update_blocks: updateBlocks,
   add_blocks: addBlocks,

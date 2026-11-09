@@ -16,6 +16,7 @@ export interface ToolOutcome {
   result: string;
   error?: boolean;
   activity?: string;
+  image?: string;
 }
 
 function linkWarnings(doc: CourseDoc, page: Page): string[] {
