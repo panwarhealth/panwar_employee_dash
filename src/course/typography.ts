@@ -95,6 +95,7 @@ export const borderCss = (border: Border | undefined): CSSProperties =>
 
 export const BOX_PADDING: Insets = [3.6, 7.2, 3.6, 7.2];
 export const BOXED_TEXT_PADDING: Insets = [20, 20, 20, 20];
+export const REVEAL_PADDING: Insets = [10, 10, 10, 10];
 export const DEFAULT_LINE_HEIGHT = 1.3;
 
 const JUSTIFY: Record<VAlign, string> = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };

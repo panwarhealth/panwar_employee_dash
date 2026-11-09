@@ -3,7 +3,7 @@ import type { RevealBlock, RevealFace } from './doc';
 import type { BlockContext } from './context';
 import { usePeekReveal } from './revealPeek';
 import { sanitizeHtml } from './sanitize';
-import { BOXED_TEXT_PADDING, borderCss, px, radiusCss, shadowCss } from './typography';
+import { REVEAL_PADDING, borderCss, px, radiusCss, shadowCss } from './typography';
 
 function Face({
   face,
@@ -39,7 +39,7 @@ export function RevealView({ block, ctx }: { block: RevealBlock; ctx: BlockConte
   const [revealed, setRevealed] = useState(false);
   const peek = usePeekReveal();
   const open = ctx.edit ? peek === block.id : revealed;
-  const padding = (block.padding ?? BOXED_TEXT_PADDING).map(px).join(' ');
+  const padding = (block.padding ?? REVEAL_PADDING).map(px).join(' ');
   return (
     <button
       type="button"
