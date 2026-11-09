@@ -834,6 +834,16 @@ export function bakeTextColour(b: Block): void {
   b.html = body.innerHTML;
 }
 
+const PX_FONT = /font-size:\s*(\d+(?:\.\d+)?)px/g;
+
+export function scalePxFonts<B extends Block>(b: B): B {
+  const json = JSON.stringify(b);
+  if (json.search(PX_FONT) < 0) return b;
+  const base = ('textStyle' in b && b.textStyle?.size) || 16;
+  const em = (_: string, n: string) => `font-size: ${Math.round((Number(n) / base) * 1000) / 1000}em`;
+  return JSON.parse(json.replace(PX_FONT, em)) as B;
+}
+
 type OldFace = RevealFace & { fill?: string; pictureSize?: number };
 
 function upgradeReveal(b: RevealBlock): RevealBlock {
@@ -856,7 +866,8 @@ function upgradeReveal(b: RevealBlock): RevealBlock {
   };
 }
 
-function upgradeBlock(original: Block): Block {
+function upgradeBlock(stored: Block): Block {
+  const original = scalePxFonts(stored);
   if (original.type === 'reveal') return upgradeReveal(original);
   const b = { ...original };
   bakeTextColour(b);

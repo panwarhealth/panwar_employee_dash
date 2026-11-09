@@ -1,6 +1,7 @@
 import {
   bakeTextColour,
   groupsOf,
+  scalePxFonts,
   newBlock,
   uid,
   type Action,
@@ -213,7 +214,7 @@ function toBlock(raw: Record<string, unknown>): Block | string {
   }
   bakeTextColour(block);
   fillIds([block]);
-  return block;
+  return scalePxFonts(block);
 }
 
 function toPage(raw: Record<string, unknown>): Page | string {
@@ -320,6 +321,7 @@ const updateBlocks: Handler = (doc, input) => {
   const next = ops.updatePage(doc, page.id, (p) => {
     for (const change of changes)
       mergeBlockChanges(p.blocks.find((b) => b.id === change.id) as unknown as Input, change);
+    p.blocks = p.blocks.map(scalePxFonts);
   });
   return checkedOutcome(
     next,
