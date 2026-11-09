@@ -372,6 +372,7 @@ export interface RevealFace {
   html: string;
   src: string;
   fill?: string;
+  pictureSize?: number;
 }
 
 export interface RevealBlock extends BlockBase {

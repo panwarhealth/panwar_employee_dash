@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
 import type { RevealBlock } from '@/course/doc';
 import { peekReveal, usePeekReveal } from '@/course/revealPeek';
-import { MediaInput, RadiusField, sectionClass, Toggle } from './fields';
+import {
+  Field,
+  inputClass,
+  MediaInput,
+  NumberBox,
+  RadiusField,
+  sectionClass,
+  Toggle,
+} from './fields';
 import { RichText } from './RichText';
 import { BorderField, ColourField, ShadowField } from './TextStyleFields';
 
@@ -37,6 +45,24 @@ export function RevealForm({
         accept=".jpg,.jpeg,.png,.webp,.svg,.gif"
         onChange={(url) => set((b) => (b[side].src = url))}
       />
+      {block[side].src && (
+        <Field label="Picture size (% of the card, 100 fills it)">
+          <NumberBox
+            min={10}
+            max={100}
+            step={5}
+            value={block[side].pictureSize ?? 100}
+            onChange={(n) =>
+              set((b) => {
+                const size = Math.min(100, Math.max(10, n));
+                if (size < 100) b[side].pictureSize = size;
+                else delete b[side].pictureSize;
+              })
+            }
+            className={inputClass}
+          />
+        </Field>
+      )}
       {block[side].src && (
         <button
           type="button"

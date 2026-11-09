@@ -6,9 +6,17 @@ import { sanitizeHtml } from './sanitize';
 import { borderCss, radiusCss, shadowCss } from './typography';
 
 function Face({ face, className }: { face: RevealFace; className: string }) {
+  const size = face.pictureSize && face.pictureSize < 100 ? `${face.pictureSize}%` : null;
   return (
     <span className={className} style={{ background: face.fill }}>
-      {face.src && <img className="cp-reveal-img" src={face.src} alt="" />}
+      {face.src && (
+        <img
+          className={size ? 'cp-reveal-img cp-reveal-img-fit' : 'cp-reveal-img'}
+          style={size ? { width: size, height: size } : undefined}
+          src={face.src}
+          alt=""
+        />
+      )}
       {face.html && (
         <span
           className="cp-text cp-reveal-text"
