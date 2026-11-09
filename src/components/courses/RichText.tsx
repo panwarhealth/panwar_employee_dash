@@ -48,10 +48,6 @@ export function RichText({
   const saved = useRef<Range | null>(null);
   const [colour, setColour] = useState('#000000');
 
-  useEffect(() => {
-    if (ref.current) ref.current.innerHTML = initial.current;
-  }, []);
-
   const remember = () => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount && sel.anchorNode && ref.current?.contains(sel.anchorNode)) {
@@ -59,6 +55,23 @@ export function RichText({
       setColour(colourAt(sel.anchorNode));
     }
   };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.innerHTML = initial.current;
+    const first = document.createTreeWalker(el, NodeFilter.SHOW_TEXT).nextNode();
+    const sync = () => {
+      const sel = window.getSelection();
+      if (sel?.anchorNode && el.contains(sel.anchorNode)) setColour(colourAt(sel.anchorNode));
+    };
+    const start = requestAnimationFrame(() => first && setColour(colourAt(first)));
+    document.addEventListener('selectionchange', sync);
+    return () => {
+      cancelAnimationFrame(start);
+      document.removeEventListener('selectionchange', sync);
+    };
+  }, []);
 
   const restore = () => {
     ref.current?.focus();
