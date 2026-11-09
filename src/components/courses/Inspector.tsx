@@ -14,7 +14,8 @@ import {
   type Page,
 } from '@/course/doc';
 import { useCallback, useState } from 'react';
-import { Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Trash2, Wand2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { layoutsFor, lookFor, pagePaint } from '@/course/canvasLayout';
 import { changeLook, changePagePaint } from '@/course/edit';
@@ -48,6 +49,8 @@ export function Inspector({
   onCopyBlocks,
   onPasteBlocks,
   canPaste,
+  polishing,
+  onPolish,
   canvas,
 }: {
   doc: CourseDoc;
@@ -64,6 +67,8 @@ export function Inspector({
   onCopyBlocks: (ids: string[]) => void;
   onPasteBlocks: () => void;
   canPaste: boolean;
+  polishing: boolean;
+  onPolish: () => void;
   canvas: CanvasControls;
 }) {
   const block = page.blocks.find((b) => b.id === selectedId) ?? null;
@@ -100,6 +105,17 @@ export function Inspector({
 
   return (
     <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l border-ph-charcoal/10 bg-[#faf9fb] px-4 py-4 text-sm">
+      <Button
+        size="sm"
+        variant="outline"
+        title={`AI tidies the spacing and sizes on this page, in the ${canvas.layout} layout. Undo puts it back.`}
+        disabled={polishing}
+        onClick={onPolish}
+        className="mb-4 w-full rounded-full"
+      >
+        <Wand2 className="h-4 w-4" />
+        Polish {canvas.layout} layout
+      </Button>
       <ReviewNotes
         page={page}
         selectedId={selectedId}

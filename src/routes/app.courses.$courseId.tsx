@@ -290,6 +290,11 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           onPasteBlocks={pasteBlocks}
           canPaste={clipboard.length > 0}
           onRemoveBlock={(id) => removeBlocks([id])}
+          polishing={assistant.busy}
+          onPolish={() => {
+            setAssistantOpen(true);
+            void assistant.polishPage(page.id, layout);
+          }}
           canvas={{
             layout,
             otherLayout,
@@ -356,8 +361,6 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               )
             }
             onDeck={assistant.importDeck}
-            layout={layout}
-            onPolish={() => void assistant.polishPage(page.id, layout)}
             pendingDeck={assistant.pendingDeck}
             onDeckChoice={assistant.resolveDeck}
             canFinishDeck={assistant.canFinishDeck}

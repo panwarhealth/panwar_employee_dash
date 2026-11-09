@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileUp, Loader2, MessageSquarePlus, Paperclip, Undo2, Wand2, X } from 'lucide-react';
+import { FileUp, Loader2, MessageSquarePlus, Paperclip, Undo2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Layout } from '@/course/doc';
 import type { ChatEntry, PendingDeck } from '@/hooks/useCourseAssistant';
 import { cn } from '@/lib/utils';
 import { chatImage, deckFiles, imageFiles } from './chatImage';
@@ -14,8 +13,6 @@ export function AssistantPanel({
   canUndo,
   onSend,
   onDeck,
-  layout,
-  onPolish,
   pendingDeck,
   onDeckChoice,
   canFinishDeck,
@@ -33,8 +30,6 @@ export function AssistantPanel({
   canUndo: boolean;
   onSend: (text: string, images: string[], decks: File[]) => void;
   onDeck: (file: File) => void;
-  layout: Layout;
-  onPolish: () => void;
   pendingDeck: PendingDeck | null;
   onDeckChoice: (choice: 'replace' | 'add' | null) => void;
   canFinishDeck: boolean;
@@ -285,15 +280,6 @@ export function AssistantPanel({
           className="rounded-full p-2 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-40"
         >
           <Paperclip className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          title={`Polish this page: AI tidies its spacing and sizes in the ${layout} layout`}
-          disabled={busy}
-          onClick={onPolish}
-          className="rounded-full p-2 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-40"
-        >
-          <Wand2 className="h-4 w-4" />
         </button>
         <textarea
           rows={2}
