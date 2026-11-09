@@ -53,12 +53,11 @@ export function RevealForm({
             min={10}
             max={100}
             step={5}
-            value={block[side].pictureSize ?? 100}
+            value={block.look?.[`${side}PictureSize`] ?? 100}
             onChange={(n) =>
               set((b) => {
                 const size = Math.min(100, Math.max(10, n));
-                if (size < 100) b[side].pictureSize = size;
-                else delete b[side].pictureSize;
+                b.look = { ...b.look, [`${side}PictureSize`]: size < 100 ? size : undefined };
               })
             }
             className={inputClass}
@@ -76,8 +75,8 @@ export function RevealForm({
       )}
       <ColourField
         label="Background colour"
-        value={block[side].fill}
-        onChange={(fill) => set((b) => (b[side].fill = fill))}
+        value={block.look?.[`${side}Fill`]}
+        onChange={(fill) => set((b) => (b.look = { ...b.look, [`${side}Fill`]: fill }))}
       />
     </>
   );

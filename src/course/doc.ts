@@ -371,14 +371,20 @@ export interface FlipBlock extends BlockBase {
 export interface RevealFace {
   html: string;
   src: string;
-  fill?: string;
-  pictureSize?: number;
+}
+
+export interface RevealLook {
+  coverFill?: string;
+  underFill?: string;
+  coverPictureSize?: number;
+  underPictureSize?: number;
 }
 
 export interface RevealBlock extends BlockBase {
   type: 'reveal';
   cover: RevealFace;
   under: RevealFace;
+  look?: RevealLook;
   textStyle?: TextStyle;
   padding?: Insets;
   radius?: number;
@@ -629,8 +635,9 @@ export function newBlock(type: BlockType): Block {
       return {
         id,
         type,
-        cover: { html: '<p style="color: #FFFFFF">Click to reveal</p>', src: '', fill: '#702F8F' },
-        under: { html: '<p>Type what the card reveals.</p>', src: '', fill: '#FFFFFF' },
+        cover: { html: '<p style="color: #FFFFFF">Click to reveal</p>', src: '' },
+        under: { html: '<p>Type what the card reveals.</p>', src: '' },
+        look: { coverFill: '#702F8F', underFill: '#FFFFFF' },
         radius: 12,
       };
     case 'hotspots':
@@ -827,7 +834,30 @@ export function bakeTextColour(b: Block): void {
   b.html = body.innerHTML;
 }
 
+type OldFace = RevealFace & { fill?: string; pictureSize?: number };
+
+function upgradeReveal(b: RevealBlock): RevealBlock {
+  const cover = b.cover as OldFace;
+  const under = b.under as OldFace;
+  if (!('fill' in cover || 'pictureSize' in cover || 'fill' in under || 'pictureSize' in under))
+    return b;
+  const look: RevealLook = {
+    coverFill: cover.fill,
+    underFill: under.fill,
+    coverPictureSize: cover.pictureSize,
+    underPictureSize: under.pictureSize,
+    ...b.look,
+  };
+  return {
+    ...b,
+    cover: { html: cover.html, src: cover.src },
+    under: { html: under.html, src: under.src },
+    look: JSON.parse(JSON.stringify(look)) as RevealLook,
+  };
+}
+
 function upgradeBlock(original: Block): Block {
+  if (original.type === 'reveal') return upgradeReveal(original);
   const b = { ...original };
   bakeTextColour(b);
   if (b.type === 'text' && emptyHtml(b.html) && (b.fill || b.gradient || b.border))
