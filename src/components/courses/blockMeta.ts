@@ -1,4 +1,4 @@
-import { blockText } from '@/course/text';
+import { blockText, stripTags } from '@/course/text';
 import { groupsOf, type Block, type BlockType, type Page } from '@/course/doc';
 
 export interface BlockMeta {
@@ -22,6 +22,12 @@ export const BLOCKS: BlockMeta[] = [
   { type: 'accordion', name: 'Accordion', group: 'Interactive' },
   { type: 'tabs', name: 'Tabs', group: 'Interactive' },
   { type: 'flip', name: 'Flip cards', group: 'Interactive' },
+  {
+    type: 'reveal',
+    name: 'Reveal card',
+    detail: 'Click the card to uncover what is under it',
+    group: 'Interactive',
+  },
   {
     type: 'hotspots',
     name: 'Image hotspots',
@@ -89,6 +95,8 @@ function labelText(b: Block): string {
       return b.items.map((i) => i.title).join(', ');
     case 'flip':
       return b.cards.map((c) => c.front).join(', ');
+    case 'reveal':
+      return stripTags(b.cover.html).trim() || stripTags(b.under.html).trim();
     case 'check':
       return b.question;
     case 'pathway':

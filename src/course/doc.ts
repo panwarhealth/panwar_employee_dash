@@ -368,6 +368,22 @@ export interface FlipBlock extends BlockBase {
   cards: FlipCard[];
 }
 
+export interface RevealFace {
+  html: string;
+  src: string;
+  fill?: string;
+}
+
+export interface RevealBlock extends BlockBase {
+  type: 'reveal';
+  cover: RevealFace;
+  under: RevealFace;
+  radius?: number;
+  corners?: Corners;
+  border?: Border;
+  shadow?: Shadow;
+}
+
 export interface Hotspot {
   id: string;
   x: number;
@@ -503,6 +519,7 @@ export type Block =
   | AccordionBlock
   | TabsBlock
   | FlipBlock
+  | RevealBlock
   | HotspotBlock
   | PathwayBlock
   | DragBlock
@@ -604,6 +621,14 @@ export function newBlock(type: BlockType): Block {
           { id: uid(), front: 'Front', frontSrc: '', back: 'Back' },
           { id: uid(), front: 'Front', frontSrc: '', back: 'Back' },
         ],
+      };
+    case 'reveal':
+      return {
+        id,
+        type,
+        cover: { html: '<p style="color: #FFFFFF">Click to reveal</p>', src: '', fill: '#702F8F' },
+        under: { html: '<p>Type what the card reveals.</p>', src: '', fill: '#FFFFFF' },
+        radius: 12,
       };
     case 'hotspots':
       return { id, type, src: '', fileName: '', alt: '', spots: [] };

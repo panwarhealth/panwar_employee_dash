@@ -24,6 +24,7 @@ import {
   Toggle,
 } from './fields';
 import { BOX_PADDING } from '@/course/typography';
+import { RevealForm } from './RevealForm';
 import { RichText } from './RichText';
 import { BorderField, PaintField, ShadowField, TextStyleFields } from './TextStyleFields';
 import {
@@ -393,6 +394,8 @@ export function BlockForm({
       return <PanelsForm block={block} set={set<typeof block>} />;
     case 'flip':
       return <FlipForm block={block} courseId={courseId} set={set<typeof block>} />;
+    case 'reveal':
+      return <RevealForm block={block} courseId={courseId} set={set<typeof block>} />;
     case 'hotspots':
       return <HotspotForm block={block} courseId={courseId} set={set<typeof block>} />;
     case 'pathway':

@@ -87,6 +87,15 @@ function blockDetail(doc: CourseDoc, page: Page, b: Block): Detail | null {
         title: 'Flip cards',
         lines: b.cards.map((c) => `${stripTags(c.front)} / back: ${stripTags(c.back)}`),
       };
+    case 'reveal':
+      return {
+        title: 'Reveal card',
+        lines: [
+          `Card: ${stripTags(b.cover.html)}${b.cover.src ? ' (picture)' : ''}`,
+          ...htmlLines(b.under.html).map((l) => `Reveals: ${l}`),
+          ...(b.under.src ? ['Reveals a picture'] : []),
+        ],
+      };
     case 'hotspots':
       return {
         title: 'Hotspots',

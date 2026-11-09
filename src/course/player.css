@@ -840,6 +840,51 @@
   font-weight: 400;
 }
 
+.cp-reveal {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: hidden;
+  text-align: center;
+  cursor: pointer;
+}
+.cp-revealed {
+  cursor: default;
+}
+.cp-reveal-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1em;
+  overflow: hidden;
+}
+.cp-reveal-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cp-reveal-text {
+  position: relative;
+}
+.cp-reveal-cover {
+  transition:
+    opacity 0.35s,
+    visibility 0.35s;
+}
+.cp-revealed .cp-reveal-cover {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .cp-hotspots {
   position: relative;
 }

@@ -4,6 +4,7 @@ import { sanitizeHtml } from './sanitize';
 import { borderCss, boxCss, paintCss, px, radiusCss, shadowCss } from './typography';
 import { embedUrl } from './util';
 import { AnimationView, AudioView } from './media';
+import { RevealView } from './reveal';
 import {
   AccordionView,
   FlipView,
@@ -223,6 +224,8 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       return <TabsView block={block} />;
     case 'flip':
       return <FlipView block={block} />;
+    case 'reveal':
+      return <RevealView block={block} ctx={ctx} />;
     case 'hotspots':
       return <HotspotView block={block} ctx={ctx} />;
     case 'pathway':
