@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface ObjectMenuItem {
@@ -17,6 +17,18 @@ export function ObjectMenu({
   items: ObjectMenuItem[];
   onClose: () => void;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState(at);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const gap = 8;
+    setPos({
+      x: Math.max(gap, Math.min(at.x, window.innerWidth - el.offsetWidth - gap)),
+      y: Math.max(gap, Math.min(at.y, window.innerHeight - el.offsetHeight - gap)),
+    });
+  }, [at]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('pointerdown', onClose);
@@ -34,11 +46,12 @@ export function ObjectMenu({
   if (!items.length) return null;
   return (
     <div
+      ref={ref}
       role="menu"
       onPointerDown={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
       className="fixed z-50 min-w-44 rounded-xl border border-ph-charcoal/10 bg-white py-1.5 text-sm font-normal shadow-lg"
-      style={{ left: at.x, top: at.y }}
+      style={{ left: pos.x, top: pos.y }}
     >
       {items.map((item) => (
         <button
