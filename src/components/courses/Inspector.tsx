@@ -13,7 +13,7 @@ import {
   type Layout,
   type Page,
 } from '@/course/doc';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Eye, EyeOff, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { layoutsFor, lookFor, pagePaint } from '@/course/canvasLayout';
@@ -74,12 +74,7 @@ export function Inspector({
       changeLook(b, canvas.layout, layoutsFor(doc.screens)[0], fn),
     );
   const group = groupsOf(page).find((g) => g.id === selectedId) ?? null;
-  const list = useRef<HTMLDivElement>(null);
   const highlighted = new Set(group ? group.members : selectedId ? [selectedId] : []);
-  useEffect(() => {
-    const row = list.current?.querySelector('[data-selected]');
-    row?.scrollIntoView({ block: 'nearest' });
-  }, [selectedId]);
   const changeGroup = (fn: (g: Group) => void) =>
     onPage((p) => {
       const g = p.groups?.find((x) => x.id === group?.id);
@@ -185,84 +180,81 @@ export function Inspector({
           </>
         )}
       </p>
-      <div ref={list}>
-        <SortableList items={items} onMove={move}>
-          {(b) => (
-            <div
-              data-selected={highlighted.has(b.id) || undefined}
+      <SortableList items={items} onMove={move}>
+        {(b) => (
+          <div
               onContextMenu={(e) => {
-                e.preventDefault();
-                onSelect(b.id);
-                setMenu({ id: b.id, x: e.clientX, y: e.clientY });
-              }}
+              e.preventDefault();
+              onSelect(b.id);
+              setMenu({ id: b.id, x: e.clientX, y: e.clientY });
+            }}
+            className={cn(
+              'group flex w-full items-center rounded-md border-[1.5px] bg-white',
+              highlighted.has(b.id)
+                ? 'border-ph-purple font-semibold text-ph-purple'
+                : 'border-transparent text-ph-charcoal hover:border-ph-charcoal/15',
+            )}
+          >
+            <button
+              type="button"
+              title={b.hidden ? 'Show' : 'Hide'}
+              onClick={() =>
+                onChangeBlock(b.id, (x) => {
+                  if (x.hidden) delete x.hidden;
+                  else x.hidden = true;
+                })
+              }
               className={cn(
-                'group flex w-full items-center rounded-md border-[1.5px] bg-white',
-                highlighted.has(b.id)
-                  ? 'border-ph-purple font-semibold text-ph-purple'
-                  : 'border-transparent text-ph-charcoal hover:border-ph-charcoal/15',
+                'ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ph-charcoal/40 hover:bg-ph-charcoal/5 hover:text-ph-purple',
+                b.hidden || b.id === selectedId ? 'visible' : 'invisible group-hover:visible',
               )}
             >
+              {b.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+            {renaming === b.id ? (
+              <input
+                autoFocus
+                defaultValue={blockLabel(b)}
+                onFocus={(e) => e.target.select()}
+                onBlur={(e) => rename(b.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                  if (e.key === 'Escape') setRenaming(null);
+                }}
+                className="my-0.5 mr-1 min-w-0 flex-1 rounded border border-ph-purple/40 px-2 py-1 font-normal text-ph-charcoal outline-none"
+              />
+            ) : (
               <button
                 type="button"
-                title={b.hidden ? 'Show' : 'Hide'}
-                onClick={() =>
-                  onChangeBlock(b.id, (x) => {
-                    if (x.hidden) delete x.hidden;
-                    else x.hidden = true;
-                  })
-                }
+                title="Double-click to rename"
+                onClick={() => onSelect(b.id)}
+                onDoubleClick={() => setRenaming(b.id)}
                 className={cn(
-                  'ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ph-charcoal/40 hover:bg-ph-charcoal/5 hover:text-ph-purple',
-                  b.hidden || b.id === selectedId ? 'visible' : 'invisible group-hover:visible',
+                  'flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left',
+                  b.hidden && 'opacity-50',
                 )}
               >
-                {b.hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+                <span className="cursor-grab font-mono text-xs text-ph-charcoal/40">::</span>
+                <span className="min-w-0 flex-1 truncate">{blockLabel(b)}</span>
+                <span className="text-[10px] font-normal uppercase tracking-wide text-ph-charcoal/40">
+                  {blockName(b.type)}
+                </span>
               </button>
-              {renaming === b.id ? (
-                <input
-                  autoFocus
-                  defaultValue={blockLabel(b)}
-                  onFocus={(e) => e.target.select()}
-                  onBlur={(e) => rename(b.id, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.currentTarget.blur();
-                    if (e.key === 'Escape') setRenaming(null);
-                  }}
-                  className="my-0.5 mr-1 min-w-0 flex-1 rounded border border-ph-purple/40 px-2 py-1 font-normal text-ph-charcoal outline-none"
-                />
-              ) : (
-                <button
-                  type="button"
-                  title="Double-click to rename"
-                  onClick={() => onSelect(b.id)}
-                  onDoubleClick={() => setRenaming(b.id)}
-                  className={cn(
-                    'flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2.5 text-left',
-                    b.hidden && 'opacity-50',
-                  )}
-                >
-                  <span className="cursor-grab font-mono text-xs text-ph-charcoal/40">::</span>
-                  <span className="min-w-0 flex-1 truncate">{blockLabel(b)}</span>
-                  <span className="text-[10px] font-normal uppercase tracking-wide text-ph-charcoal/40">
-                    {blockName(b.type)}
-                  </span>
-                </button>
+            )}
+            <button
+              type="button"
+              title="Delete"
+              onClick={() => onRemoveBlock(b.id)}
+              className={cn(
+                'mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ph-charcoal/40 hover:bg-red-50 hover:text-red-700',
+                b.id === selectedId ? 'visible' : 'invisible group-hover:visible',
               )}
-              <button
-                type="button"
-                title="Delete"
-                onClick={() => onRemoveBlock(b.id)}
-                className={cn(
-                  'mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ph-charcoal/40 hover:bg-red-50 hover:text-red-700',
-                  b.id === selectedId ? 'visible' : 'invisible group-hover:visible',
-                )}
-              >
-                <Trash2 size={15} />
-              </button>
-            </div>
-          )}
-        </SortableList>
-      </div>
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        )}
+      </SortableList>
       {menu && (
         <ObjectMenu
           at={menu}
