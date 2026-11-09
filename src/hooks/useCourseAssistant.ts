@@ -10,7 +10,12 @@ import { uid, type CourseDoc, type Layout } from '@/course/doc';
 import { ASSISTANT_SYSTEM, deckMessage } from '@/components/courses/assistantPrompt';
 import { ASSISTANT_TOOLS, courseOutline, runTool } from '@/components/courses/assistantTools';
 import { deadControls } from '@/components/courses/assistantChecks';
-import { polishCourse, polishOnePage, type PolishContext } from '@/components/courses/polish';
+import {
+  polishChanges,
+  polishCourse,
+  polishOnePage,
+  type PolishContext,
+} from '@/components/courses/polish';
 import { readPptx } from '@/components/courses/pptx';
 import { importDeck, relayout } from '@/components/courses/deckToPages';
 import { deckOverlap, deckReference, usedMedia } from '@/components/courses/deckReference';
@@ -290,14 +295,17 @@ export function useCourseAssistant(
       const page = docRef.current.pages.find((p) => p.id === pageId);
       log('user', `Polish "${page?.title || pageId}" (${layout})`);
       setStatus(`Polishing the ${layout} layout`);
-      const before = docRef.current;
       await polishOnePage(polishContext(controller), pageId, layout);
-      log(
-        'activity',
-        docRef.current === before
-          ? 'It already looked right, so nothing changed.'
-          : `Polished the ${layout} layout of this page. Undo puts it back.`,
-      );
+      const after = docRef.current.pages.find((p) => p.id === pageId);
+      const changes = page && after ? polishChanges(page, after, layout) : [];
+      const report = changes.length
+        ? `Polish changed the ${layout} layout of page ${pageId}:\n${changes.map((c) => `- ${c}`).join('\n')}`
+        : `Polish looked at the ${layout} layout of page ${pageId} and changed nothing.`;
+      log('activity', changes.length ? `${report}\nUndo puts it back.` : report);
+      const note = { type: 'text', text: `<polish_log>${report}</polish_log>` };
+      const pending = userBlocks();
+      if (pending) pending.push(note);
+      else history.current.push({ role: 'user', content: [note] });
     });
 
   const finishDeck = () =>

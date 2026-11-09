@@ -5,6 +5,7 @@ import { round1 } from '@/course/geometry';
 import { blockText } from '@/course/text';
 import * as ops from '@/course/edit';
 import { DESIGN, isRound } from './blockKinds';
+import { blockLabel } from './blockMeta';
 import { snapshotWithBoxes, withLocalMedia } from './pageShot';
 
 const STAGE: Record<Layout, { w: number; h: number }> = {
@@ -264,3 +265,30 @@ export async function polishCourse(
 
 export const polishOnePage = (ctx: PolishContext, pageId: string, layout: Layout) =>
   polishPage(ctx, pageId, standards(ctx.getDoc(), layout), layout);
+
+export function polishChanges(before: Page, after: Page, layout: Layout): string[] {
+  return after.blocks.flatMap((b) => {
+    const old = before.blocks.find((x) => x.id === b.id);
+    if (!old) return [];
+    const was = lookFor(old, layout) as Styled;
+    const now = lookFor(b, layout) as Styled;
+    const from = old.frames?.[layout];
+    const to = b.frames?.[layout];
+    const parts = [
+      from && to && pxBox(from, layout).join() !== pxBox(to, layout).join()
+        ? `box [${pxBox(from, layout).join(', ')}] to [${pxBox(to, layout).join(', ')}]`
+        : '',
+      was.textStyle?.size !== now.textStyle?.size
+        ? `text size ${was.textStyle?.size ?? 'default'} to ${now.textStyle?.size}`
+        : '',
+      was.textStyle?.lineHeight !== now.textStyle?.lineHeight
+        ? `line height ${was.textStyle?.lineHeight ?? 'default'} to ${now.textStyle?.lineHeight}`
+        : '',
+      was.radius !== now.radius ? `corner radius ${was.radius ?? 0} to ${now.radius}` : '',
+      String(was.padding) !== String(now.padding)
+        ? `padding ${was.padding?.join(' ') ?? 'default'} to ${now.padding?.join(' ')}`
+        : '',
+    ].filter(Boolean);
+    return parts.length ? [`${blockLabel(b).slice(0, 40)} (${b.id}): ${parts.join(', ')}`] : [];
+  });
+}
