@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -29,6 +30,8 @@ import { bounds } from '@/course/geometry';
 import { cn } from '@/lib/utils';
 import { isDecor } from './blockKinds';
 import { InlineText } from './InlineText';
+import { ObjectMenu } from './ObjectMenu';
+import { objectMenuItems } from './objectMenuItems';
 
 const SAFE_ZONE_KEY = 'course-editor.show-safe-zone';
 const SNAP_KEY = 'course-editor.snap';
@@ -144,6 +147,7 @@ export function CanvasEditor({
   const [editing, setEditing] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
 
   const groups = groupsOf(page);
@@ -156,22 +160,6 @@ export function CanvasEditor({
   const [box, setBox] = useState<SelectionBox | null>(null);
 
   useEffect(() => setPicked([]), [page.id]);
-
-  useEffect(() => {
-    if (!menu) return;
-    const close = () => setMenu(null);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    window.addEventListener('pointerdown', close);
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('blur', close);
-    window.addEventListener('wheel', close);
-    return () => {
-      window.removeEventListener('pointerdown', close);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('blur', close);
-      window.removeEventListener('wheel', close);
-    };
-  }, [menu]);
 
   useLayoutEffect(() => {
     const els = selectionOf(page, selectedId)
@@ -292,28 +280,20 @@ export function CanvasEditor({
     }
     setMenu({ x: e.clientX, y: e.clientY });
   };
-  const menuItems = [
-    { label: 'Copy', keys: 'Ctrl+C', show: menuIds.length > 0, run: () => onCopy(menuIds) },
-    {
-      label: 'Duplicate',
-      keys: 'Ctrl+D',
-      show: menuIds.length > 0,
-      run: () => {
-        onDuplicate(menuIds);
-        setPicked([]);
-      },
+  const menuItems = objectMenuItems({
+    ids: menuIds,
+    canPaste,
+    onCopy,
+    onPaste,
+    onDuplicate: (ids) => {
+      onDuplicate(ids);
+      setPicked([]);
     },
-    { label: 'Paste', keys: 'Ctrl+V', show: canPaste, run: onPaste },
-    {
-      label: 'Delete',
-      keys: 'Del',
-      show: menuIds.length > 0,
-      run: () => {
-        onRemove(menuIds);
-        setPicked([]);
-      },
+    onRemove: (ids) => {
+      onRemove(ids);
+      setPicked([]);
     },
-  ].filter((i) => i.show);
+  });
 
   const toPct = (e: { clientX: number; clientY: number }) => {
     const r = stage.current!.getBoundingClientRect();
@@ -674,34 +654,7 @@ export function CanvasEditor({
           Ctrl+G to group them. Arrow keys nudge. Right-click to copy, duplicate or paste.
         </p>
       )}
-      {menu && menuItems.length > 0 && (
-        <div
-          role="menu"
-          onPointerDown={(e) => e.stopPropagation()}
-          onContextMenu={(e) => e.preventDefault()}
-          className="fixed z-50 min-w-44 rounded-xl border border-ph-charcoal/10 bg-white py-1.5 text-sm shadow-lg"
-          style={{ left: menu.x, top: menu.y }}
-        >
-          {menuItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenu(null);
-                item.run();
-              }}
-              className={cn(
-                'flex w-full items-center justify-between gap-6 px-4 py-1.5 text-left hover:bg-ph-purple/5',
-                item.label === 'Delete' ? 'text-red-700' : 'text-ph-charcoal',
-              )}
-            >
-              {item.label}
-              <span className="text-xs text-ph-charcoal/40">{item.keys}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {menu && <ObjectMenu at={menu} items={menuItems} onClose={closeMenu} />}
     </div>
   );
 }

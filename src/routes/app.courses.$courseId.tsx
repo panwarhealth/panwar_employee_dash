@@ -286,6 +286,9 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           onMoveBlock={(from, to) => setDoc((d) => ops.moveBlock(d, page.id, from, to))}
           onChangeBlock={(id, update) => setDoc((d) => ops.updateBlock(d, page.id, id, update))}
           onDuplicateBlock={(id) => duplicateBlocks([id])}
+          onCopyBlocks={copyBlocks}
+          onPasteBlocks={pasteBlocks}
+          canPaste={clipboard.length > 0}
           onRemoveBlock={(id) => removeBlocks([id])}
           canvas={{
             layout,

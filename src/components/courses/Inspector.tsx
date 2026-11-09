@@ -13,7 +13,7 @@ import {
   type Layout,
   type Page,
 } from '@/course/doc';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Eye, EyeOff, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { layoutsFor, lookFor, pagePaint } from '@/course/canvasLayout';
@@ -30,6 +30,8 @@ import { Select, TextInput, Toggle } from './fields';
 import { SortableList } from './SortableList';
 import { PaintField } from './TextStyleFields';
 import { ReviewNotes } from './ReviewNotes';
+import { ObjectMenu } from './ObjectMenu';
+import { objectMenuItems } from './objectMenuItems';
 
 export function Inspector({
   doc,
@@ -43,6 +45,9 @@ export function Inspector({
   onChangeBlock,
   onDuplicateBlock,
   onRemoveBlock,
+  onCopyBlocks,
+  onPasteBlocks,
+  canPaste,
   canvas,
 }: {
   doc: CourseDoc;
@@ -56,6 +61,9 @@ export function Inspector({
   onChangeBlock: (id: string, update: (b: Block) => void) => void;
   onDuplicateBlock: (id: string) => void;
   onRemoveBlock: (id: string) => void;
+  onCopyBlocks: (ids: string[]) => void;
+  onPasteBlocks: () => void;
+  canPaste: boolean;
   canvas: CanvasControls;
 }) {
   const block = page.blocks.find((b) => b.id === selectedId) ?? null;
@@ -78,6 +86,8 @@ export function Inspector({
   const move = (from: number, to: number) => onMoveBlock(last - from, last - to);
   const index = block ? page.blocks.indexOf(block) : -1;
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
   const rename = (id: string, value: string) => {
     setRenaming(null);
     onChangeBlock(id, (b) => {
@@ -172,6 +182,11 @@ export function Inspector({
       <SortableList items={items} onMove={move}>
         {(b) => (
           <div
+            onContextMenu={(e) => {
+              e.preventDefault();
+              onSelect(b.id);
+              setMenu({ id: b.id, x: e.clientX, y: e.clientY });
+            }}
             className={cn(
               'group flex w-full items-center rounded-md border-[1.5px] bg-white',
               b.id === selectedId
@@ -239,6 +254,20 @@ export function Inspector({
           </div>
         )}
       </SortableList>
+      {menu && (
+        <ObjectMenu
+          at={menu}
+          onClose={closeMenu}
+          items={objectMenuItems({
+            ids: [menu.id],
+            canPaste,
+            onCopy: onCopyBlocks,
+            onDuplicate: ([id]) => onDuplicateBlock(id),
+            onPaste: onPasteBlocks,
+            onRemove: ([id]) => onRemoveBlock(id),
+          })}
+        />
+      )}
       <button
         type="button"
         onClick={onAddBlock}
