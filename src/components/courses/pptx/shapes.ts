@@ -377,7 +377,7 @@ async function readPicture(ctx: SlideContext, el: Element, t: Transform, owner: 
   }
   const spPr = child(el, P, 'spPr');
   const at = place(ctx, child(spPr, A, 'xfrm'), t);
-  const src = child(child(el, P, 'blipFill'), A, 'srcRect');
+  const src = child(child(el, P, 'blipFill') ?? child(spPr, A, 'blipFill'), A, 'srcRect');
   const crop = src
     ? (['t', 'r', 'b', 'l'].map((k) => num(src, k) / 1000) as [number, number, number, number])
     : undefined;
@@ -425,8 +425,11 @@ export async function walkTree(
       await walkTree(ctx, el, groupTransform(el, t), owner, fromLayout);
       ctx.group = outer;
     }
-    else if (el.localName === 'sp' || el.localName === 'cxnSp')
+    else if (el.localName === 'sp' || el.localName === 'cxnSp') {
+      const pictureFill = child(child(el, P, 'spPr'), A, 'blipFill');
+      if (pictureFill && !(fromLayout && placeholderOf(el))) await readPicture(ctx, el, t, owner);
       readShape(ctx, el, t, owner, fromLayout);
+    }
     else if (el.localName === 'graphicFrame') readTable(ctx, el, t, owner, fromLayout);
     else if (el.localName === 'pic') await readPicture(ctx, el, t, owner);
   }
