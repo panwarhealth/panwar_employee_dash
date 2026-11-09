@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FileUp, Loader2, MessageSquarePlus, Paperclip, Undo2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ChatEntry } from '@/hooks/useCourseAssistant';
+import type { ChatEntry, PendingDeck } from '@/hooks/useCourseAssistant';
 import { cn } from '@/lib/utils';
 import { chatImage, deckFiles, imageFiles } from './chatImage';
 
@@ -13,6 +13,8 @@ export function AssistantPanel({
   canUndo,
   onSend,
   onDeck,
+  pendingDeck,
+  onDeckChoice,
   canFinishDeck,
   onFinishDeck,
   onStop,
@@ -28,6 +30,8 @@ export function AssistantPanel({
   canUndo: boolean;
   onSend: (text: string, images: string[], decks: File[]) => void;
   onDeck: (file: File) => void;
+  pendingDeck: PendingDeck | null;
+  onDeckChoice: (choice: 'replace' | 'add' | null) => void;
   canFinishDeck: boolean;
   onFinishDeck: () => void;
   onStop: () => void;
@@ -152,6 +156,54 @@ export function AssistantPanel({
             {e.text}
           </div>
         ))}
+        {pendingDeck && (
+          <div className="mr-8 flex flex-col items-start gap-2 rounded-2xl bg-ph-purple/5 px-3.5 py-3 text-ph-charcoal">
+            <p>
+              This course already has {pendingDeck.pages} pages
+              {pendingDeck.matched
+                ? `, and ${pendingDeck.matched} of the ${pendingDeck.slides} slides in ${pendingDeck.file.name} are already in it`
+                : ''}
+              . Importing it would add {pendingDeck.slides} more pages. What do you want to do?
+            </p>
+            <Button
+              size="sm"
+              className="rounded-full"
+              onClick={() => {
+                onSend(
+                  'Make the changes and reviewer comments in this deck on the matching pages of the course.',
+                  [],
+                  [pendingDeck.file],
+                );
+                onDeckChoice(null);
+              }}
+            >
+              Update this course from it
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => onDeckChoice('replace')}
+            >
+              Replace the whole course
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => onDeckChoice('add')}
+            >
+              Add as new pages
+            </Button>
+            <button
+              type="button"
+              onClick={() => onDeckChoice(null)}
+              className="text-xs text-ph-charcoal/60 underline underline-offset-2 hover:text-ph-purple"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {canFinishDeck && (
           <div className="mr-8 flex flex-col items-start gap-2 rounded-2xl bg-ph-purple/5 px-3.5 py-3 text-ph-charcoal">
             <p>

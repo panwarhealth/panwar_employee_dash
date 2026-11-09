@@ -355,7 +355,9 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                 decks,
               )
             }
-            onDeck={(file) => void assistant.importDeck(file)}
+            onDeck={assistant.importDeck}
+            pendingDeck={assistant.pendingDeck}
+            onDeckChoice={assistant.resolveDeck}
             canFinishDeck={assistant.canFinishDeck}
             onFinishDeck={() => void assistant.finishDeck()}
             onStop={assistant.stop}

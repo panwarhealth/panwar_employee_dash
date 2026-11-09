@@ -13,7 +13,7 @@ import { deadControls } from '@/components/courses/assistantChecks';
 import { polishCourse } from '@/components/courses/polish';
 import { readPptx } from '@/components/courses/pptx';
 import { importDeck, relayout } from '@/components/courses/deckToPages';
-import { deckReference, usedMedia } from '@/components/courses/deckReference';
+import { deckOverlap, deckReference, usedMedia } from '@/components/courses/deckReference';
 import { updateCourse } from '@/course/edit';
 
 export interface ChatEntry {
@@ -21,6 +21,13 @@ export interface ChatEntry {
   kind: 'user' | 'assistant' | 'activity' | 'error';
   text: string;
   images?: string[];
+}
+
+export interface PendingDeck {
+  file: File;
+  pages: number;
+  slides: number;
+  matched: number;
 }
 
 export interface EditorView {
@@ -33,6 +40,9 @@ const viewNote = (v: EditorView) => {
   const view = { page: v.pageId, layout: v.layout, selected: v.selectedId };
   return `<editor_view>${JSON.stringify(view)}</editor_view>`;
 };
+
+const isBlank = (doc: CourseDoc) =>
+  doc.pages.length === 1 && doc.pages[0].blocks.length === 0;
 
 const imageBlock = (dataUrl: string) => ({
   type: 'image',
@@ -58,6 +68,7 @@ export function useCourseAssistant(
   const [cost, setCost] = useState(0);
   const [undo, setUndo] = useState<CourseDoc | null>(null);
   const [deckPrompt, setDeckPrompt] = useState<string | null>(null);
+  const [pendingDeck, setPendingDeck] = useState<PendingDeck | null>(null);
 
   useEffect(() => {
     docRef.current = doc;
@@ -203,9 +214,9 @@ export function useCourseAssistant(
       await run([prompt, viewNote(view), ...references].join('\n\n'), controller, false, images);
     });
 
-  const importFile = (file: File) =>
+  const importFile = (file: File, replace: boolean) =>
     start(async (controller) => {
-      log('user', `Import ${file.name}`);
+      log('user', `${replace ? 'Replace the course with' : 'Import'} ${file.name}`);
       setStatus('Reading the deck');
       const deck = await readPptx(file);
       const names = Object.keys(deck.media);
@@ -216,14 +227,17 @@ export function useCourseAssistant(
         urls[name] = (await uploadMedia(courseId, deck.media[name])).url;
       }
       const doc = docRef.current;
-      const imported = await importDeck(deck, urls, doc, setStatus);
-      const blank = doc.pages.length === 1 && doc.pages[0].blocks.length === 0;
+      const fresh = replace || isBlank(doc);
+      const base = fresh ? { ...doc, pages: [] } : doc;
+      const imported = await importDeck(deck, urls, base, setStatus);
       apply(
         updateCourse(
           doc,
-          (d) => (d.pages = blank ? imported.pages : [...d.pages, ...imported.pages]),
+          (d) => (d.pages = fresh ? imported.pages : [...d.pages, ...imported.pages]),
         ),
       );
+      if (replace)
+        log('activity', `Replaced the course's ${doc.pages.length} pages. Undo puts them back.`);
       const hidden = deck.slides.length - imported.pages.length;
       log(
         'activity',
@@ -241,6 +255,17 @@ export function useCourseAssistant(
         );
       setDeckPrompt(deckMessage(deck, imported.pages, imported.crowded, file.name));
     });
+
+  const chooseDeck = async (file: File) => {
+    const doc = docRef.current;
+    if (isBlank(doc)) return importFile(file, false);
+    try {
+      const deck = await readPptx(file);
+      setPendingDeck({ file, pages: doc.pages.length, ...deckOverlap(deck, doc) });
+    } catch (e) {
+      log('error', e instanceof Error ? e.message : 'That PowerPoint could not be read.');
+    }
+  };
 
   const finishDeck = () =>
     start(async (controller) => {
@@ -284,7 +309,13 @@ export function useCourseAssistant(
     cost,
     canUndo: !busy && undo !== null,
     send,
-    importDeck: importFile,
+    importDeck: (file: File) => void chooseDeck(file),
+    pendingDeck: busy ? null : pendingDeck,
+    resolveDeck: (choice: 'replace' | 'add' | null) => {
+      const pending = pendingDeck;
+      setPendingDeck(null);
+      if (pending && choice) void importFile(pending.file, choice === 'replace');
+    },
     canFinishDeck: !busy && deckPrompt !== null,
     finishDeck,
     canClear: !busy && entries.length > 0,
