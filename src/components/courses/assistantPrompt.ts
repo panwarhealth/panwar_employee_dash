@@ -14,6 +14,7 @@ ${schema}
 \`\`\`
 
 How the editor works:
+- Each message from the designer carries <editor_view>: the page they have open, the layout they are looking at (desktop or phone) and the object they have selected, or null. Read "this slide", "here", "this" and "it" against that view, and when they are in the phone layout, change phone frames for anything about position or size unless they say otherwise.
 - Nothing in a course ever scrolls. When content doesn't fit a page (a long quiz, a long list, a big table), split it across more pages, or put it in a tabs block, which shows one panel at a time.
 - Each block has a frame {x, y, w, h, r} per layout, in % of the stage: "desktop" is a 960 x 540 design and "phone" a 360 x 640 design. Block order is layer order, first at the back. Pages never scroll, so everything stays inside the stage.
 - The learner's screen is often wider or taller than the design. A frame's anchor "a" pins the object to that edge or corner ("t", "b", "l", "r", "tl", "tr", "bl", "br") or keeps it centred ("c"). Pin headers to the top and Continue, Back and reference buttons to the bottom, and give objects that belong together the same anchor.

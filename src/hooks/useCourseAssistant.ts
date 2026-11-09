@@ -6,7 +6,7 @@ import {
   uploadMedia,
   type AssistantMessage,
 } from '@/api/courses';
-import { uid, type CourseDoc } from '@/course/doc';
+import { uid, type CourseDoc, type Layout } from '@/course/doc';
 import { ASSISTANT_SYSTEM, deckMessage } from '@/components/courses/assistantPrompt';
 import { ASSISTANT_TOOLS, courseOutline, runTool } from '@/components/courses/assistantTools';
 import { deadControls } from '@/components/courses/assistantChecks';
@@ -22,6 +22,17 @@ export interface ChatEntry {
   text: string;
   images?: string[];
 }
+
+export interface EditorView {
+  pageId: string;
+  layout: Layout;
+  selectedId: string | null;
+}
+
+const viewNote = (v: EditorView) => {
+  const view = { page: v.pageId, layout: v.layout, selected: v.selectedId };
+  return `<editor_view>${JSON.stringify(view)}</editor_view>`;
+};
 
 const imageBlock = (dataUrl: string) => ({
   type: 'image',
@@ -182,14 +193,14 @@ export function useCourseAssistant(
     return deckReference(deck, urls, file.name);
   }
 
-  const send = (text: string, images: string[] = [], decks: File[] = []) =>
+  const send = (view: EditorView, text: string, images: string[] = [], decks: File[] = []) =>
     start(async (controller) => {
       const attached = decks.length ? `\nAttached: ${decks.map((d) => d.name).join(', ')}` : '';
       setEntries((e) => [...e, { id: uid(), kind: 'user', text: text + attached, images }]);
       const references = [];
       for (const deck of decks) references.push(await readReference(deck, controller.signal));
       const prompt = text || 'See the attached files.';
-      await run([prompt, ...references].join('\n\n'), controller, false, images);
+      await run([prompt, viewNote(view), ...references].join('\n\n'), controller, false, images);
     });
 
   const importFile = (file: File) =>
