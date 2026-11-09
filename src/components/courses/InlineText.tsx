@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import type { CourseDoc, HeadingBlock, TextBlock } from '@/course/doc';
 import { sanitizeHtml } from '@/course/sanitize';
 import { boxCss, textStyleCss } from '@/course/typography';
+import { breakLine } from './lineBreak';
 
 export function InlineText({
   block,
@@ -49,6 +50,7 @@ export function InlineText({
       onBlur={commit}
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
+        if (block.type === 'text' && breakLine(e.nativeEvent, el.current!)) return;
         if (e.key === 'Escape' || (block.type === 'heading' && e.key === 'Enter')) {
           e.preventDefault();
           el.current!.blur();

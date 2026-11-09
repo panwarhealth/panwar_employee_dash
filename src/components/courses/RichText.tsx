@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SIZES } from '@/course/typography';
 import { FontOptions } from './fontContext';
+import { breakLine } from './lineBreak';
 import { showNbspHtml } from './nbsp';
 
 function colourAt(node: Node): string {
@@ -257,6 +258,7 @@ export function RichText({
           suppressContentEditableWarning
           data-nbsp-code
           onInput={commit}
+          onKeyDown={(e) => ref.current && breakLine(e.nativeEvent, ref.current) && commit()}
           onKeyUp={remember}
           onMouseUp={remember}
           onBlur={remember}
