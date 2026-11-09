@@ -134,6 +134,7 @@ function fitGlyph(shape: DeckShape, deck: Deck): DeckShape {
   const maxPt = Math.round(sidePt * GLYPH_SHARE);
   return {
     ...shape,
+    glyph: true,
     valign: 'middle',
     insets: [0, 0, 0, 0],
     paras: shape.paras.map((p) => ({

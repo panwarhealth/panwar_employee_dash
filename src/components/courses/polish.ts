@@ -17,7 +17,7 @@ const POLISH_SYSTEM = `You are a senior visual designer giving the final polish 
 
 - Icon buttons (round or square buttons holding one character like <, x, i, R, or a small icon): the character is about half the button's height and centred. Buttons with the same job are the same size everywhere on the page and line up with each other. Round buttons stay perfectly round (width = height).
 - Text buttons: the label has comfortable room around it, at least 12 px above and below and 24 px either side, and never crowds or overflows the button. Buttons on a page share one height and label size.
-- Text boxes with a background or border: the text has even, comfortable padding inside the box, never crammed against its edges. Icon buttons use padding 0 so the character centres.
+- Text boxes with a background or border: the text sits at the top of the box with 20 px padding on every side and line height 1.3; never crammed against its edges. Icon buttons use padding 0 so the character centres.
 - Panels and cards: everything sitting on a panel is at least 24 px in from its edges. Text that starts together shares one left edge. A panel hugs its content: no big dead areas; shrink the panel or spread the content so the space is balanced.
 - Text: sizes follow a clear hierarchy (heading bigger than body). Never make body text smaller (make its box bigger instead); bring body text under 14 px up to the course's body size when there's room. Leave at least 12 px between a heading and the text under it and between separate blocks of text. Nothing touches, clips or unintentionally overlaps another object, and nothing leaves the stage.
 - Match the course standards you're given, so every page looks like part of the same course.

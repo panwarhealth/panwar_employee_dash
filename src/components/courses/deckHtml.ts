@@ -7,7 +7,11 @@ import type {
   TextStyle,
 } from '@/course/doc';
 import { round1 } from '@/course/geometry';
-import { BUILTIN_FONTS } from '@/course/typography';
+import {
+  BOXED_TEXT_PADDING,
+  BUILTIN_FONTS,
+  DEFAULT_LINE_HEIGHT,
+} from '@/course/typography';
 import type { DeckPara, DeckRun, DeckShadow, DeckShape } from './pptx';
 
 interface Base {
@@ -102,7 +106,7 @@ function textStyleOf(base: Base, pxPerPt: number, lineHeight: number | undefined
     color: base.colour,
     weight: base.bold ? 700 : 400,
     font: fontIdFor(base.font),
-    lineHeight: lineHeight ?? 1.2,
+    lineHeight: lineHeight ?? DEFAULT_LINE_HEIGHT,
   };
 }
 
@@ -156,6 +160,8 @@ export function shapeBlock(
   const firstPara = shape.paras.find((p) => textRuns([p]).length);
   const align = firstPara?.align ?? 'left';
   const textStyle = textStyleOf(base, pxPerPt, firstPara?.lineHeight);
+  const boxed = !!(shape.fill || shape.border);
+  const roomy = boxed && !shape.glyph;
   const style = {
     fill: shape.fill,
     gradient: shape.gradient,
@@ -163,9 +169,10 @@ export function shapeBlock(
     border: shape.border,
     radius: shape.radius ?? (shape.fill || shape.border ? 0 : undefined),
     corners: shape.corners,
-    valign: shape.valign,
-    padding:
-      shape.fill || shape.border
+    valign: roomy ? ('top' as const) : shape.valign,
+    padding: roomy
+      ? BOXED_TEXT_PADDING
+      : boxed
         ? (shape.insets.map((pt) => round1(pt * pxPerPt)) as Insets)
         : undefined,
   };

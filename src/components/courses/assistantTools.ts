@@ -14,6 +14,7 @@ import {
   type Variable,
 } from '@/course/doc';
 import { blockText } from '@/course/text';
+import { BOXED_TEXT_PADDING, DEFAULT_LINE_HEIGHT } from '@/course/typography';
 import * as ops from '@/course/edit';
 import { BLOCKS, blockLabel } from './blockMeta';
 import { checkedOutcome, deadControls, type ToolOutcome } from './assistantChecks';
@@ -201,6 +202,14 @@ function toBlock(raw: Record<string, unknown>): Block | string {
   if (!BLOCK_TYPES.has(String(raw?.type)))
     return `Unknown block type "${String(raw?.type)}". Use one of: ${[...BLOCK_TYPES].join(', ')}.`;
   const block = { ...newBlock(raw.type as BlockType), ...raw } as Block;
+  const boxed =
+    (block.type === 'text' || block.type === 'heading') &&
+    !!(block.fill || block.gradient || block.border);
+  if (boxed) {
+    block.padding ??= BOXED_TEXT_PADDING;
+    block.valign ??= 'top';
+    block.textStyle = { lineHeight: DEFAULT_LINE_HEIGHT, ...block.textStyle };
+  }
   fillIds([block]);
   return block;
 }

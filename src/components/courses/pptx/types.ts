@@ -62,6 +62,7 @@ export interface DeckShape {
   insets: [number, number, number, number];
   placeholder?: string;
   fromLayout?: boolean;
+  glyph?: boolean;
   cell?: DeckCell;
   fill?: string;
   gradient?: Gradient;

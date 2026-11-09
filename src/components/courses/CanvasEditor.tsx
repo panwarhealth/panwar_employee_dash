@@ -3,6 +3,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { editContext } from '@/course/editContext';
@@ -112,6 +113,10 @@ export function CanvasEditor({
   onText,
   onGroup,
   onUngroup,
+  onCopy,
+  onDuplicate,
+  onPaste,
+  canPaste,
 }: {
   doc: CourseDoc;
   page: Page;
@@ -124,6 +129,10 @@ export function CanvasEditor({
   onText: (blockId: string, value: string) => void;
   onGroup: (ids: string[]) => void;
   onUngroup: (groupId: string) => void;
+  onCopy: (ids: string[]) => void;
+  onDuplicate: (ids: string[]) => void;
+  onPaste: () => void;
+  canPaste: boolean;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -134,6 +143,7 @@ export function CanvasEditor({
   const [zoom, setZoom] = useState(1);
   const [editing, setEditing] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
 
   const groups = groupsOf(page);
@@ -146,6 +156,22 @@ export function CanvasEditor({
   const [box, setBox] = useState<SelectionBox | null>(null);
 
   useEffect(() => setPicked([]), [page.id]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('blur', close);
+    window.addEventListener('wheel', close);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('blur', close);
+      window.removeEventListener('wheel', close);
+    };
+  }, [menu]);
 
   useLayoutEffect(() => {
     const els = selectionOf(page, selectedId)
@@ -192,7 +218,24 @@ export function CanvasEditor({
         onSelect(null);
         return;
       }
+      const shortcut = (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase();
+      if (shortcut === 'v' && canPaste) {
+        e.preventDefault();
+        onPaste();
+        return;
+      }
       if (!ids.length) return;
+      if (shortcut === 'c') {
+        e.preventDefault();
+        onCopy(ids);
+        return;
+      }
+      if (shortcut === 'd') {
+        e.preventDefault();
+        onDuplicate(ids);
+        setPicked([]);
+        return;
+      }
       const step = e.shiftKey ? 5 : 0.5;
       const moves: Record<string, [number, number]> = {
         ArrowLeft: [-step, 0],
@@ -219,7 +262,58 @@ export function CanvasEditor({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedId, picked, page, layout, onFrames, onRemove, onSelect, onGroup, onUngroup]);
+  }, [
+    selectedId,
+    picked,
+    page,
+    layout,
+    onFrames,
+    onRemove,
+    onSelect,
+    onGroup,
+    onUngroup,
+    onCopy,
+    onDuplicate,
+    onPaste,
+    canPaste,
+  ]);
+
+  const menuIds = picked.length > 1 ? picked : selectedIds;
+  const openMenu = (e: ReactMouseEvent, id: string | null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (id && !menuIds.includes(id)) {
+      setPicked([]);
+      const g = groupBy.get(id);
+      onSelect(g && selectedId !== id ? g.id : id);
+    } else if (!id) {
+      setPicked([]);
+      onSelect(null);
+    }
+    setMenu({ x: e.clientX, y: e.clientY });
+  };
+  const menuItems = [
+    { label: 'Copy', keys: 'Ctrl+C', show: menuIds.length > 0, run: () => onCopy(menuIds) },
+    {
+      label: 'Duplicate',
+      keys: 'Ctrl+D',
+      show: menuIds.length > 0,
+      run: () => {
+        onDuplicate(menuIds);
+        setPicked([]);
+      },
+    },
+    { label: 'Paste', keys: 'Ctrl+V', show: canPaste, run: onPaste },
+    {
+      label: 'Delete',
+      keys: 'Del',
+      show: menuIds.length > 0,
+      run: () => {
+        onRemove(menuIds);
+        setPicked([]);
+      },
+    },
+  ].filter((i) => i.show);
 
   const toPct = (e: { clientX: number; clientY: number }) => {
     const r = stage.current!.getBoundingClientRect();
@@ -418,6 +512,7 @@ export function CanvasEditor({
           setPicked([]);
           onSelect(null);
         }}
+        onContextMenu={(e) => openMenu(e, null)}
       >
         <div className="shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
           <CanvasStage
@@ -452,6 +547,7 @@ export function CanvasEditor({
                   )}
                   style={frameStyle(f, growsToFit(b))}
                   onPointerDown={typing ? undefined : (e) => begin(e, b.id, 'move')}
+                  onContextMenu={typing ? undefined : (e) => openMenu(e, b.id)}
                   onDoubleClick={() => {
                     if (groupBy.has(b.id) && selectedId !== b.id) onSelect(b.id);
                     else if (growsToFit(b)) setEditing(b.id);
@@ -575,8 +671,36 @@ export function CanvasEditor({
       ) : (
         <p className="relative z-30 text-xs text-ph-charcoal/50">
           Drag to move, corners to resize, top handle to rotate. Shift-click to select several and
-          Ctrl+G to group them. Arrow keys nudge.
+          Ctrl+G to group them. Arrow keys nudge. Right-click to copy, duplicate or paste.
         </p>
+      )}
+      {menu && menuItems.length > 0 && (
+        <div
+          role="menu"
+          onPointerDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+          className="fixed z-50 min-w-44 rounded-xl border border-ph-charcoal/10 bg-white py-1.5 text-sm shadow-lg"
+          style={{ left: menu.x, top: menu.y }}
+        >
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu(null);
+                item.run();
+              }}
+              className={cn(
+                'flex w-full items-center justify-between gap-6 px-4 py-1.5 text-left hover:bg-ph-purple/5',
+                item.label === 'Delete' ? 'text-red-700' : 'text-ph-charcoal',
+              )}
+            >
+              {item.label}
+              <span className="text-xs text-ph-charcoal/40">{item.keys}</span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

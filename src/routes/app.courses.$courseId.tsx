@@ -22,6 +22,7 @@ import {
   newPage,
   normalizeDoc,
   uid,
+  type Block,
   type CourseDoc,
   type Layout,
 } from '@/course/doc';
@@ -87,6 +88,23 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
     setDoc((d) => ops.removeBlocks(d, page.id, ids));
     setBlockId(null);
   };
+  const [clipboard, setClipboard] = useState<Block[]>([]);
+  const addCopies = (copies: Block[], after: (i: number) => string | null) => {
+    setDoc((d) => copies.reduce((acc, c, i) => ops.insertBlock(acc, page.id, after(i), c), d));
+    setBlockId(copies.length === 1 ? copies[0].id : null);
+  };
+  const duplicateBlocks = (ids: string[]) =>
+    addCopies(
+      ids.map((id) => ops.copyBlock(page.blocks.find((b) => b.id === id)!)),
+      (i) => ids[i],
+    );
+  const copyBlocks = (ids: string[]) =>
+    setClipboard(ids.map((id) => structuredClone(page.blocks.find((b) => b.id === id)!)));
+  const pasteBlocks = () =>
+    addCopies(
+      clipboard.map((b) => ops.copyBlock(b)),
+      () => null,
+    );
   const selectPage = (id: string) => {
     setPageId(id);
     setBlockId(null);
@@ -241,6 +259,10 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                 setDoc((d) => ops.ungroup(d, page.id, id));
                 setBlockId(null);
               }}
+              onCopy={copyBlocks}
+              onDuplicate={duplicateBlocks}
+              onPaste={pasteBlocks}
+              canPaste={clipboard.length > 0}
               onText={(id, value) =>
                 setDoc((d) =>
                   ops.updateBlock(d, page.id, id, (b) => {
@@ -263,11 +285,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           onAddBlock={() => setModal('add')}
           onMoveBlock={(from, to) => setDoc((d) => ops.moveBlock(d, page.id, from, to))}
           onChangeBlock={(id, update) => setDoc((d) => ops.updateBlock(d, page.id, id, update))}
-          onDuplicateBlock={(id) => {
-            const copy = ops.copyBlock(page.blocks.find((b) => b.id === id)!);
-            setDoc((d) => ops.insertBlock(d, page.id, id, copy));
-            setBlockId(copy.id);
-          }}
+          onDuplicateBlock={(id) => duplicateBlocks([id])}
           onRemoveBlock={(id) => removeBlocks([id])}
           canvas={{
             layout,

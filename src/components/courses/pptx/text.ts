@@ -1,4 +1,5 @@
 import { round1 } from '@/course/geometry';
+import { DEFAULT_LINE_HEIGHT } from '@/course/typography';
 import { colourOf, themeFont, type Theme } from './theme';
 import { isTitle, placeholderOf } from './placeholders';
 import type { DeckAlign, DeckPara, DeckRun, DeckVAlign } from './types';
@@ -108,7 +109,7 @@ function readParagraph(
           ? 'num'
           : undefined,
     lineHeight: lnSpc?.pct
-      ? Math.round(lnSpc.pct * 1.2 * 100) / 100
+      ? Math.round(lnSpc.pct * DEFAULT_LINE_HEIGHT * 100) / 100
       : lnSpc?.pt
         ? Math.round((lnSpc.pt / firstSize) * 100) / 100
         : undefined,
