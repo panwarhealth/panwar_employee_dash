@@ -16,3 +16,6 @@ export async function chatImage(file: Blob): Promise<string> {
 
 export const imageFiles = (files: Iterable<File>) =>
   [...files].filter((f) => f.type.startsWith('image/'));
+
+export const deckFiles = (files: Iterable<File>) =>
+  [...files].filter((f) => f.name.toLowerCase().endsWith('.pptx'));

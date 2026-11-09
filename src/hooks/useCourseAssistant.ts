@@ -13,6 +13,7 @@ import { deadControls } from '@/components/courses/assistantChecks';
 import { polishCourse } from '@/components/courses/polish';
 import { readPptx } from '@/components/courses/pptx';
 import { importDeck, relayout } from '@/components/courses/deckToPages';
+import { deckReference, usedMedia } from '@/components/courses/deckReference';
 import { updateCourse } from '@/course/edit';
 
 export interface ChatEntry {
@@ -168,10 +169,27 @@ export function useCourseAssistant(
     }
   }
 
-  const send = (text: string, images: string[] = []) =>
+  async function readReference(file: File, signal: AbortSignal) {
+    setStatus(`Reading ${file.name}`);
+    const deck = await readPptx(file);
+    const names = usedMedia(deck);
+    const urls: Record<string, string> = {};
+    for (const [i, name] of names.entries()) {
+      signal.throwIfAborted();
+      setStatus(`Uploading pictures from ${file.name} (${i + 1} of ${names.length})`);
+      urls[name] = (await uploadMedia(courseId, deck.media[name])).url;
+    }
+    return deckReference(deck, urls, file.name);
+  }
+
+  const send = (text: string, images: string[] = [], decks: File[] = []) =>
     start(async (controller) => {
-      setEntries((e) => [...e, { id: uid(), kind: 'user', text, images }]);
-      await run(text || 'See the attached picture.', controller, false, images);
+      const attached = decks.length ? `\nAttached: ${decks.map((d) => d.name).join(', ')}` : '';
+      setEntries((e) => [...e, { id: uid(), kind: 'user', text: text + attached, images }]);
+      const references = [];
+      for (const deck of decks) references.push(await readReference(deck, controller.signal));
+      const prompt = text || 'See the attached files.';
+      await run([prompt, ...references].join('\n\n'), controller, false, images);
     });
 
   const importFile = (file: File) =>

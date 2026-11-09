@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileUp, ImagePlus, Loader2, MessageSquarePlus, Undo2, X } from 'lucide-react';
+import { FileUp, Loader2, MessageSquarePlus, Paperclip, Undo2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ChatEntry } from '@/hooks/useCourseAssistant';
 import { cn } from '@/lib/utils';
-import { chatImage, imageFiles } from './chatImage';
+import { chatImage, deckFiles, imageFiles } from './chatImage';
 
 export function AssistantPanel({
   entries,
@@ -26,7 +26,7 @@ export function AssistantPanel({
   status: string;
   cost: number;
   canUndo: boolean;
-  onSend: (text: string, images: string[]) => void;
+  onSend: (text: string, images: string[], decks: File[]) => void;
   onDeck: (file: File) => void;
   canFinishDeck: boolean;
   onFinishDeck: () => void;
@@ -38,6 +38,7 @@ export function AssistantPanel({
 }) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [decks, setDecks] = useState<File[]>([]);
   const file = useRef<HTMLInputElement>(null);
   const picture = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
@@ -47,23 +48,25 @@ export function AssistantPanel({
   }, [entries.length]);
 
   const attach = async (files: File[]) => {
-    const urls = await Promise.all(files.map(chatImage));
+    setDecks((all) => [...all, ...deckFiles(files)]);
+    const urls = await Promise.all(imageFiles(files).map(chatImage));
     setImages((all) => [...all, ...urls]);
   };
 
-  const ready = !!text.trim() || images.length > 0;
+  const ready = !!text.trim() || images.length > 0 || decks.length > 0;
   const submit = () => {
     if (!ready || busy) return;
-    onSend(text.trim(), images);
+    onSend(text.trim(), images, decks);
     setText('');
     setImages([]);
+    setDecks([]);
   };
 
   return (
     <div
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
-        const files = imageFiles(e.dataTransfer.files);
+        const files = [...imageFiles(e.dataTransfer.files), ...deckFiles(e.dataTransfer.files)];
         if (!files.length) return;
         e.preventDefault();
         void attach(files);
@@ -169,8 +172,24 @@ export function AssistantPanel({
         <div ref={end} />
       </div>
 
-      {images.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-t border-ph-charcoal/10 px-4 pt-3">
+      {images.length + decks.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-ph-charcoal/10 px-4 pt-3">
+          {decks.map((d, i) => (
+            <span
+              key={`${d.name}${i}`}
+              className="flex items-center gap-1 rounded-full bg-ph-charcoal/5 py-1 pl-3 pr-1.5 text-xs text-ph-charcoal"
+            >
+              {d.name}
+              <button
+                type="button"
+                title="Remove file"
+                onClick={() => setDecks((all) => all.filter((_, j) => j !== i))}
+                className="rounded-full p-0.5 text-ph-charcoal/60 hover:text-ph-purple"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
           {images.map((src, i) => (
             <span key={i} className="relative">
               <img src={src} alt="" className="h-14 rounded-lg border border-ph-charcoal/10" />
@@ -189,7 +208,7 @@ export function AssistantPanel({
       <div
         className={cn(
           'flex items-end gap-2 px-4 py-3',
-          !images.length && 'border-t border-ph-charcoal/10',
+          !images.length && !decks.length && 'border-t border-ph-charcoal/10',
         )}
       >
         <button
@@ -203,12 +222,12 @@ export function AssistantPanel({
         </button>
         <button
           type="button"
-          title="Add a picture (or paste or drop one)"
+          title="Attach a picture or PowerPoint to your message (or paste or drop one)"
           disabled={busy}
           onClick={() => picture.current?.click()}
           className="rounded-full p-2 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-40"
         >
-          <ImagePlus className="h-4 w-4" />
+          <Paperclip className="h-4 w-4" />
         </button>
         <textarea
           rows={2}
@@ -242,11 +261,11 @@ export function AssistantPanel({
       <input
         ref={picture}
         type="file"
-        accept="image/*"
+        accept="image/*,.pptx"
         multiple
         className="hidden"
         onChange={(e) => {
-          const files = imageFiles(e.target.files ?? []);
+          const files = [...(e.target.files ?? [])];
           e.target.value = '';
           void attach(files);
         }}
