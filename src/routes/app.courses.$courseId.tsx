@@ -347,7 +347,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             status={assistant.status}
             cost={assistant.cost}
             canUndo={assistant.canUndo}
-            onSend={(text) => void assistant.send(text)}
+            onSend={(text, images) => void assistant.send(text, images)}
             onDeck={(file) => void assistant.importDeck(file)}
             canFinishDeck={assistant.canFinishDeck}
             onFinishDeck={() => void assistant.finishDeck()}

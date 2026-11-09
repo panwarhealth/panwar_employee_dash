@@ -19,7 +19,13 @@ export interface ChatEntry {
   id: string;
   kind: 'user' | 'assistant' | 'activity' | 'error';
   text: string;
+  images?: string[];
 }
+
+const imageBlock = (dataUrl: string) => ({
+  type: 'image',
+  source: { type: 'base64', media_type: 'image/jpeg', data: dataUrl.split(',')[1] },
+});
 
 const MAX_STEPS = 80;
 const FINISH_STEPS = 160;
@@ -60,11 +66,17 @@ export function useCourseAssistant(
     return last.content as { type: string; text?: string }[];
   };
 
-  async function run(prompt: string, controller: AbortController, finishing = false) {
+  async function run(
+    prompt: string,
+    controller: AbortController,
+    finishing = false,
+    images: string[] = [],
+  ) {
     const text = `${prompt}\n\n<course_outline>${courseOutline(docRef.current)}</course_outline>`;
+    const blocks = [...images.map(imageBlock), { type: 'text', text }];
     const pending = userBlocks();
-    if (pending) pending.push({ type: 'text', text });
-    else history.current.push({ role: 'user', content: text });
+    if (pending) pending.push(...blocks);
+    else history.current.push({ role: 'user', content: blocks });
     const steps = finishing ? FINISH_STEPS : MAX_STEPS;
     let gates = 0;
     for (let step = 0; step < steps; step++) {
@@ -155,10 +167,10 @@ export function useCourseAssistant(
     }
   }
 
-  const send = (text: string) =>
+  const send = (text: string, images: string[] = []) =>
     start(async (controller) => {
-      log('user', text);
-      await run(text, controller);
+      setEntries((e) => [...e, { id: uid(), kind: 'user', text, images }]);
+      await run(text || 'See the attached picture.', controller, false, images);
     });
 
   const importFile = (file: File) =>

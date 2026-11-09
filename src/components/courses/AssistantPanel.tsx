@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileUp, Loader2, MessageSquarePlus, Undo2, X } from 'lucide-react';
+import { FileUp, ImagePlus, Loader2, MessageSquarePlus, Undo2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ChatEntry } from '@/hooks/useCourseAssistant';
 import { cn } from '@/lib/utils';
+import { chatImage, imageFiles } from './chatImage';
 
 export function AssistantPanel({
   entries,
@@ -25,7 +26,7 @@ export function AssistantPanel({
   status: string;
   cost: number;
   canUndo: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, images: string[]) => void;
   onDeck: (file: File) => void;
   canFinishDeck: boolean;
   onFinishDeck: () => void;
@@ -36,21 +37,39 @@ export function AssistantPanel({
   onClose: () => void;
 }) {
   const [text, setText] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const file = useRef<HTMLInputElement>(null);
+  const picture = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' });
   }, [entries.length]);
 
+  const attach = async (files: File[]) => {
+    const urls = await Promise.all(files.map(chatImage));
+    setImages((all) => [...all, ...urls]);
+  };
+
+  const ready = !!text.trim() || images.length > 0;
   const submit = () => {
-    if (!text.trim() || busy) return;
-    onSend(text.trim());
+    if (!ready || busy) return;
+    onSend(text.trim(), images);
     setText('');
+    setImages([]);
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 flex h-[560px] max-h-[calc(100vh-6rem)] w-[400px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-[20px] border border-ph-charcoal/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
+    <div
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        const files = imageFiles(e.dataTransfer.files);
+        if (!files.length) return;
+        e.preventDefault();
+        void attach(files);
+      }}
+      className="fixed bottom-5 right-5 z-40 flex h-[560px] max-h-[calc(100vh-6rem)] w-[400px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-[20px] border border-ph-charcoal/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.18)]"
+    >
       <div className="flex items-center gap-2 border-b border-ph-charcoal/10 px-5 py-3">
         <strong className="text-sm font-semibold text-ph-charcoal">AI assistant</strong>
         {cost > 0 && (
@@ -120,6 +139,13 @@ export function AssistantPanel({
               e.kind === 'error' && 'rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800',
             )}
           >
+            {e.images?.length ? (
+              <span className="mb-1.5 flex flex-wrap gap-1.5">
+                {e.images.map((src, i) => (
+                  <img key={i} src={src} alt="" className="h-16 rounded-lg object-cover" />
+                ))}
+              </span>
+            ) : null}
             {e.text}
           </div>
         ))}
@@ -143,7 +169,29 @@ export function AssistantPanel({
         <div ref={end} />
       </div>
 
-      <div className="flex items-end gap-2 border-t border-ph-charcoal/10 px-4 py-3">
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t border-ph-charcoal/10 px-4 pt-3">
+          {images.map((src, i) => (
+            <span key={i} className="relative">
+              <img src={src} alt="" className="h-14 rounded-lg border border-ph-charcoal/10" />
+              <button
+                type="button"
+                title="Remove picture"
+                onClick={() => setImages((all) => all.filter((_, j) => j !== i))}
+                className="absolute -right-1.5 -top-1.5 rounded-full bg-white p-0.5 text-ph-charcoal/60 shadow hover:text-ph-purple"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div
+        className={cn(
+          'flex items-end gap-2 px-4 py-3',
+          !images.length && 'border-t border-ph-charcoal/10',
+        )}
+      >
         <button
           type="button"
           title="Import PowerPoint"
@@ -153,11 +201,26 @@ export function AssistantPanel({
         >
           <FileUp className="h-4 w-4" />
         </button>
+        <button
+          type="button"
+          title="Add a picture (or paste or drop one)"
+          disabled={busy}
+          onClick={() => picture.current?.click()}
+          className="rounded-full p-2 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple disabled:opacity-40"
+        >
+          <ImagePlus className="h-4 w-4" />
+        </button>
         <textarea
           rows={2}
           value={text}
           placeholder="Tell it what to change"
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            const files = imageFiles(e.clipboardData.files);
+            if (!files.length) return;
+            e.preventDefault();
+            void attach(files);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -171,11 +234,23 @@ export function AssistantPanel({
             Stop
           </Button>
         ) : (
-          <Button size="sm" className="rounded-full" disabled={!text.trim()} onClick={submit}>
+          <Button size="sm" className="rounded-full" disabled={!ready} onClick={submit}>
             Send
           </Button>
         )}
       </div>
+      <input
+        ref={picture}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = imageFiles(e.target.files ?? []);
+          e.target.value = '';
+          void attach(files);
+        }}
+      />
       <input
         ref={file}
         type="file"
