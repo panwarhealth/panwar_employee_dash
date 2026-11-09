@@ -55,6 +55,7 @@ export function useCourseAssistant(
     setEntries((e) => [...e, { id: uid(), kind, text }]);
 
   const apply = (next: CourseDoc) => {
+    abort.current?.signal.throwIfAborted();
     docRef.current = next;
     setDoc(next);
   };
@@ -174,13 +175,14 @@ export function useCourseAssistant(
     });
 
   const importFile = (file: File) =>
-    start(async () => {
+    start(async (controller) => {
       log('user', `Import ${file.name}`);
       setStatus('Reading the deck');
       const deck = await readPptx(file);
       const names = Object.keys(deck.media);
       const urls: Record<string, string> = {};
       for (const [i, name] of names.entries()) {
+        controller.signal.throwIfAborted();
         setStatus(`Uploading pictures (${i + 1} of ${names.length})`);
         urls[name] = (await uploadMedia(courseId, deck.media[name])).url;
       }
@@ -262,10 +264,14 @@ export function useCourseAssistant(
       setEntries([]);
       setDeckPrompt(null);
     },
-    stop: () => abort.current?.abort(),
+    stop: () => {
+      setStatus('Stopping');
+      abort.current?.abort();
+    },
     undo: () => {
       if (!undo) return;
-      apply(undo);
+      docRef.current = undo;
+      setDoc(undo);
       setUndo(null);
       log('activity', "Undid the assistant's last changes");
     },

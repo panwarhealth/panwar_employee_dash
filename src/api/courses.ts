@@ -79,6 +79,7 @@ interface AssistantJob {
 
 const wait = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'));
     const t = setTimeout(resolve, ms);
     signal?.addEventListener('abort', () => {
       clearTimeout(t);
