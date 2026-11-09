@@ -380,6 +380,7 @@ export interface RevealBlock extends BlockBase {
   cover: RevealFace;
   under: RevealFace;
   textStyle?: TextStyle;
+  padding?: Insets;
   radius?: number;
   corners?: Corners;
   border?: Border;

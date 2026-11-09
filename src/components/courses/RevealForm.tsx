@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import type { RevealBlock } from '@/course/doc';
+import { BOXED_TEXT_PADDING } from '@/course/typography';
 import { peekReveal, usePeekReveal } from '@/course/revealPeek';
 import {
   Field,
   inputClass,
   MediaInput,
   NumberBox,
+  PaddingField,
   RadiusField,
   sectionClass,
   Toggle,
@@ -96,6 +98,10 @@ export function RevealForm({
         onChange={(v) => set((b) => (b.textStyle = v))}
       />
       <h4 className={sectionClass}>Box</h4>
+      <PaddingField
+        value={block.padding ?? BOXED_TEXT_PADDING}
+        onChange={(v) => set((b) => (b.padding = v))}
+      />
       <RadiusField
         value={block.radius}
         fallback={0}
