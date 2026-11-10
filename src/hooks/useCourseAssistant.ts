@@ -68,6 +68,7 @@ export function useCourseAssistant(
   const docRef = useRef(doc);
   const history = useRef<AssistantMessage[]>([]);
   const abort = useRef<AbortController | null>(null);
+  const muted = useRef<AbortController | null>(null);
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
@@ -80,8 +81,10 @@ export function useCourseAssistant(
     docRef.current = doc;
   }, [doc]);
 
-  const log = (kind: ChatEntry['kind'], text: string) =>
+  const log = (kind: ChatEntry['kind'], text: string) => {
+    if (muted.current && muted.current === abort.current) return;
     setEntries((e) => [...e, { id: uid(), kind, text }]);
+  };
 
   const apply = (next: CourseDoc) => {
     abort.current?.signal.throwIfAborted();
@@ -352,6 +355,10 @@ export function useCourseAssistant(
     polishPage,
     canClear: !busy && entries.length > 0,
     clear: () => {
+      if (abort.current) {
+        muted.current = abort.current;
+        abort.current.abort();
+      }
       history.current = [];
       setEntries([]);
       setDeckPrompt(null);

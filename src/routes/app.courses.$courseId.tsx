@@ -377,7 +377,11 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             onUndo={assistant.undo}
             canClear={assistant.canClear}
             onClear={assistant.clear}
-            onClose={() => setAssistantOpen(false)}
+            onMinimise={() => setAssistantOpen(false)}
+            onClose={() => {
+              assistant.clear();
+              setAssistantOpen(false);
+            }}
           />
         )}
         {modal === 'preview' && (

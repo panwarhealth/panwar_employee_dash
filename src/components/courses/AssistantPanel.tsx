@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileUp, Loader2, MessageSquarePlus, Paperclip, Undo2, X } from 'lucide-react';
+import { FileUp, Loader2, MessageSquarePlus, Minus, Paperclip, Undo2, X } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ export function AssistantPanel({
   onUndo,
   canClear,
   onClear,
+  onMinimise,
   onClose,
 }: {
   entries: ChatEntry[];
@@ -56,6 +57,7 @@ export function AssistantPanel({
   onUndo: () => void;
   canClear: boolean;
   onClear: () => void;
+  onMinimise: () => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState('');
@@ -129,7 +131,15 @@ export function AssistantPanel({
           )}
           <button
             type="button"
-            title="Close"
+            title="Minimise. The chat stays here for when you come back."
+            onClick={onMinimise}
+            className="rounded-full p-1 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            title="Close and clear the chat. Changes already made stay."
             onClick={onClose}
             className="rounded-full p-1 text-ph-charcoal/50 hover:bg-ph-charcoal/5 hover:text-ph-purple"
           >
