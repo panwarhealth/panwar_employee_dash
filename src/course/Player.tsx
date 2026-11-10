@@ -205,8 +205,9 @@ export function Player({
 
   const show = (pageId: string) => {
     const to = pages.findIndex((p) => p.id === pageId);
-    const enter = pages[to]?.transition ?? 'none';
-    const exit = page.exitTransition ?? 'none';
+    const slide = pages[to]?.transition === 'slide' || page.exitTransition === 'slide';
+    const enter = slide ? 'slide' : (pages[to]?.transition ?? 'none');
+    const exit = slide ? 'slide' : (page.exitTransition ?? 'none');
     window.clearTimeout(transitionTimer.current);
     if (pageId !== page.id && (enter !== 'none' || exit !== 'none')) {
       setPrevious({ page, hidden, leaving: hasExit(page), forward: to > index, enter, exit });
