@@ -1,9 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { FileUp, Loader2, MessageSquarePlus, Paperclip, Undo2, X } from 'lucide-react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import type { ChatEntry, PendingDeck } from '@/hooks/useCourseAssistant';
 import { cn } from '@/lib/utils';
 import { chatImage, deckFiles, imageFiles } from './chatImage';
+
+const markdownClass = cn(
+  '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1.5 [&_strong]:font-semibold',
+  '[&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5',
+  '[&_h1]:mb-1 [&_h1]:mt-3 [&_h1]:font-semibold [&_h2]:mb-1 [&_h2]:mt-3 [&_h2]:font-semibold',
+  '[&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:font-semibold [&_a]:text-ph-purple [&_a]:underline',
+  '[&_code]:rounded [&_code]:bg-ph-charcoal/10 [&_code]:px-1 [&_code]:text-[0.85em]',
+  '[&_pre]:my-1.5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-ph-charcoal/10 [&_pre]:p-2',
+  '[&_table]:my-1.5 [&_table]:text-xs [&_td]:border [&_td]:border-ph-charcoal/15 [&_td]:px-1.5',
+  '[&_th]:border [&_th]:border-ph-charcoal/15 [&_th]:px-1.5 [&_th]:text-left [&_hr]:my-2',
+);
 
 export function AssistantPanel({
   entries,
@@ -137,7 +150,7 @@ export function AssistantPanel({
           <div
             key={e.id}
             className={cn(
-              'whitespace-pre-wrap',
+              e.kind !== 'assistant' && 'whitespace-pre-wrap',
               e.kind === 'user' &&
                 'ml-8 self-end rounded-2xl rounded-br-sm bg-ph-purple px-3.5 py-2 text-white',
               e.kind === 'assistant' &&
@@ -153,7 +166,24 @@ export function AssistantPanel({
                 ))}
               </span>
             ) : null}
-            {e.text}
+            {e.kind === 'assistant' ? (
+              <div className={markdownClass}>
+                <Markdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noreferrer">
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {e.text}
+                </Markdown>
+              </div>
+            ) : (
+              e.text
+            )}
           </div>
         ))}
         {pendingDeck && (
