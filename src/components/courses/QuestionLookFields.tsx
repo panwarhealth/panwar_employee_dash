@@ -109,6 +109,16 @@ export function QuestionLookFields({
         value={look.textColour}
         onChange={(textColour) => set({ textColour })}
       />
+      {BOXED.has(kind) && (
+        <Field label="Space under the question (px)">
+          <NumberBox
+            min={0}
+            value={look.questionGap ?? 10}
+            onChange={(questionGap) => set({ questionGap: Math.max(0, questionGap) })}
+            className={inputClass}
+          />
+        </Field>
+      )}
 
       {items && (
         <>

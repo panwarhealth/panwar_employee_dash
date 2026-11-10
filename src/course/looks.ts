@@ -19,6 +19,7 @@ export function lookVars(look: QuestionLook = {}): CSSProperties {
     v['--cp-opt-align'] = look.answerAlign;
     v['--cp-opt-justify'] = JUSTIFY[look.answerAlign];
   }
+  if (look.questionGap !== undefined) v['--cp-q-gap'] = px(look.questionGap);
   if (look.answerGap !== undefined) v['--cp-opt-gap'] = px(look.answerGap);
   if (look.answerPadding) v['--cp-opt-pad'] = look.answerPadding.map(px).join(' ');
   if (look.answerFill) v['--cp-opt-bg'] = look.answerFill;
