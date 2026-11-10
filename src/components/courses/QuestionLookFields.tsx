@@ -35,6 +35,35 @@ export function QuestionLookFields({
           onChange={(answers) => set({ answers })}
         />
       )}
+      {block.type === 'check' && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Select
+              label="Answer text"
+              value={look.answerAlign ?? (look.answers === 'buttons' ? 'center' : 'left')}
+              options={[
+                { value: 'left', label: 'Left' },
+                { value: 'center', label: 'Centre' },
+                { value: 'right', label: 'Right' },
+              ]}
+              onChange={(answerAlign) => set({ answerAlign })}
+            />
+            <Field label="Gap between answers (px)">
+              <NumberBox
+                min={0}
+                value={look.answerGap ?? 8}
+                onChange={(answerGap) => set({ answerGap: Math.max(0, answerGap) })}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <PaddingField
+            label="Padding inside each answer (px)"
+            value={look.answerPadding ?? [10, 14, 10, 14]}
+            onChange={(answerPadding) => set({ answerPadding })}
+          />
+        </>
+      )}
       <Field label="Text size (px)">
         <NumberBox
           min={10}

@@ -88,6 +88,24 @@ function QuestionFrame({
         ...(look.radius !== undefined
           ? ({ '--cp-r': `calc(${look.radius} * var(--px, 1px))` } as CSSProperties)
           : {}),
+        ...(look.answerAlign
+          ? ({
+              '--cp-opt-align': look.answerAlign,
+              '--cp-opt-justify': { left: 'flex-start', center: 'center', right: 'flex-end' }[
+                look.answerAlign
+              ],
+            } as CSSProperties)
+          : {}),
+        ...(look.answerGap !== undefined
+          ? ({ '--cp-opt-gap': `calc(${look.answerGap} * var(--px, 1px))` } as CSSProperties)
+          : {}),
+        ...(look.answerPadding
+          ? ({
+              '--cp-opt-pad': look.answerPadding
+                .map((n) => `calc(${n} * var(--px, 1px))`)
+                .join(' '),
+            } as CSSProperties)
+          : {}),
       }}
     >
       <p className="cp-q">{prompt}</p>

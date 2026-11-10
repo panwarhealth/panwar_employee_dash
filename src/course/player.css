@@ -215,8 +215,8 @@
   border-radius: var(--cp-r, 4px);
 }
 .cp-pills .cp-opt {
-  justify-content: center;
-  text-align: center;
+  justify-content: var(--cp-opt-justify, center);
+  text-align: var(--cp-opt-align, center);
   font-weight: 700;
   color: var(--cp-accent);
   border: 2px solid var(--cp-accent);
@@ -225,7 +225,7 @@
 .cp-pills .cp-opts-short .cp-opt {
   flex: 0 1 auto;
   min-width: 5em;
-  padding-inline: 1.5em;
+  padding: var(--cp-opt-pad, 0.625em 1.5em);
 }
 .cp-pills .cp-dot,
 .cp-pills .cp-box {
@@ -258,12 +258,13 @@
 .cp-opts {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--cp-opt-gap, 8px);
   width: 100%;
 }
 .cp-opts-short {
   flex-direction: row;
   flex-wrap: wrap;
+  justify-content: var(--cp-opt-justify, flex-start);
 }
 .cp-opts-short .cp-opt {
   flex: 1 1 8em;
@@ -275,8 +276,9 @@
   gap: 0.75em;
   width: 100%;
   min-height: 2.75em;
-  padding: 0.625em 0.875em;
-  text-align: left;
+  padding: var(--cp-opt-pad, 0.625em 0.875em);
+  justify-content: var(--cp-opt-justify, flex-start);
+  text-align: var(--cp-opt-align, left);
   background: #fff;
   border: 1.5px solid var(--cp-line);
   border-radius: 4px;
@@ -289,12 +291,12 @@
   padding: 0.75em;
 }
 .cp-stage-phone .cp-opts {
-  gap: 0.35em;
+  gap: var(--cp-opt-gap, 0.35em);
 }
 .cp-stage-phone .cp-opt {
   min-height: 0;
   gap: 0.5em;
-  padding: 0.45em 0.6em;
+  padding: var(--cp-opt-pad, 0.45em 0.6em);
   line-height: 1.25;
 }
 .cp-stage-phone .cp-check .cp-btn {

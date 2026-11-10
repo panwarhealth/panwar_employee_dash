@@ -422,6 +422,9 @@ export interface QuestionLook {
   radius?: number;
   submitAlign?: 'left' | 'center' | 'right';
   buttonMargin?: Insets;
+  answerAlign?: 'left' | 'center' | 'right';
+  answerGap?: number;
+  answerPadding?: Insets;
   card?: boolean;
   feedback?: 'under' | 'popup';
 }
