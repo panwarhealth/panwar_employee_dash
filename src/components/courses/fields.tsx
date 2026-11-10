@@ -77,15 +77,17 @@ export function RadiusField({
 const SIDES = ['Top', 'Right', 'Bottom', 'Left'];
 
 export function PaddingField({
+  label = 'Padding (px)',
   value,
   onChange,
 }: {
+  label?: string;
   value: Insets;
   onChange: (padding: Insets) => void;
 }) {
   return (
     <div>
-      <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">Padding (px)</span>
+      <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">{label}</span>
       <div className="grid grid-cols-4 gap-x-2">
         {SIDES.map((side, i) => (
           <label key={side} className="block">

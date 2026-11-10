@@ -56,7 +56,13 @@ function QuestionFrame({
   const look = block.look ?? {};
   const popup = look.feedback === 'popup';
   const align = { left: 'flex-start', center: 'center', right: 'flex-end' }[look.submitAlign ?? 'left'];
-  const accent = look.colour ? ({ '--cp-accent': look.colour } as CSSProperties) : {};
+  const accent = {
+    ...(look.colour ? { '--cp-accent': look.colour } : {}),
+    ...(look.buttonPadding
+      ? { '--cp-btn-pad': look.buttonPadding.map((n) => `calc(${n} * var(--px, 1px))`).join(' ') }
+      : {}),
+  } as CSSProperties;
+  const padded = look.buttonPadding ? ' cp-padded' : '';
   const retry = () => {
     setPopupOpen(false);
     setSubmitted(false);
@@ -76,7 +82,7 @@ function QuestionFrame({
   return (
     <div
       ref={self}
-      className={`cp-check${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
+      className={`cp-check${padded}${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
       style={{
         ...accent,
         ...(look.size ? { fontSize: `${look.size / 16}em` } : {}),
@@ -118,7 +124,7 @@ function QuestionFrame({
       {popupOpen &&
         player &&
         createPortal(
-          <div className="cp-layer" style={accent} onClick={() => setPopupOpen(false)}>
+          <div className={`cp-layer${padded}`} style={accent} onClick={() => setPopupOpen(false)}>
             <div
               className="cp-layer-card cp-fbcard"
               role="dialog"

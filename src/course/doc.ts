@@ -421,6 +421,7 @@ export interface QuestionLook {
   answers?: 'list' | 'buttons';
   radius?: number;
   submitAlign?: 'left' | 'center' | 'right';
+  buttonPadding?: Insets;
   card?: boolean;
   feedback?: 'under' | 'popup';
 }

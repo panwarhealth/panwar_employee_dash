@@ -385,6 +385,7 @@ export function Inspector({
           {isQuestion(shown) && (
             <QuestionLookFields
               block={shown}
+              layout={canvas.layout}
               onChange={(look) =>
                 styled((b) => {
                   if (isQuestion(b)) b.look = look;

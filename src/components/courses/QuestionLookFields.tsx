@@ -1,13 +1,15 @@
-import type { GradedBlock, QuestionLook } from '@/course/doc';
-import { Field, inputClass, NumberBox, Select, Toggle } from './fields';
+import type { GradedBlock, Layout, QuestionLook } from '@/course/doc';
+import { Field, inputClass, NumberBox, PaddingField, Select, Toggle } from './fields';
 import { ColourField } from './TextStyleFields';
 
 
 export function QuestionLookFields({
   block,
+  layout,
   onChange,
 }: {
   block: GradedBlock;
+  layout: Layout;
   onChange: (look: QuestionLook) => void;
 }) {
   const look = block.look ?? {};
@@ -62,6 +64,11 @@ export function QuestionLookFields({
           onChange={(submitAlign) => set({ submitAlign })}
         />
       </div>
+      <PaddingField
+        label={`${button} button padding (px)`}
+        value={look.buttonPadding ?? (layout === 'phone' ? [8, 18, 8, 18] : [10, 24, 10, 24])}
+        onChange={(buttonPadding) => set({ buttonPadding })}
+      />
       <Select
         label="Feedback"
         value={look.feedback ?? 'under'}
