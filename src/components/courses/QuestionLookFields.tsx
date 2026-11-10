@@ -1,5 +1,6 @@
 import type { GradedBlock, QuestionLook } from '@/course/doc';
 import { Field, inputClass, NumberBox, PaddingField, Select, Toggle } from './fields';
+import { BUTTON_MARGIN } from '@/course/typography';
 import { ColourField } from './TextStyleFields';
 
 
@@ -64,7 +65,7 @@ export function QuestionLookFields({
       </div>
       <PaddingField
         label={`Space around the ${button} button (px)`}
-        value={look.buttonMargin ?? [0, 0, 0, 0]}
+        value={look.buttonMargin ?? BUTTON_MARGIN}
         onChange={(buttonMargin) => set({ buttonMargin })}
       />
       <Select

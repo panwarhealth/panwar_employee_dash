@@ -21,6 +21,7 @@ import type {
 } from './doc';
 import type { BlockContext } from './context';
 import { BLANK, blankAnswers } from './grading';
+import { BUTTON_MARGIN } from './typography';
 import { shuffled } from './util';
 
 function QuestionFrame({
@@ -57,10 +58,10 @@ function QuestionFrame({
   const popup = look.feedback === 'popup';
   const align = { left: 'flex-start', center: 'center', right: 'flex-end' }[look.submitAlign ?? 'left'];
   const accent = look.colour ? ({ '--cp-accent': look.colour } as CSSProperties) : {};
-  const margin = look.buttonMargin
-    ? look.buttonMargin.map((n) => `calc(${n} * var(--px, 1px))`).join(' ')
-    : undefined;
-  const row = margin ? { margin, width: 'auto', alignSelf: 'stretch' } : {};
+  const margin = (look.buttonMargin ?? BUTTON_MARGIN)
+    .map((n) => `calc(${n} * var(--px, 1px))`)
+    .join(' ');
+  const row = { margin, width: 'auto', alignSelf: 'stretch' };
   const retry = () => {
     setPopupOpen(false);
     setSubmitted(false);
