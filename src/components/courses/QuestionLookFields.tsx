@@ -68,6 +68,7 @@ export function QuestionLookFields({
   const graded = isQuestion(block);
   const items = ITEMS[kind];
   const pills = kind === 'check' || kind === 'pathway';
+  const row = block.type === 'check' && block.options.every((o) => o.text.length <= 20);
   const button = graded
     ? block.submitLabel || 'Submit'
     : kind === 'results'
@@ -129,7 +130,7 @@ export function QuestionLookFields({
                 label="Text align"
                 value={
                   look.answerAlign ??
-                  (CENTRED.has(kind) || (pills && look.answers === 'buttons') ? 'center' : 'left')
+                  (CENTRED.has(kind) || (pills && look.answers === 'buttons' && !row) ? 'center' : 'left')
                 }
                 options={[...SIDES]}
                 onChange={(answerAlign) => set({ answerAlign })}
