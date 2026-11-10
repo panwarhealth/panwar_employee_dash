@@ -28,6 +28,10 @@
   color: inherit;
   cursor: pointer;
 }
+.cp .cp-opt,
+.cp .cp-likert-opt {
+  color: var(--cp-opt-ink, inherit);
+}
 .cp button:disabled {
   cursor: default;
 }

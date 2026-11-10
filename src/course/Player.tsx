@@ -413,7 +413,7 @@ export function Player({
           onRetryPicks={() => setPicks([])}
         />
       </main>
-      {openPopup && <PopupLayer block={openPopup} onClose={() => setPopup(null)} />}
+      {openPopup && <PopupLayer block={openPopup} ctx={ctx} onClose={() => setPopup(null)} />}
       {doc.navBar && (
         <nav className="cp-nav">
           <button

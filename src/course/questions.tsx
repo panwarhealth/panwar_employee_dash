@@ -22,7 +22,7 @@ import type {
 import type { BlockContext } from './context';
 import { BLANK, blankAnswers } from './grading';
 import { BUTTON_MARGIN, px } from './typography';
-import { boxClass, JUSTIFY, lookVars } from './looks';
+import { boxClass, itemCss, JUSTIFY, lookVars, partCss } from './looks';
 import { shuffled } from './util';
 
 function QuestionFrame({
@@ -69,12 +69,20 @@ function QuestionFrame({
     onReset();
   };
   const message = (
-    <div className={`cp-fb ${shownCorrect ? 'cp-fb-ok' : 'cp-fb-bad'}`}>
+    <div
+      className={`cp-fb ${shownCorrect ? 'cp-fb-ok' : 'cp-fb-bad'}`}
+      style={partCss(ctx, look.feedbackStyle)}
+    >
       {ctx.showFeedback ? longest : correct ? block.feedbackCorrect : block.feedbackWrong}
     </div>
   );
   const tryAgain = (
-    <button type="button" className="cp-btn cp-btn-outline" onClick={retry}>
+    <button
+      type="button"
+      className="cp-btn cp-btn-outline"
+      style={partCss(ctx, look.buttonStyle)}
+      onClick={retry}
+    >
       Try again
     </button>
   );
@@ -85,8 +93,14 @@ function QuestionFrame({
       className={`cp-check${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
       style={lookVars(look)}
     >
-      <p className="cp-q">{prompt}</p>
-      {hint && <p className="cp-hint">{hint}</p>}
+      <p className="cp-q" style={partCss(ctx, look.questionStyle)}>
+        {prompt}
+      </p>
+      {hint && (
+        <p className="cp-hint" style={partCss(ctx, look.hintStyle)}>
+          {hint}
+        </p>
+      )}
       {children({ locked, submitted })}
       {submitted && !popup && (
         <div className="cp-fbrow" style={row}>
@@ -103,7 +117,7 @@ function QuestionFrame({
         <button
           type="button"
           className="cp-btn cp-btn-solid"
-          style={{ alignSelf: align, margin }}
+          style={{ ...partCss(ctx, look.buttonStyle), alignSelf: align, margin }}
           disabled={!ready || ctx.edit}
           title={ready ? undefined : 'Answer the question first'}
           onClick={() => {
@@ -131,6 +145,7 @@ function QuestionFrame({
                 <button
                   type="button"
                   className="cp-btn cp-btn-solid"
+                  style={partCss(ctx, look.buttonStyle)}
                   onClick={() => setPopupOpen(false)}
                 >
                   OK
@@ -177,6 +192,7 @@ export function CheckView({ block, ctx }: { block: CheckBlock; ctx: BlockContext
                 key={o.id}
                 type="button"
                 className={`cp-opt${on ? ' cp-on' : ''}${mark}`}
+                style={itemCss(ctx, block.look?.answerStyle)}
                 aria-pressed={on}
                 onClick={() =>
                   !locked &&
@@ -284,6 +300,8 @@ function DragBoard({
   marks,
   layout,
   image,
+  itemStyle,
+  labelStyle,
 }: {
   items: { id: string; text: string }[];
   zones: {
@@ -298,6 +316,8 @@ function DragBoard({
   marks: Record<string, boolean> | null;
   layout: 'slots' | 'image' | 'groups' | 'pairs';
   image?: string;
+  itemStyle?: CSSProperties;
+  labelStyle?: CSSProperties;
 }) {
   const place = (itemId: string, zoneId: string) => {
     const next = { ...placement, [itemId]: zoneId };
@@ -319,6 +339,7 @@ function DragBoard({
       ]
         .filter(Boolean)
         .join(' ')}
+      style={itemStyle}
       {...dnd.tile(it.id, it.text)}
     >
       {it.text}
@@ -351,7 +372,11 @@ function DragBoard({
         <div className="cp-zones">
           {zones.map((z) => (
             <div key={z.id} className="cp-zonewrap">
-              {z.label && <span className="cp-zone-label">{z.label}</span>}
+              {z.label && (
+                <span className="cp-zone-label" style={labelStyle}>
+                  {z.label}
+                </span>
+              )}
               <div className="cp-zone" {...dnd.zone(z.id)}>
                 {inZone(z.id).map(tileEl)}
               </div>
@@ -417,6 +442,8 @@ export function DragView({ block, ctx }: { block: DragBlock; ctx: BlockContext }
             block.style === 'order' ? 'slots' : block.style === 'targets' ? 'image' : 'groups'
           }
           image={block.src}
+          itemStyle={itemCss(ctx, block.look?.answerStyle)}
+          labelStyle={partCss(ctx, block.look?.labelStyle)}
         />
       )}
     </QuestionFrame>
@@ -459,6 +486,8 @@ export function MatchView({ block, ctx }: { block: MatchBlock; ctx: BlockContext
             locked={locked}
             marks={submitted ? marks : null}
             layout="pairs"
+            itemStyle={itemCss(ctx, block.look?.answerStyle)}
+            labelStyle={partCss(ctx, block.look?.labelStyle)}
           />
         ) : (
           <div className="cp-matchrows">
@@ -468,6 +497,7 @@ export function MatchView({ block, ctx }: { block: MatchBlock; ctx: BlockContext
                 <label
                   key={p.id}
                   className={`cp-matchrow${submitted ? (chosen === p.id ? ' cp-right' : ' cp-wrong') : ''}`}
+                  style={itemCss(ctx, block.look?.answerStyle)}
                 >
                   <span>{p.left}</span>
                   <select
@@ -518,7 +548,7 @@ export function BlankView({ block, ctx }: { block: BlankBlock; ctx: BlockContext
       onReset={() => setValues(answers.map(() => ''))}
     >
       {({ locked, submitted }) => (
-        <p className="cp-text cp-blank">
+        <p className="cp-text cp-blank" style={partCss(ctx, block.look?.bodyStyle)}>
           {parts.map((part, i) => {
             if (i % 2 === 0) return <span key={i}>{part}</span>;
             const n = (i - 1) / 2;
@@ -526,6 +556,7 @@ export function BlankView({ block, ctx }: { block: BlankBlock; ctx: BlockContext
               <input
                 key={i}
                 className={`cp-blankin${submitted ? (marks[n] ? ' cp-right' : ' cp-wrong') : ''}`}
+                style={itemCss(ctx, block.look?.answerStyle)}
                 aria-label={`Blank ${n + 1}`}
                 disabled={locked}
                 value={values[n] ?? ''}
@@ -563,6 +594,7 @@ export function SliderView({ block, ctx }: { block: SliderBlock; ctx: BlockConte
         <div className="cp-slider">
           <output
             className={`cp-slider-val${submitted ? (correct ? ' cp-right' : ' cp-wrong') : ''}`}
+            style={itemCss(ctx, block.look?.answerStyle)}
           >
             {value}
             {block.unit}
@@ -580,7 +612,7 @@ export function SliderView({ block, ctx }: { block: SliderBlock; ctx: BlockConte
               setMoved(true);
             }}
           />
-          <div className="cp-slider-ends">
+          <div className="cp-slider-ends" style={partCss(ctx, block.look?.labelStyle)}>
             <span>
               {block.min}
               {block.unit}
@@ -607,13 +639,18 @@ export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockCon
       className={`cp-check${block.look?.card === false ? ' cp-bare' : ''}`}
       style={lookVars(block.look)}
     >
-      <label className="cp-q" htmlFor={`w-${block.id}`}>
+      <label
+        className="cp-q"
+        htmlFor={`w-${block.id}`}
+        style={partCss(ctx, block.look?.questionStyle)}
+      >
         {block.prompt}
       </label>
       {block.length === 'essay' ? (
         <textarea
           id={`w-${block.id}`}
           className="cp-input cp-essay"
+          style={itemCss(ctx, block.look?.answerStyle)}
           disabled={ctx.edit}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -623,6 +660,7 @@ export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockCon
         <input
           id={`w-${block.id}`}
           className="cp-input"
+          style={itemCss(ctx, block.look?.answerStyle)}
           disabled={ctx.edit}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -657,17 +695,20 @@ export function LikertView({ block, ctx }: { block: LikertBlock; ctx: BlockConte
       className={`cp-check${block.look?.card === false ? ' cp-bare' : ''}`}
       style={lookVars(block.look)}
     >
-      <p className="cp-q">{block.prompt}</p>
+      <p className="cp-q" style={partCss(ctx, block.look?.questionStyle)}>
+        {block.prompt}
+      </p>
       <div className="cp-likert">
         {block.rows.map((r) => (
           <fieldset key={r.id} className="cp-likert-row">
-            <legend>{r.text}</legend>
+            <legend style={partCss(ctx, block.look?.labelStyle)}>{r.text}</legend>
             <div className="cp-likert-scale">
               {block.scale.map((label, i) => (
                 <button
                   key={i}
                   type="button"
                   className={values[r.id] === i ? 'cp-likert-opt cp-on' : 'cp-likert-opt'}
+                  style={itemCss(ctx, block.look?.answerStyle)}
                   aria-pressed={values[r.id] === i}
                   onClick={() => choose(r.id, i)}
                 >
@@ -688,9 +729,17 @@ export function ResultsView({ block, ctx }: { block: ResultsBlock; ctx: BlockCon
   const look = block.look ?? {};
   return (
     <div className={`cp-results ${boxClass(look)}`} style={lookVars(look)}>
-      <p className="cp-results-score">{r.score === null ? 'Complete' : `${r.score}%`}</p>
-      {r.passMark !== null && <p className="cp-hint">Pass mark {r.passMark}%</p>}
-      <p className="cp-text">{r.passed ? block.passText : block.failText}</p>
+      <p className="cp-results-score" style={partCss(ctx, look.questionStyle)}>
+        {r.score === null ? 'Complete' : `${r.score}%`}
+      </p>
+      {r.passMark !== null && (
+        <p className="cp-hint" style={partCss(ctx, look.hintStyle)}>
+          Pass mark {r.passMark}%
+        </p>
+      )}
+      <p className="cp-text" style={partCss(ctx, look.bodyStyle)}>
+        {r.passed ? block.passText : block.failText}
+      </p>
       {!r.passed && block.retry && (
         <div
           className="cp-btnrow"
@@ -707,6 +756,7 @@ export function ResultsView({ block, ctx }: { block: ResultsBlock; ctx: BlockCon
           <button
             type="button"
             className="cp-btn cp-btn-solid"
+            style={partCss(ctx, look.buttonStyle)}
             onClick={() => !ctx.edit && ctx.retry()}
           >
             Try again
@@ -714,7 +764,7 @@ export function ResultsView({ block, ctx }: { block: ResultsBlock; ctx: BlockCon
         </div>
       )}
       {block.review && r.review.length > 0 && (
-        <ul className="cp-review">
+        <ul className="cp-review" style={partCss(ctx, look.labelStyle)}>
           {r.review.map((q) => (
             <li key={q.id} className={q.correct ? 'cp-right' : 'cp-wrong'}>
               <span>{q.correct ? '✓' : '✗'}</span> {q.prompt}

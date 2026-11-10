@@ -392,7 +392,9 @@ export function TextStyleFields({
   emphasis = true,
   colour = true,
   align,
+  title = 'Text style',
 }: {
+  title?: string | null;
   value: TextStyle | undefined;
   boldByDefault?: boolean;
   emphasis?: boolean;
@@ -407,9 +409,7 @@ export function TextStyleFields({
 
   return (
     <>
-      <h4 className={sectionClass}>
-        Text style
-      </h4>
+      {title && <h4 className={sectionClass}>{title}</h4>}
       <div className="grid grid-cols-2 gap-x-2 gap-y-3">
         <Field label="Font">
           <select

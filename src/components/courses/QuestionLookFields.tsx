@@ -1,7 +1,8 @@
-import { isQuestion, type LookedBlock, type QuestionLook } from '@/course/doc';
+import { useState } from 'react';
+import { isQuestion, type LookedBlock, type QuestionLook, type TextStyle } from '@/course/doc';
 import { Field, inputClass, NumberBox, PaddingField, Select, Toggle } from './fields';
 import { BUTTON_MARGIN } from '@/course/typography';
-import { ColourField } from './TextStyleFields';
+import { ColourField, TextStyleFields } from './TextStyleFields';
 
 type Kind = LookedBlock['type'];
 
@@ -53,24 +54,86 @@ const SIDES = [
   { value: 'right', label: 'Right' },
 ] as const;
 
-export function QuestionGapField<B extends { look?: QuestionLook }>({
-  block,
-  set,
+export function PartText({
+  label,
+  value,
+  bold = false,
+  onChange,
 }: {
-  block: B;
-  set: (fn: (b: B) => void) => void;
+  label: string;
+  value: TextStyle | undefined;
+  bold?: boolean;
+  onChange: (style: TextStyle) => void;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Field label="Space under the question (px)">
-      <NumberBox
-        min={0}
-        value={block.look?.questionGap ?? 10}
-        onChange={(n) => set((b) => (b.look = { ...b.look, questionGap: Math.max(0, n) }))}
-        className={inputClass}
-      />
-    </Field>
+    <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center justify-between text-left text-xs font-semibold text-ph-charcoal/60 hover:text-ph-purple"
+      >
+        <span>{label}</span>
+        <span className="text-ph-purple underline underline-offset-2">
+          {open ? 'Hide' : 'Edit'}
+        </span>
+      </button>
+      {open && (
+        <TextStyleFields title={null} value={value} boldByDefault={bold} onChange={onChange} />
+      )}
+    </div>
   );
 }
+
+export function QuestionTextFields<
+  B extends { type: string; look?: QuestionLook; multiple?: boolean; mode?: string },
+>({ block, set }: { block: B; set: (fn: (b: B) => void) => void }) {
+  const hint =
+    (block.type === 'check' && block.multiple) ||
+    block.type === 'drag' ||
+    (block.type === 'match' && block.mode === 'drag');
+  const put = (patch: Partial<QuestionLook>) => set((b) => (b.look = { ...b.look, ...patch }));
+  return (
+    <>
+      <PartText
+        label="Question text"
+        bold
+        value={block.look?.questionStyle}
+        onChange={(questionStyle) => put({ questionStyle })}
+      />
+      {hint && (
+        <PartText
+          label="Hint text"
+          value={block.look?.hintStyle}
+          onChange={(hintStyle) => put({ hintStyle })}
+        />
+      )}
+      <Field label="Space under the question (px)">
+        <NumberBox
+          min={0}
+          value={block.look?.questionGap ?? 10}
+          onChange={(n) => put({ questionGap: Math.max(0, n) })}
+          className={inputClass}
+        />
+      </Field>
+    </>
+  );
+}
+
+const LABELS: Partial<Record<Kind, string>> = {
+  drag: 'Group and slot labels',
+  match: 'Left side text',
+  likert: 'Statements text',
+};
+
+const BODY: Partial<Record<Kind, string>> = {
+  blank: 'Sentence text',
+  accordion: 'Panel text',
+  tabs: 'Panel text',
+  flip: 'Back of card text',
+};
+
+const BOLD_ITEMS = new Set<Kind>(['drag', 'accordion', 'tabs', 'flip', 'hotspots']);
 
 const heading = 'mt-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
@@ -96,6 +159,7 @@ export function QuestionLookFields({
         ? 'pop-up'
         : null;
   const boxed = BOXED.has(kind);
+  const labels = block.type !== 'match' || block.mode === 'drag' ? LABELS[kind] : undefined;
   const box = kind === 'popup' ? 'Pop-up window' : kind === 'hotspots' ? null : 'Box';
   return (
     <>
@@ -106,7 +170,7 @@ export function QuestionLookFields({
         onChange={(colour) => set({ colour })}
       />
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Text size (px)">
+        <Field label="All text size (px)">
           <NumberBox
             min={10}
             value={look.size ?? 16}
@@ -124,7 +188,7 @@ export function QuestionLookFields({
         </Field>
       </div>
       <ColourField
-        label="Text colour"
+        label="All text colour"
         value={look.textColour}
         onChange={(textColour) => set({ textColour })}
       />
@@ -183,10 +247,87 @@ export function QuestionLookFields({
             value={look.answerBorder}
             onChange={(answerBorder) => set({ answerBorder })}
           />
-          <ColourField
-            label="Text colour"
-            value={look.answerText}
-            onChange={(answerText) => set({ answerText })}
+          <PartText
+            label={`${items[0].toUpperCase()}${items.slice(1)} text`}
+            bold={BOLD_ITEMS.has(kind) || (pills && look.answers === 'buttons')}
+            value={look.answerStyle ?? (look.answerText ? { color: look.answerText } : undefined)}
+            onChange={(answerStyle) => set({ answerStyle, answerText: undefined })}
+          />
+          {labels && (
+            <PartText
+              label={labels}
+              bold={kind === 'likert'}
+              value={look.labelStyle}
+              onChange={(labelStyle) => set({ labelStyle })}
+            />
+          )}
+          {BODY[kind] && (
+            <PartText
+              label={BODY[kind]!}
+              value={look.bodyStyle}
+              onChange={(bodyStyle) => set({ bodyStyle })}
+            />
+          )}
+        </>
+      )}
+
+      {kind === 'slider' && (
+        <>
+          <h4 className={heading}>Number</h4>
+          <PartText
+            label="Number text"
+            bold
+            value={look.answerStyle}
+            onChange={(answerStyle) => set({ answerStyle })}
+          />
+          <PartText
+            label="End labels text"
+            value={look.labelStyle}
+            onChange={(labelStyle) => set({ labelStyle })}
+          />
+        </>
+      )}
+
+      {kind === 'results' && (
+        <>
+          <h4 className={heading}>Text</h4>
+          <PartText
+            label="Score text"
+            bold
+            value={look.questionStyle}
+            onChange={(questionStyle) => set({ questionStyle })}
+          />
+          <PartText
+            label="Pass mark text"
+            value={look.hintStyle}
+            onChange={(hintStyle) => set({ hintStyle })}
+          />
+          <PartText
+            label="Message text"
+            value={look.bodyStyle}
+            onChange={(bodyStyle) => set({ bodyStyle })}
+          />
+          <PartText
+            label="Review list text"
+            value={look.labelStyle}
+            onChange={(labelStyle) => set({ labelStyle })}
+          />
+        </>
+      )}
+
+      {(kind === 'popup' || kind === 'hotspots') && (
+        <>
+          <h4 className={heading}>Pop-up text</h4>
+          <PartText
+            label="Title text"
+            bold
+            value={look.questionStyle}
+            onChange={(questionStyle) => set({ questionStyle })}
+          />
+          <PartText
+            label="Body text"
+            value={look.bodyStyle}
+            onChange={(bodyStyle) => set({ bodyStyle })}
           />
         </>
       )}
@@ -194,6 +335,12 @@ export function QuestionLookFields({
       {button && (
         <>
           <h4 className={heading}>{`${button[0].toUpperCase()}${button.slice(1)} button`}</h4>
+          <PartText
+            label="Button text"
+            bold
+            value={look.buttonStyle}
+            onChange={(buttonStyle) => set({ buttonStyle })}
+          />
           {kind !== 'popup' && (
             <>
               <Select
@@ -218,6 +365,13 @@ export function QuestionLookFields({
                 { value: 'popup', label: 'In a pop-up over the page' },
               ]}
               onChange={(feedback) => set({ feedback })}
+            />
+          )}
+          {graded && (
+            <PartText
+              label="Feedback text"
+              value={look.feedbackStyle}
+              onChange={(feedbackStyle) => set({ feedbackStyle })}
             />
           )}
         </>

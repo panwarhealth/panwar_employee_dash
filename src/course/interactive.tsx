@@ -9,10 +9,23 @@ import type {
 } from './doc';
 import type { BlockContext } from './context';
 import { sanitizeHtml } from './sanitize';
-import { boxClass, lookVars } from './looks';
+import { boxClass, itemCss, lookVars, partCss } from './looks';
+import type { CSSProperties } from 'react';
 
-const Html = ({ html, className = 'cp-text' }: { html: string; className?: string }) => (
-  <div className={className} dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />
+const Html = ({
+  html,
+  className = 'cp-text',
+  style,
+}: {
+  html: string;
+  className?: string;
+  style?: CSSProperties;
+}) => (
+  <div
+    className={className}
+    style={style}
+    dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+  />
 );
 
 export function PopupTrigger({ block, ctx }: { block: PopupBlock; ctx: BlockContext }) {
@@ -23,6 +36,7 @@ export function PopupTrigger({ block, ctx }: { block: PopupBlock; ctx: BlockCont
       <button
         type="button"
         className="cp-btn cp-btn-outline"
+        style={partCss(ctx, block.look?.buttonStyle)}
         onClick={() => !ctx.edit && ctx.openPopup(block.id)}
       >
         {block.label}
@@ -59,7 +73,15 @@ function useShrinkToFit() {
   return { card, body };
 }
 
-export function PopupLayer({ block, onClose }: { block: PopupBlock; onClose: () => void }) {
+export function PopupLayer({
+  block,
+  ctx,
+  onClose,
+}: {
+  block: PopupBlock;
+  ctx: BlockContext;
+  onClose: () => void;
+}) {
   const { card, body } = useShrinkToFit();
   return (
     <div className="cp-layer" onClick={onClose}>
@@ -76,16 +98,20 @@ export function PopupLayer({ block, onClose }: { block: PopupBlock; onClose: () 
           ×
         </button>
         <div ref={body} className="cp-layer-body">
-          {block.title && <h2 className="cp-h2">{block.title}</h2>}
+          {block.title && (
+            <h2 className="cp-h2" style={partCss(ctx, block.look?.questionStyle)}>
+              {block.title}
+            </h2>
+          )}
           {block.src && <img className="cp-img cp-img-full" src={block.src} alt="" />}
-          <Html html={block.html} />
+          <Html html={block.html} style={partCss(ctx, block.look?.bodyStyle)} />
         </div>
       </div>
     </div>
   );
 }
 
-export function AccordionView({ block }: { block: AccordionBlock }) {
+export function AccordionView({ block, ctx }: { block: AccordionBlock; ctx: BlockContext }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className={`cp-acc ${boxClass(block.look)}`} style={lookVars(block.look)}>
@@ -94,20 +120,27 @@ export function AccordionView({ block }: { block: AccordionBlock }) {
           <button
             type="button"
             className="cp-acc-head"
+            style={itemCss(ctx, block.look?.answerStyle)}
             aria-expanded={open === p.id}
             onClick={() => setOpen((o) => (o === p.id ? null : p.id))}
           >
             <span>{p.title}</span>
             <span className="cp-acc-sign">{open === p.id ? '−' : '+'}</span>
           </button>
-          {open === p.id && <Html html={p.html} className="cp-text cp-acc-body" />}
+          {open === p.id && (
+            <Html
+              html={p.html}
+              className="cp-text cp-acc-body"
+              style={partCss(ctx, block.look?.bodyStyle)}
+            />
+          )}
         </div>
       ))}
     </div>
   );
 }
 
-export function TabsView({ block }: { block: TabsBlock }) {
+export function TabsView({ block, ctx }: { block: TabsBlock; ctx: BlockContext }) {
   const [on, setOn] = useState(block.items[0]?.id);
   const current = block.items.find((p) => p.id === on) ?? block.items[0];
   return (
@@ -120,18 +153,25 @@ export function TabsView({ block }: { block: TabsBlock }) {
             role="tab"
             aria-selected={p.id === current?.id}
             className={p.id === current?.id ? 'cp-tab cp-tab-on' : 'cp-tab'}
+            style={itemCss(ctx, block.look?.answerStyle)}
             onClick={() => setOn(p.id)}
           >
             {p.title}
           </button>
         ))}
       </div>
-      {current && <Html html={current.html} className="cp-text cp-tabbody" />}
+      {current && (
+        <Html
+          html={current.html}
+          className="cp-text cp-tabbody"
+          style={partCss(ctx, block.look?.bodyStyle)}
+        />
+      )}
     </div>
   );
 }
 
-export function FlipView({ block }: { block: FlipBlock }) {
+export function FlipView({ block, ctx }: { block: FlipBlock; ctx: BlockContext }) {
   const [flipped, setFlipped] = useState<string[]>([]);
   return (
     <div className={`cp-flips ${boxClass(block.look)}`} style={lookVars(block.look)}>
@@ -146,11 +186,19 @@ export function FlipView({ block }: { block: FlipBlock }) {
             onClick={() => setFlipped((f) => (on ? f.filter((x) => x !== c.id) : [...f, c.id]))}
           >
             <span className="cp-flip-inner">
-              <span className="cp-flip-face cp-flip-front">
+              <span
+                className="cp-flip-face cp-flip-front"
+                style={itemCss(ctx, block.look?.answerStyle)}
+              >
                 {c.frontSrc && <img src={c.frontSrc} alt="" />}
                 <span>{c.front}</span>
               </span>
-              <span className="cp-flip-face cp-flip-back">{c.back}</span>
+              <span
+                className="cp-flip-face cp-flip-back"
+                style={partCss(ctx, block.look?.bodyStyle)}
+              >
+                {c.back}
+              </span>
             </span>
           </button>
         );
@@ -171,7 +219,7 @@ export function HotspotView({ block, ctx }: { block: HotspotBlock; ctx: BlockCon
           key={s.id}
           type="button"
           className={open === s.id ? 'cp-pin cp-pin-on' : 'cp-pin'}
-          style={{ left: `${s.x}%`, top: `${s.y}%` }}
+          style={{ ...itemCss(ctx, block.look?.answerStyle), left: `${s.x}%`, top: `${s.y}%` }}
           aria-label={s.title}
           onClick={() => !ctx.edit && setOpen((o) => (o === s.id ? null : s.id))}
         >
@@ -188,8 +236,10 @@ export function HotspotView({ block, ctx }: { block: HotspotBlock; ctx: BlockCon
           >
             ×
           </button>
-          <p className="cp-q">{spot.title}</p>
-          <Html html={spot.html} />
+          <p className="cp-q" style={partCss(ctx, block.look?.questionStyle)}>
+            {spot.title}
+          </p>
+          <Html html={spot.html} style={partCss(ctx, block.look?.bodyStyle)} />
         </div>
       )}
     </div>
@@ -202,13 +252,16 @@ export function PathwayView({ block, ctx }: { block: PathwayBlock; ctx: BlockCon
       className={`cp-check${block.look?.card === false ? ' cp-bare' : ''}${block.look?.answers === 'buttons' ? ' cp-pills' : ''}`}
       style={lookVars(block.look)}
     >
-      <p className="cp-q">{block.prompt}</p>
+      <p className="cp-q" style={partCss(ctx, block.look?.questionStyle)}>
+        {block.prompt}
+      </p>
       <div className="cp-opts">
         {block.choices.map((c) => (
           <button
             key={c.id}
             type="button"
             className="cp-opt"
+            style={itemCss(ctx, block.look?.answerStyle)}
             onClick={() => !ctx.edit && c.pageId && ctx.act({ kind: 'page', pageId: c.pageId })}
           >
             <span>{c.label}</span>

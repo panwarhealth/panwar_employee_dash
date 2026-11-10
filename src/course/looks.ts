@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import type { QuestionLook } from './doc';
+import type { QuestionLook, TextStyle } from './doc';
+import type { BlockContext } from './context';
 import { px } from './typography';
 
 export const JUSTIFY = { left: 'flex-start', center: 'center', right: 'flex-end' } as const;
@@ -25,8 +26,20 @@ export function lookVars(look: QuestionLook = {}): CSSProperties {
   if (look.answerPadding) v['--cp-opt-pad'] = look.answerPadding.map(px).join(' ');
   if (look.answerFill) v['--cp-opt-bg'] = look.answerFill;
   if (look.answerBorder) v['--cp-opt-line'] = look.answerBorder;
-  if (look.answerText) v['--cp-opt-ink'] = look.answerText;
+  const ink = look.answerStyle?.color ?? look.answerText;
+  if (ink) v['--cp-opt-ink'] = ink;
   return v as CSSProperties;
+}
+
+export function partCss(ctx: BlockContext, style: TextStyle | undefined): CSSProperties {
+  if (!style) return {};
+  return { ...ctx.textStyle(style), fontSize: style.size ? px(style.size) : undefined };
+}
+
+export function itemCss(ctx: BlockContext, style: TextStyle | undefined): CSSProperties {
+  const css = partCss(ctx, style);
+  delete css.color;
+  return css;
 }
 
 export const boxClass = (look: QuestionLook = {}) =>

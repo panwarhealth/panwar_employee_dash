@@ -435,6 +435,13 @@ export interface QuestionLook {
   answerBorder?: string;
   answerText?: string;
   questionGap?: number;
+  questionStyle?: TextStyle;
+  hintStyle?: TextStyle;
+  answerStyle?: TextStyle;
+  labelStyle?: TextStyle;
+  buttonStyle?: TextStyle;
+  feedbackStyle?: TextStyle;
+  bodyStyle?: TextStyle;
   textColour?: string;
   fill?: string;
   boxPadding?: Insets;

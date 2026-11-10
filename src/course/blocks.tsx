@@ -219,11 +219,11 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
     case 'popup':
       return <PopupTrigger block={block} ctx={ctx} />;
     case 'accordion':
-      return <AccordionView block={block} />;
+      return <AccordionView block={block} ctx={ctx} />;
     case 'tabs':
-      return <TabsView block={block} />;
+      return <TabsView block={block} ctx={ctx} />;
     case 'flip':
-      return <FlipView block={block} />;
+      return <FlipView block={block} ctx={ctx} />;
     case 'reveal':
       return <RevealView block={block} ctx={ctx} />;
     case 'hotspots':

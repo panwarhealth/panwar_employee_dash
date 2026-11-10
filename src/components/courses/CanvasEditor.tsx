@@ -589,7 +589,11 @@ export function CanvasEditor({
                     className="absolute inset-0 z-[35] [&_.cp-layer]:absolute"
                     onPointerDown={(e) => e.stopPropagation()}
                   >
-                    <PopupLayer block={selected} onClose={() => onSelect(null)} />
+                    <PopupLayer
+                      block={selected}
+                      ctx={editContext(doc)}
+                      onClose={() => onSelect(null)}
+                    />
                   </div>
                 )}
                 {showSafeZone && (
