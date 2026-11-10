@@ -9,6 +9,7 @@ export function lookVars(look: QuestionLook = {}): CSSProperties {
   if (look.colour) v['--cp-accent'] = look.colour;
   if (look.textColour) {
     v['--cp-ink'] = look.textColour;
+    v['--cp-ink-2'] = `color-mix(in srgb, ${look.textColour} 65%, transparent)`;
     v.color = look.textColour;
   }
   if (look.size) v.fontSize = `${look.size / 16}em`;
