@@ -10,6 +10,7 @@ import {
   type ButtonAction,
   type ButtonBlock,
   type CourseDoc,
+  type Gradient,
   type Group,
   type Layout,
   type Page,
@@ -22,7 +23,7 @@ import * as ops from '@/course/edit';
 import { BLOCKS, blockLabel } from './blockMeta';
 import { checkedOutcome, deadControls, type ToolOutcome } from './assistantChecks';
 import { replacement } from './blockPlacement';
-import { layoutsFor } from '@/course/canvasLayout';
+import { layoutsFor, pagePaint } from '@/course/canvasLayout';
 
 export interface ToolContext {
   importMedia: (url: string) => Promise<string>;
@@ -128,7 +129,7 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'update_page',
     description:
-      "Change a page's title, triggers, groups, pick rule, transition (how the page comes in) or exit_transition (how it leaves). Slide values name the way the page moves: slideLeft enters from the right or leaves to the left, slideUp enters from the bottom or leaves upwards. A slide pushes both pages together. Older pages may say slide, which means slideLeft. triggers and groups each replace the whole list.",
+      "Change a page's title, triggers, groups, pick rule, background, transition (how the page comes in) or exit_transition (how it leaves). Slide values name the way the page moves: slideLeft enters from the right or leaves to the left, slideUp enters from the bottom or leaves upwards. A slide pushes both pages together. Older pages may say slide, which means slideLeft. triggers and groups each replace the whole list.",
     input_schema: obj(
       {
         page_id: { type: 'string' },
@@ -137,6 +138,21 @@ export const ASSISTANT_TOOLS = [
         groups: { type: 'array', items: { type: 'object' } },
         pick: { type: ['object', 'null'] },
         transition: { type: 'string', enum: ['none', 'fade', 'slideLeft', 'slideRight', 'slideUp', 'slideDown'] },
+        background: {
+          type: ['string', 'null'],
+          description: 'Page background colour as #rrggbb, or null for none. Replaces any gradient.',
+        },
+        gradient: {
+          type: ['object', 'null'],
+          description:
+            'Page background gradient {kind: "linear" | "radial", angle, stops: [{colour, at}]} with at from 0 to 100, or null to remove it.',
+        },
+        background_layout: {
+          type: 'string',
+          enum: ['both', 'desktop', 'phone'],
+          description:
+            'Which layout the background or gradient applies to. both (the default) sets every layout the same.',
+        },
         transition_time: { type: 'number', description: 'Seconds the enter transition takes, default 0.5' },
         exit_transition_time: { type: 'number', description: 'Seconds the exit transition takes, default 0.5' },
         exit_transition: { type: 'string', enum: ['none', 'fade', 'slideLeft', 'slideRight', 'slideUp', 'slideDown'] },
@@ -509,6 +525,27 @@ const updatePage: Handler = (doc, input) => {
     if (Array.isArray(input.groups)) p.groups = input.groups as Group[];
     if (input.pick === null) delete p.pick;
     else if (input.pick && typeof input.pick === 'object') p.pick = input.pick as Page['pick'];
+    if (input.background !== undefined || input.gradient !== undefined) {
+      const target = input.background_layout;
+      const layouts = layoutsFor(doc.screens);
+      const paint = (layout: Layout) => {
+        const [fill, gradient] = pagePaint(p, layout);
+        const nextFill =
+          input.background === undefined ? fill : ((input.background as string | null) ?? undefined);
+        const nextGradient =
+          input.gradient !== undefined
+            ? ((input.gradient as Gradient | null) ?? undefined)
+            : input.background !== undefined
+              ? undefined
+              : gradient;
+        ops.changePagePaint(p, layout, layouts[0], nextFill, nextGradient);
+      };
+      if ((target === 'desktop' || target === 'phone') && layouts.includes(target)) paint(target);
+      else {
+        paint(layouts[0]);
+        delete p.looks;
+      }
+    }
     if (typeof input.transition === 'string') p.transition = input.transition as Page['transition'];
     if (typeof input.transition_time === 'number') p.transitionTime = Math.max(0.1, input.transition_time);
     if (typeof input.exit_transition_time === 'number')
