@@ -201,25 +201,28 @@
   gap: 12px;
   border: 1px solid var(--cp-line);
   border-radius: 6px;
-  padding: 20px;
+  padding: var(--cp-box-pad, 20px);
+  background: var(--cp-box-bg, transparent);
 }
 .cp-obj .cp-fit-in > .cp-check {
   height: auto;
 }
 .cp-obj .cp-check.cp-bare {
   border: 0;
-  padding: 0;
-  background: none;
+  padding: var(--cp-box-pad, 0);
+  background: var(--cp-box-bg, none);
 }
-.cp-check .cp-btn {
+.cp-check .cp-btn,
+.cp-looked .cp-btn,
+.cp-pop .cp-btn {
   border-radius: var(--cp-r, 4px);
 }
 .cp-pills .cp-opt {
   justify-content: var(--cp-opt-justify, center);
   text-align: var(--cp-opt-align, center);
   font-weight: 700;
-  color: var(--cp-accent);
-  border: 2px solid var(--cp-accent);
+  color: var(--cp-opt-ink, var(--cp-accent));
+  border: 2px solid var(--cp-opt-line, var(--cp-accent));
   border-radius: var(--cp-r, 4px);
 }
 .cp-pills .cp-opts-short .cp-opt {
@@ -279,16 +282,17 @@
   padding: var(--cp-opt-pad, 0.625em 0.875em);
   justify-content: var(--cp-opt-justify, flex-start);
   text-align: var(--cp-opt-align, left);
-  background: #fff;
-  border: 1.5px solid var(--cp-line);
-  border-radius: 4px;
+  color: var(--cp-opt-ink, inherit);
+  background: var(--cp-opt-bg, #fff);
+  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, 4px);
 }
 .cp-opt.cp-on {
   border-color: var(--cp-accent);
 }
 .cp-stage-phone .cp-check {
   gap: 0.5em;
-  padding: 0.75em;
+  padding: var(--cp-box-pad, 0.75em);
 }
 .cp-stage-phone .cp-opts {
   gap: var(--cp-opt-gap, 0.35em);
@@ -527,7 +531,7 @@
 .cp-obj .cp-check {
   overflow: hidden;
   gap: 0.6em;
-  padding: 1em;
+  padding: var(--cp-box-pad, 1em);
 }
 .cp-obj .cp-empty {
   min-height: 0;
@@ -706,9 +710,9 @@
   width: min(100%, 560px);
   max-height: calc(var(--cp-vh, 100vh) * 0.9);
   overflow: hidden;
-  padding: 1.6em;
+  padding: var(--cp-box-pad, 1.6em);
   border-radius: 8px;
-  background: #fff;
+  background: var(--cp-box-bg, #fff);
   box-shadow: 0 1em 3em rgba(0, 0, 0, 0.3);
 }
 .cp-fbcard {
@@ -738,10 +742,13 @@
 }
 
 .cp-acc {
-  border-top: 1px solid var(--cp-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-opt-gap, 0);
+  border-top: 1px solid var(--cp-opt-line, var(--cp-line));
 }
 .cp-acc-item {
-  border-bottom: 1px solid var(--cp-line);
+  border-bottom: 1px solid var(--cp-opt-line, var(--cp-line));
 }
 .cp-acc-head {
   display: flex;
@@ -749,11 +756,15 @@
   align-items: center;
   width: 100%;
   min-height: 2.9em;
-  padding: 0.6em 0.2em;
+  padding: var(--cp-opt-pad, 0.6em 0.2em);
   border: 0;
-  background: none;
+  background: var(--cp-opt-bg, none);
+  color: var(--cp-opt-ink, inherit) !important;
   font-weight: 700;
-  text-align: left;
+  text-align: var(--cp-opt-align, left);
+}
+.cp-acc-head > span:first-child {
+  flex: 1;
 }
 .cp-acc-sign {
   color: var(--cp-accent);
@@ -766,18 +777,20 @@
 .cp-tabbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25em;
-  border-bottom: 2px solid var(--cp-line);
+  justify-content: var(--cp-opt-justify, flex-start);
+  gap: var(--cp-opt-gap, 0.25em);
+  border-bottom: 2px solid var(--cp-opt-line, var(--cp-line));
 }
 .cp-tab {
   min-height: 2.75em;
-  padding: 0 1em;
+  padding: var(--cp-opt-pad, 0 1em);
   margin-bottom: -2px;
   border: 0;
   border-bottom: 2px solid transparent;
-  background: none;
+  border-radius: var(--cp-r, 0) var(--cp-r, 0) 0 0;
+  background: var(--cp-opt-bg, none);
   font-weight: 700;
-  color: var(--cp-ink-2) !important;
+  color: var(--cp-opt-ink, var(--cp-ink-2)) !important;
 }
 .cp-tab-on {
   border-bottom-color: var(--cp-accent);
@@ -790,7 +803,7 @@
 .cp-flips {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10em, 1fr));
-  gap: 0.75em;
+  gap: var(--cp-opt-gap, 0.75em);
 }
 .cp-flip {
   min-height: 9em;
@@ -816,19 +829,19 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: var(--cp-opt-justify, center);
   justify-content: center;
   gap: 0.5em;
-  padding: 0.8em;
-  border-radius: 6px;
+  padding: var(--cp-opt-pad, 0.8em);
+  border-radius: var(--cp-r, 6px);
   backface-visibility: hidden;
   font-weight: 700;
-  text-align: center;
+  text-align: var(--cp-opt-align, center);
 }
 .cp-flip-front {
-  border: 2px solid var(--cp-accent);
-  background: #fff;
-  color: var(--cp-accent);
+  border: 2px solid var(--cp-opt-line, var(--cp-accent));
+  background: var(--cp-opt-bg, #fff);
+  color: var(--cp-opt-ink, var(--cp-accent));
 }
 .cp-flip-front img {
   max-width: 100%;
@@ -913,10 +926,10 @@
   width: 2em;
   height: 2em;
   margin: -1em 0 0 -1em;
-  border: 3px solid #fff;
+  border: 3px solid var(--cp-opt-line, #fff);
   border-radius: 50%;
-  background: var(--cp-accent);
-  color: #fff !important;
+  background: var(--cp-opt-bg, var(--cp-accent));
+  color: var(--cp-opt-ink, #fff) !important;
   font-weight: 700;
   font-size: 0.9em;
   box-shadow: 0 0 0 0.3em rgba(0, 0, 0, 0.15);
@@ -939,10 +952,13 @@
 .cp-input {
   width: 100%;
   min-height: 2.75em;
-  padding: 0.6em 0.8em;
-  border: 1.5px solid var(--cp-line);
-  border-radius: 4px;
+  padding: var(--cp-opt-pad, 0.6em 0.8em);
+  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, 4px);
+  background: var(--cp-opt-bg, Field);
+  color: var(--cp-opt-ink, FieldText);
   font: inherit;
+  text-align: var(--cp-opt-align, left);
 }
 .cp-essay {
   min-height: 9em;
@@ -958,7 +974,7 @@
 .cp-zones {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5em;
+  gap: var(--cp-opt-gap, 0.5em);
 }
 .cp-dnd-groups .cp-zones,
 .cp-dnd-pairs .cp-zones {
@@ -991,6 +1007,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: var(--cp-opt-justify, flex-start);
   gap: 0.4em;
   min-width: 6em;
   min-height: 2.9em;
@@ -1034,12 +1051,13 @@
   display: inline-flex;
   align-items: center;
   min-height: 2.4em;
-  padding: 0.3em 0.8em;
-  border: 2px solid var(--cp-accent);
-  border-radius: 4px;
-  background: #fff;
-  color: var(--cp-accent);
+  padding: var(--cp-opt-pad, 0.3em 0.8em);
+  border: 2px solid var(--cp-opt-line, var(--cp-accent));
+  border-radius: var(--cp-r, 4px);
+  background: var(--cp-opt-bg, #fff);
+  color: var(--cp-opt-ink, var(--cp-accent));
   font-weight: 700;
+  text-align: var(--cp-opt-align, left);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -1069,7 +1087,7 @@
 .cp-matchrows {
   display: flex;
   flex-direction: column;
-  gap: 0.5em;
+  gap: var(--cp-opt-gap, 0.5em);
   width: 100%;
 }
 .cp-matchrow {
@@ -1077,9 +1095,12 @@
   grid-template-columns: 1fr 1fr;
   align-items: center;
   gap: 0.75em;
-  padding: 0.4em 0.6em;
-  border: 1.5px solid var(--cp-line);
-  border-radius: 4px;
+  padding: var(--cp-opt-pad, 0.4em 0.6em);
+  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, 4px);
+  background: var(--cp-opt-bg, transparent);
+  color: var(--cp-opt-ink, inherit);
+  text-align: var(--cp-opt-align, left);
 }
 .cp-matchrow select {
   min-height: 2.75em;
@@ -1101,11 +1122,13 @@
 .cp-blankin {
   min-height: 2.2em;
   margin: 0 0.25em;
-  padding: 0 0.4em;
+  padding: var(--cp-opt-pad, 0 0.4em);
   border: 0;
-  border-bottom: 2px solid var(--cp-accent);
+  border-bottom: 2px solid var(--cp-opt-line, var(--cp-accent));
+  background: var(--cp-opt-bg, Field);
+  color: var(--cp-opt-ink, FieldText);
   font: inherit;
-  text-align: center;
+  text-align: var(--cp-opt-align, center);
 }
 .cp-blankin.cp-right {
   border-color: var(--cp-ok);
@@ -1162,20 +1185,21 @@
 .cp-likert-scale {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(6em, 1fr));
-  gap: 0.4em;
+  gap: var(--cp-opt-gap, 0.4em);
 }
 .cp-likert-opt {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: var(--cp-opt-justify, center);
   gap: 0.35em;
   min-height: 2.75em;
-  padding: 0.5em 0.3em;
-  border: 1.5px solid var(--cp-line);
-  border-radius: 4px;
-  background: #fff;
+  padding: var(--cp-opt-pad, 0.5em 0.3em);
+  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, 4px);
+  background: var(--cp-opt-bg, #fff);
+  color: var(--cp-opt-ink, inherit);
   font-size: 0.85em;
-  text-align: center;
+  text-align: var(--cp-opt-align, center);
 }
 .cp-likert-opt.cp-on {
   border-color: var(--cp-accent);
@@ -1297,4 +1321,13 @@
   .cp-nav {
     padding: 8px 12px;
   }
+}
+.cp-looked {
+  background: var(--cp-box-bg, transparent);
+  padding: var(--cp-box-pad, 0);
+}
+.cp-looked.cp-boxed {
+  border: 1px solid var(--cp-line);
+  border-radius: 6px;
+  padding: var(--cp-box-pad, 1em);
 }

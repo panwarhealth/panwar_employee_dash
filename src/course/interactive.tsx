@@ -9,6 +9,7 @@ import type {
 } from './doc';
 import type { BlockContext } from './context';
 import { sanitizeHtml } from './sanitize';
+import { boxClass, lookVars } from './looks';
 
 const Html = ({ html, className = 'cp-text' }: { html: string; className?: string }) => (
   <div className={className} dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />
@@ -18,7 +19,7 @@ export function PopupTrigger({ block, ctx }: { block: PopupBlock; ctx: BlockCont
   if (!block.showButton)
     return ctx.edit ? <div className="cp-empty">Pop-up: {block.title}</div> : null;
   return (
-    <div className="cp-btnrow">
+    <div className="cp-btnrow cp-pop" style={lookVars(block.look)}>
       <button
         type="button"
         className="cp-btn cp-btn-outline"
@@ -65,6 +66,7 @@ export function PopupLayer({ block, onClose }: { block: PopupBlock; onClose: () 
       <div
         ref={card}
         className="cp-layer-card"
+        style={lookVars(block.look)}
         role="dialog"
         aria-modal="true"
         aria-label={block.title}
@@ -86,7 +88,7 @@ export function PopupLayer({ block, onClose }: { block: PopupBlock; onClose: () 
 export function AccordionView({ block }: { block: AccordionBlock }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <div className="cp-acc">
+    <div className={`cp-acc ${boxClass(block.look)}`} style={lookVars(block.look)}>
       {block.items.map((p) => (
         <div key={p.id} className={open === p.id ? 'cp-acc-item cp-acc-open' : 'cp-acc-item'}>
           <button
@@ -109,7 +111,7 @@ export function TabsView({ block }: { block: TabsBlock }) {
   const [on, setOn] = useState(block.items[0]?.id);
   const current = block.items.find((p) => p.id === on) ?? block.items[0];
   return (
-    <div className="cp-tabs">
+    <div className={`cp-tabs ${boxClass(block.look)}`} style={lookVars(block.look)}>
       <div className="cp-tabbar" role="tablist">
         {block.items.map((p) => (
           <button
@@ -132,7 +134,7 @@ export function TabsView({ block }: { block: TabsBlock }) {
 export function FlipView({ block }: { block: FlipBlock }) {
   const [flipped, setFlipped] = useState<string[]>([]);
   return (
-    <div className="cp-flips">
+    <div className={`cp-flips ${boxClass(block.look)}`} style={lookVars(block.look)}>
       {block.cards.map((c) => {
         const on = flipped.includes(c.id);
         return (
@@ -162,7 +164,7 @@ export function HotspotView({ block, ctx }: { block: HotspotBlock; ctx: BlockCon
   if (!block.src) return <div className="cp-empty">Image hotspots</div>;
   const spot = block.spots.find((s) => s.id === open);
   return (
-    <div className="cp-hotspots">
+    <div className="cp-hotspots" style={lookVars(block.look)}>
       <img src={block.src} alt={block.alt} />
       {block.spots.map((s, i) => (
         <button
@@ -196,7 +198,10 @@ export function HotspotView({ block, ctx }: { block: HotspotBlock; ctx: BlockCon
 
 export function PathwayView({ block, ctx }: { block: PathwayBlock; ctx: BlockContext }) {
   return (
-    <div className="cp-check">
+    <div
+      className={`cp-check${block.look?.card === false ? ' cp-bare' : ''}${block.look?.answers === 'buttons' ? ' cp-pills' : ''}`}
+      style={lookVars(block.look)}
+    >
       <p className="cp-q">{block.prompt}</p>
       <div className="cp-opts">
         {block.choices.map((c) => (

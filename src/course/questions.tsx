@@ -21,7 +21,8 @@ import type {
 } from './doc';
 import type { BlockContext } from './context';
 import { BLANK, blankAnswers } from './grading';
-import { BUTTON_MARGIN } from './typography';
+import { BUTTON_MARGIN, px } from './typography';
+import { boxClass, JUSTIFY, lookVars } from './looks';
 import { shuffled } from './util';
 
 function QuestionFrame({
@@ -56,7 +57,7 @@ function QuestionFrame({
   const locked = submitted || ctx.edit;
   const look = block.look ?? {};
   const popup = look.feedback === 'popup';
-  const align = { left: 'flex-start', center: 'center', right: 'flex-end' }[look.submitAlign ?? 'left'];
+  const align = JUSTIFY[look.submitAlign ?? 'left'];
   const accent = look.colour ? ({ '--cp-accent': look.colour } as CSSProperties) : {};
   const margin = (look.buttonMargin ?? BUTTON_MARGIN)
     .map((n) => `calc(${n} * var(--px, 1px))`)
@@ -82,31 +83,7 @@ function QuestionFrame({
     <div
       ref={self}
       className={`cp-check${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
-      style={{
-        ...accent,
-        ...(look.size ? { fontSize: `${look.size / 16}em` } : {}),
-        ...(look.radius !== undefined
-          ? ({ '--cp-r': `calc(${look.radius} * var(--px, 1px))` } as CSSProperties)
-          : {}),
-        ...(look.answerAlign
-          ? ({
-              '--cp-opt-align': look.answerAlign,
-              '--cp-opt-justify': { left: 'flex-start', center: 'center', right: 'flex-end' }[
-                look.answerAlign
-              ],
-            } as CSSProperties)
-          : {}),
-        ...(look.answerGap !== undefined
-          ? ({ '--cp-opt-gap': `calc(${look.answerGap} * var(--px, 1px))` } as CSSProperties)
-          : {}),
-        ...(look.answerPadding
-          ? ({
-              '--cp-opt-pad': look.answerPadding
-                .map((n) => `calc(${n} * var(--px, 1px))`)
-                .join(' '),
-            } as CSSProperties)
-          : {}),
-      }}
+      style={lookVars(look)}
     >
       <p className="cp-q">{prompt}</p>
       {hint && <p className="cp-hint">{hint}</p>}
@@ -626,7 +603,10 @@ export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockCon
     if (block.saveTo) ctx.setVar(block.saveTo, text.trim());
   };
   return (
-    <div className="cp-check">
+    <div
+      className={`cp-check${block.look?.card === false ? ' cp-bare' : ''}`}
+      style={lookVars(block.look)}
+    >
       <label className="cp-q" htmlFor={`w-${block.id}`}>
         {block.prompt}
       </label>
@@ -673,7 +653,10 @@ export function LikertView({ block, ctx }: { block: LikertBlock; ctx: BlockConte
     );
   };
   return (
-    <div className="cp-check">
+    <div
+      className={`cp-check${block.look?.card === false ? ' cp-bare' : ''}`}
+      style={lookVars(block.look)}
+    >
       <p className="cp-q">{block.prompt}</p>
       <div className="cp-likert">
         {block.rows.map((r) => (
@@ -702,13 +685,25 @@ export function LikertView({ block, ctx }: { block: LikertBlock; ctx: BlockConte
 
 export function ResultsView({ block, ctx }: { block: ResultsBlock; ctx: BlockContext }) {
   const r = ctx.results();
+  const look = block.look ?? {};
   return (
-    <div className="cp-results">
+    <div className={`cp-results ${boxClass(look)}`} style={lookVars(look)}>
       <p className="cp-results-score">{r.score === null ? 'Complete' : `${r.score}%`}</p>
       {r.passMark !== null && <p className="cp-hint">Pass mark {r.passMark}%</p>}
       <p className="cp-text">{r.passed ? block.passText : block.failText}</p>
       {!r.passed && block.retry && (
-        <div className="cp-btnrow">
+        <div
+          className="cp-btnrow"
+          style={
+            look.submitAlign || look.buttonMargin
+              ? {
+                  alignSelf: 'stretch',
+                  justifyContent: JUSTIFY[look.submitAlign ?? 'center'],
+                  margin: look.buttonMargin?.map(px).join(' '),
+                }
+              : undefined
+          }
+        >
           <button
             type="button"
             className="cp-btn cp-btn-solid"

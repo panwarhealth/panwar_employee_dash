@@ -1,7 +1,7 @@
 import {
   groupsOf,
   hasPicks,
-  isQuestion,
+  hasLook,
   newPickRule,
   NO_INTERACTION,
   pickIds,
@@ -382,12 +382,12 @@ export function Inspector({
             courseId={courseId}
             onChange={styled}
           />
-          {isQuestion(shown) && (
+          {hasLook(shown) && (
             <QuestionLookFields
               block={shown}
               onChange={(look) =>
                 styled((b) => {
-                  if (isQuestion(b)) b.look = look;
+                  if (hasLook(b)) b.look = look;
                 })
               }
             />

@@ -344,16 +344,19 @@ export interface PopupBlock extends BlockBase {
   src: string;
   fileName: string;
   showButton: boolean;
+  look?: QuestionLook;
 }
 
 export interface AccordionBlock extends BlockBase {
   type: 'accordion';
   items: Panel[];
+  look?: QuestionLook;
 }
 
 export interface TabsBlock extends BlockBase {
   type: 'tabs';
   items: Panel[];
+  look?: QuestionLook;
 }
 
 export interface FlipCard {
@@ -366,6 +369,7 @@ export interface FlipCard {
 export interface FlipBlock extends BlockBase {
   type: 'flip';
   cards: FlipCard[];
+  look?: QuestionLook;
 }
 
 export interface RevealFace {
@@ -407,12 +411,14 @@ export interface HotspotBlock extends BlockBase {
   fileName: string;
   alt: string;
   spots: Hotspot[];
+  look?: QuestionLook;
 }
 
 export interface PathwayBlock extends BlockBase {
   type: 'pathway';
   prompt: string;
   choices: { id: string; label: string; pageId: string }[];
+  look?: QuestionLook;
 }
 
 export interface QuestionLook {
@@ -425,6 +431,12 @@ export interface QuestionLook {
   answerAlign?: 'left' | 'center' | 'right';
   answerGap?: number;
   answerPadding?: Insets;
+  answerFill?: string;
+  answerBorder?: string;
+  answerText?: string;
+  textColour?: string;
+  fill?: string;
+  boxPadding?: Insets;
   card?: boolean;
   feedback?: 'under' | 'popup';
 }
@@ -494,6 +506,7 @@ export interface WrittenBlock extends BlockBase {
   length: 'short' | 'essay';
   required: boolean;
   saveTo?: string;
+  look?: QuestionLook;
 }
 
 export interface LikertBlock extends BlockBase {
@@ -502,6 +515,7 @@ export interface LikertBlock extends BlockBase {
   rows: { id: string; text: string }[];
   scale: string[];
   required: boolean;
+  look?: QuestionLook;
 }
 
 export interface ResultsBlock extends BlockBase {
@@ -512,6 +526,7 @@ export interface ResultsBlock extends BlockBase {
   review: boolean;
   negative: boolean;
   pool: number | null;
+  look?: QuestionLook;
 }
 
 export type Align = 'left' | 'center' | 'right' | 'justify';
@@ -765,6 +780,37 @@ export const isQuestion = (b: Block): b is GradedBlock =>
   b.type === 'match' ||
   b.type === 'blank' ||
   b.type === 'slider';
+
+export type LookedBlock =
+  | GradedBlock
+  | WrittenBlock
+  | LikertBlock
+  | ResultsBlock
+  | PopupBlock
+  | AccordionBlock
+  | TabsBlock
+  | FlipBlock
+  | HotspotBlock
+  | PathwayBlock;
+
+const LOOKED = new Set<Block['type']>([
+  'check',
+  'drag',
+  'match',
+  'blank',
+  'slider',
+  'written',
+  'likert',
+  'results',
+  'popup',
+  'accordion',
+  'tabs',
+  'flip',
+  'hotspots',
+  'pathway',
+]);
+
+export const hasLook = (b: Block): b is LookedBlock => LOOKED.has(b.type);
 
 export function scoredQuestions(doc: CourseDoc): GradedBlock[] {
   return doc.pages
