@@ -56,13 +56,11 @@ function QuestionFrame({
   const look = block.look ?? {};
   const popup = look.feedback === 'popup';
   const align = { left: 'flex-start', center: 'center', right: 'flex-end' }[look.submitAlign ?? 'left'];
-  const accent = {
-    ...(look.colour ? { '--cp-accent': look.colour } : {}),
-    ...(look.buttonPadding
-      ? { '--cp-btn-pad': look.buttonPadding.map((n) => `calc(${n} * var(--px, 1px))`).join(' ') }
-      : {}),
-  } as CSSProperties;
-  const padded = look.buttonPadding ? ' cp-padded' : '';
+  const accent = look.colour ? ({ '--cp-accent': look.colour } as CSSProperties) : {};
+  const margin = look.buttonMargin
+    ? look.buttonMargin.map((n) => `calc(${n} * var(--px, 1px))`).join(' ')
+    : undefined;
+  const row = margin ? { margin, width: 'auto', alignSelf: 'stretch' } : {};
   const retry = () => {
     setPopupOpen(false);
     setSubmitted(false);
@@ -82,7 +80,7 @@ function QuestionFrame({
   return (
     <div
       ref={self}
-      className={`cp-check${padded}${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
+      className={`cp-check${look.card === false ? ' cp-bare' : ''}${look.answers === 'buttons' ? ' cp-pills' : ''}`}
       style={{
         ...accent,
         ...(look.size ? { fontSize: `${look.size / 16}em` } : {}),
@@ -95,13 +93,13 @@ function QuestionFrame({
       {hint && <p className="cp-hint">{hint}</p>}
       {children({ locked, submitted })}
       {submitted && !popup && (
-        <div className="cp-fbrow">
+        <div className="cp-fbrow" style={row}>
           {message}
           {!shownCorrect && tryAgain}
         </div>
       )}
       {submitted && popup && !shownCorrect && (
-        <div className="cp-fbrow" style={{ justifyContent: align }}>
+        <div className="cp-fbrow" style={{ ...row, justifyContent: align }}>
           {tryAgain}
         </div>
       )}
@@ -109,7 +107,7 @@ function QuestionFrame({
         <button
           type="button"
           className="cp-btn cp-btn-solid"
-          style={{ alignSelf: align }}
+          style={{ alignSelf: align, margin }}
           disabled={!ready || ctx.edit}
           title={ready ? undefined : 'Answer the question first'}
           onClick={() => {
@@ -124,7 +122,7 @@ function QuestionFrame({
       {popupOpen &&
         player &&
         createPortal(
-          <div className={`cp-layer${padded}`} style={accent} onClick={() => setPopupOpen(false)}>
+          <div className="cp-layer" style={accent} onClick={() => setPopupOpen(false)}>
             <div
               className="cp-layer-card cp-fbcard"
               role="dialog"

@@ -301,10 +301,6 @@
   min-height: 40px;
   padding: 8px 18px;
 }
-.cp .cp-padded .cp-btn {
-  min-height: 0;
-  padding: var(--cp-btn-pad);
-}
 .cp-opt.cp-right {
   border-color: var(--cp-ok);
   background: #eef8f2;

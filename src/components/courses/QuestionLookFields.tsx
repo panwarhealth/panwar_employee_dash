@@ -1,15 +1,13 @@
-import type { GradedBlock, Layout, QuestionLook } from '@/course/doc';
+import type { GradedBlock, QuestionLook } from '@/course/doc';
 import { Field, inputClass, NumberBox, PaddingField, Select, Toggle } from './fields';
 import { ColourField } from './TextStyleFields';
 
 
 export function QuestionLookFields({
   block,
-  layout,
   onChange,
 }: {
   block: GradedBlock;
-  layout: Layout;
   onChange: (look: QuestionLook) => void;
 }) {
   const look = block.look ?? {};
@@ -65,9 +63,9 @@ export function QuestionLookFields({
         />
       </div>
       <PaddingField
-        label={`${button} button padding (px)`}
-        value={look.buttonPadding ?? (layout === 'phone' ? [8, 18, 8, 18] : [10, 24, 10, 24])}
-        onChange={(buttonPadding) => set({ buttonPadding })}
+        label={`Space around the ${button} button (px)`}
+        value={look.buttonMargin ?? [0, 0, 0, 0]}
+        onChange={(buttonMargin) => set({ buttonMargin })}
       />
       <Select
         label="Feedback"
