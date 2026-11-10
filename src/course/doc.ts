@@ -88,6 +88,8 @@ export interface Page {
   pick?: PickRule;
   transition?: Transition;
   exitTransition?: Transition;
+  transitionTime?: number;
+  exitTransitionTime?: number;
   background?: string;
   gradient?: Gradient;
   looks?: Partial<Record<Layout, PageLook>>;

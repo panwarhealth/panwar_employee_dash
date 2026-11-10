@@ -137,6 +137,8 @@ export const ASSISTANT_TOOLS = [
         groups: { type: 'array', items: { type: 'object' } },
         pick: { type: ['object', 'null'] },
         transition: { type: 'string', enum: ['none', 'fade', 'slideLeft', 'slideRight', 'slideUp', 'slideDown'] },
+        transition_time: { type: 'number', description: 'Seconds the enter transition takes, default 0.5' },
+        exit_transition_time: { type: 'number', description: 'Seconds the exit transition takes, default 0.5' },
         exit_transition: { type: 'string', enum: ['none', 'fade', 'slideLeft', 'slideRight', 'slideUp', 'slideDown'] },
       },
       ['page_id'],
@@ -508,6 +510,9 @@ const updatePage: Handler = (doc, input) => {
     if (input.pick === null) delete p.pick;
     else if (input.pick && typeof input.pick === 'object') p.pick = input.pick as Page['pick'];
     if (typeof input.transition === 'string') p.transition = input.transition as Page['transition'];
+    if (typeof input.transition_time === 'number') p.transitionTime = Math.max(0.1, input.transition_time);
+    if (typeof input.exit_transition_time === 'number')
+      p.exitTransitionTime = Math.max(0.1, input.exit_transition_time);
     if (typeof input.exit_transition === 'string')
       p.exitTransition = input.exit_transition as Page['exitTransition'];
   });

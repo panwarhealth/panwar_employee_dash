@@ -27,7 +27,7 @@ import { FrameFields } from './FrameFields';
 import { InteractionFields, PickRuleFields } from './InteractionFields';
 import { HOVER_LOOKS, VISITED_LOOKS } from './interactionLooks';
 import { TriggersPanel } from './TriggersPanel';
-import { Select, TextInput, Toggle } from './fields';
+import { Field, inputClass, NumberBox, Select, TextInput, Toggle } from './fields';
 import { SortableList } from './SortableList';
 import { PaintField } from './TextStyleFields';
 import { ReviewNotes } from './ReviewNotes';
@@ -161,6 +161,24 @@ export function Inspector({
               ]}
               onChange={(t) => onPage((p) => (p.exitTransition = t))}
             />
+            <Field label="Time (seconds)">
+              <NumberBox
+                min={0.1}
+                step={0.1}
+                value={page.transitionTime ?? 0.5}
+                onChange={(n) => onPage((p) => (p.transitionTime = Math.max(0.1, n)))}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Time (seconds)">
+              <NumberBox
+                min={0.1}
+                step={0.1}
+                value={page.exitTransitionTime ?? 0.5}
+                onChange={(n) => onPage((p) => (p.exitTransitionTime = Math.max(0.1, n)))}
+                className={inputClass}
+              />
+            </Field>
           </div>
         </div>
         <div className="mt-2">

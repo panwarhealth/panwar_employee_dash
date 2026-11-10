@@ -120,7 +120,7 @@ function leadsToSeen(page: Page, seen: string[]): string[] {
   return goesTo.flatMap(([id, a]) => (a.kind === 'page' && seen.includes(a.pageId) ? [id] : []));
 }
 
-const TRANSITION_MS = 550;
+const TRANSITION_TIME = 0.5;
 
 const FLIP: Record<string, string> = { left: 'right', right: 'left', up: 'down', down: 'up' };
 
@@ -170,6 +170,8 @@ export function Player({
     forward: boolean;
     enter: string;
     exit: string;
+    inTime: number;
+    outTime: number;
   } | null>(null);
   const transitionTimer = useRef(0);
   const dispatchRef = useRef<(event: TriggerEvent) => void>(() => {});
@@ -219,8 +221,26 @@ export function Player({
     const exit = moveOut ?? (page.exitTransition === 'fade' ? 'fade' : 'none');
     window.clearTimeout(transitionTimer.current);
     if (pageId !== page.id && (enter !== 'none' || exit !== 'none')) {
-      setPrevious({ page, hidden, leaving: hasExit(page), forward: to > index, enter, exit });
-      transitionTimer.current = window.setTimeout(() => setPrevious(null), TRANSITION_MS);
+      const slidesIn = slideMove(target?.transition) !== null;
+      const slidesOut = slideMove(page.exitTransition) !== null;
+      const ownIn = slidesIn || (!slidesOut && target?.transition === 'fade');
+      const ownOut = slidesOut || (!slidesIn && page.exitTransition === 'fade');
+      const inTime = (ownIn ? target?.transitionTime : page.exitTransitionTime) ?? TRANSITION_TIME;
+      const outTime = (ownOut ? page.exitTransitionTime : target?.transitionTime) ?? TRANSITION_TIME;
+      setPrevious({
+        page,
+        hidden,
+        leaving: hasExit(page),
+        forward: to > index,
+        enter,
+        exit,
+        inTime,
+        outTime,
+      });
+      transitionTimer.current = window.setTimeout(
+        () => setPrevious(null),
+        Math.max(inTime, outTime) * 1000 + 50,
+      );
     } else setPrevious(null);
     setLeaving(false);
     setState((s) => ({ ...s, pageId }));
@@ -428,6 +448,7 @@ export function Player({
             <div
               key={previous.page.id}
               className={`cp-tr cp-tr-out-${previous.exit}${previous.enter === 'none' ? ' cp-tr-top' : ''}`}
+              style={{ animationDuration: `${previous.outTime}s` }}
               aria-hidden
               inert
             >
@@ -447,6 +468,11 @@ export function Player({
               previous && previous.page.id !== page.id
                 ? `cp-tr cp-tr-in-${previous.enter}`
                 : 'cp-tr'
+            }
+            style={
+              previous && previous.page.id !== page.id
+                ? { animationDuration: `${previous.inTime}s` }
+                : undefined
             }
           >
             <PageBody
