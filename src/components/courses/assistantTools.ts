@@ -128,7 +128,7 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'update_page',
     description:
-      "Change a page's title, triggers, groups, pick rule, transition (how the page comes in) or exit_transition (how it leaves). Slide values name the way the page moves: slideLeft enters from the right or leaves to the left, slideUp enters from the bottom or leaves upwards. A slide pushes both pages together. triggers and groups each replace the whole list.",
+      "Change a page's title, triggers, groups, pick rule, transition (how the page comes in) or exit_transition (how it leaves). Slide values name the way the page moves: slideLeft enters from the right or leaves to the left, slideUp enters from the bottom or leaves upwards. A slide pushes both pages together. Older pages may say slide, which means slideLeft. triggers and groups each replace the whole list.",
     input_schema: obj(
       {
         page_id: { type: 'string' },
