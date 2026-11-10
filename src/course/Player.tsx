@@ -119,6 +119,8 @@ function leadsToSeen(page: Page, seen: string[]): string[] {
   return goesTo.flatMap(([id, a]) => (a.kind === 'page' && seen.includes(a.pageId) ? [id] : []));
 }
 
+const TRANSITION_MS = 550;
+
 const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
 
 function mustAnswer(b: Block): boolean {
@@ -155,6 +157,13 @@ export function Player({
   const [popup, setPopup] = useState<string | null>(null);
   const [cueTimes, setCueTimes] = useState<Record<string, number>>({});
   const [leaving, setLeaving] = useState(false);
+  const [previous, setPrevious] = useState<{
+    page: Page;
+    hidden: Set<string>;
+    leaving: boolean;
+    forward: boolean;
+  } | null>(null);
+  const transitionTimer = useRef(0);
   const dispatchRef = useRef<(event: TriggerEvent) => void>(() => {});
 
   const pages = useMemo(
@@ -193,6 +202,13 @@ export function Player({
   if (!page) return <div className="cp cp-shell" />;
 
   const show = (pageId: string) => {
+    const to = pages.findIndex((p) => p.id === pageId);
+    const kind = pages[to]?.transition;
+    window.clearTimeout(transitionTimer.current);
+    if (pageId !== page.id && kind && kind !== 'none') {
+      setPrevious({ page, hidden, leaving: hasExit(page), forward: to > index });
+      transitionTimer.current = window.setTimeout(() => setPrevious(null), TRANSITION_MS);
+    } else setPrevious(null);
     setLeaving(false);
     setState((s) => ({ ...s, pageId }));
     window.scrollTo(0, 0);
@@ -393,25 +409,43 @@ export function Player({
   return (
     <div className="cp cp-shell" style={accentStyle(doc)}>
       {doc.fonts.length > 0 && <style>{fontFaces(doc)}</style>}
-      <main
-        key={page.id}
-        className={[
-          'cp-main',
-          'cp-main-canvas',
-          page.transition && page.transition !== 'none' && `cp-tr-${page.transition}`,
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <PageBody
-          key={page.id}
-          page={page}
-          layout={layout}
-          ctx={ctx}
-          hidden={hidden}
-          leaving={leaving}
-          onRetryPicks={() => setPicks([])}
-        />
+      <main className="cp-main cp-main-canvas">
+        <div className="cp-trwrap">
+          {previous && previous.page.id !== page.id && (
+            <div
+              key={previous.page.id}
+              className={`cp-tr cp-tr-out-${page.transition}${previous.forward ? '' : '-back'}`}
+              aria-hidden
+              inert
+            >
+              <PageBody
+                page={previous.page}
+                layout={layout}
+                ctx={ctx}
+                hidden={previous.hidden}
+                leaving={previous.leaving}
+                onRetryPicks={() => {}}
+              />
+            </div>
+          )}
+          <div
+            key={page.id}
+            className={
+              previous && previous.page.id !== page.id
+                ? `cp-tr cp-tr-in-${page.transition}${previous.forward ? '' : '-back'}`
+                : 'cp-tr'
+            }
+          >
+            <PageBody
+              page={page}
+              layout={layout}
+              ctx={ctx}
+              hidden={hidden}
+              leaving={leaving}
+              onRetryPicks={() => setPicks([])}
+            />
+          </div>
+        </div>
       </main>
       {openPopup && <PopupLayer block={openPopup} ctx={ctx} onClose={() => setPopup(null)} />}
       {doc.navBar && (

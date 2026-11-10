@@ -1283,11 +1283,61 @@
   animation-name: cp-zoom-in;
   animation-direction: reverse;
 }
-.cp-tr-fade {
-  animation: cp-fade-in 0.45s both;
+.cp-trwrap {
+  display: grid;
+  width: 100%;
+  overflow: hidden;
 }
-.cp-tr-slide {
-  animation: cp-slide-left-in 0.45s both cubic-bezier(0.2, 0.7, 0.3, 1);
+.cp-tr {
+  grid-area: 1 / 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cp-tr-in-fade,
+.cp-tr-in-fade-back {
+  animation: cp-fade-in 0.5s ease both;
+}
+.cp-tr-in-slide,
+.cp-tr-in-slide-back,
+.cp-tr-out-slide,
+.cp-tr-out-slide-back {
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-fill-mode: both;
+}
+.cp-tr-in-slide {
+  animation-name: cp-tr-from-right;
+}
+.cp-tr-out-slide {
+  animation-name: cp-tr-to-left;
+}
+.cp-tr-in-slide-back {
+  animation-name: cp-tr-from-left;
+}
+.cp-tr-out-slide-back {
+  animation-name: cp-tr-to-right;
+}
+@keyframes cp-tr-from-right {
+  from {
+    translate: 100% 0;
+  }
+}
+@keyframes cp-tr-from-left {
+  from {
+    translate: -100% 0;
+  }
+}
+@keyframes cp-tr-to-left {
+  to {
+    translate: -100% 0;
+  }
+}
+@keyframes cp-tr-to-right {
+  to {
+    translate: 100% 0;
+  }
 }
 @keyframes cp-fade-in {
   from {
@@ -1315,9 +1365,11 @@
 @media (prefers-reduced-motion: reduce) {
   .cp-in,
   .cp-out,
-  .cp-tr-fade,
-  .cp-tr-slide {
+  .cp-tr {
     animation: none !important;
+  }
+  .cp-tr[aria-hidden] {
+    display: none;
   }
 }
 
