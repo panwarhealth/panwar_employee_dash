@@ -53,6 +53,25 @@ const SIDES = [
   { value: 'right', label: 'Right' },
 ] as const;
 
+export function QuestionGapField<B extends { look?: QuestionLook }>({
+  block,
+  set,
+}: {
+  block: B;
+  set: (fn: (b: B) => void) => void;
+}) {
+  return (
+    <Field label="Space under the question (px)">
+      <NumberBox
+        min={0}
+        value={block.look?.questionGap ?? 10}
+        onChange={(n) => set((b) => (b.look = { ...b.look, questionGap: Math.max(0, n) }))}
+        className={inputClass}
+      />
+    </Field>
+  );
+}
+
 const heading = 'mt-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
 export function QuestionLookFields({
@@ -109,16 +128,6 @@ export function QuestionLookFields({
         value={look.textColour}
         onChange={(textColour) => set({ textColour })}
       />
-      {BOXED.has(kind) && (
-        <Field label="Space under the question (px)">
-          <NumberBox
-            min={0}
-            value={look.questionGap ?? 10}
-            onChange={(questionGap) => set({ questionGap: Math.max(0, questionGap) })}
-            className={inputClass}
-          />
-        </Field>
-      )}
 
       {items && (
         <>
