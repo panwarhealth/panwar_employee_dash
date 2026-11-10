@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { isQuestion, type LookedBlock, type QuestionLook, type TextStyle } from '@/course/doc';
 import { Field, inputClass, NumberBox, PaddingField, Select, Toggle } from './fields';
 import { BUTTON_MARGIN } from '@/course/typography';
@@ -57,30 +56,28 @@ const SIDES = [
 export function PartText({
   label,
   value,
+  size,
+  colour,
   bold = false,
   onChange,
 }: {
   label: string;
   value: TextStyle | undefined;
+  size: number;
+  colour?: string;
   bold?: boolean;
   onChange: (style: TextStyle) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center justify-between text-left text-xs font-semibold text-ph-charcoal/60 hover:text-ph-purple"
-      >
-        <span>{label}</span>
-        <span className="text-ph-purple underline underline-offset-2">
-          {open ? 'Hide' : 'Edit'}
-        </span>
-      </button>
-      {open && (
-        <TextStyleFields title={null} value={value} boldByDefault={bold} onChange={onChange} />
-      )}
+    <div className="flex flex-col gap-2 rounded-xl border border-ph-charcoal/10 bg-white p-3">
+      <span className="text-xs font-bold text-ph-charcoal">{label}</span>
+      <TextStyleFields
+        title={null}
+        freeSize
+        value={{ ...value, size: value?.size ?? size, color: value?.color ?? colour }}
+        boldByDefault={bold}
+        onChange={onChange}
+      />
     </div>
   );
 }
@@ -93,17 +90,23 @@ export function QuestionTextFields<
     block.type === 'drag' ||
     (block.type === 'match' && block.mode === 'drag');
   const put = (patch: Partial<QuestionLook>) => set((b) => (b.look = { ...b.look, ...patch }));
+  const base = block.look?.size ?? 16;
+  const ink = block.look?.textColour;
   return (
     <>
       <PartText
         label="Question text"
         bold
+        size={Math.round((base * 17) / 16)}
+        colour={ink}
         value={block.look?.questionStyle}
         onChange={(questionStyle) => put({ questionStyle })}
       />
       {hint && (
         <PartText
           label="Hint text"
+          size={Math.round(base * 0.875)}
+          colour={ink}
           value={block.look?.hintStyle}
           onChange={(hintStyle) => put({ hintStyle })}
         />
@@ -159,6 +162,8 @@ export function QuestionLookFields({
         ? 'pop-up'
         : null;
   const boxed = BOXED.has(kind);
+  const base = look.size ?? 16;
+  const ink = look.textColour;
   const labels = block.type !== 'match' || block.mode === 'drag' ? LABELS[kind] : undefined;
   const box = kind === 'popup' ? 'Pop-up window' : kind === 'hotspots' ? null : 'Box';
   return (
@@ -169,29 +174,14 @@ export function QuestionLookFields({
         value={look.colour}
         onChange={(colour) => set({ colour })}
       />
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="All text size (px)">
-          <NumberBox
-            min={10}
-            value={look.size ?? 16}
-            onChange={(size) => set({ size: Math.max(10, size) })}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="Corners (px)">
-          <NumberBox
-            min={0}
-            value={look.radius ?? CORNERS[kind] ?? 4}
-            onChange={(radius) => set({ radius: Math.max(0, radius) })}
-            className={inputClass}
-          />
-        </Field>
-      </div>
-      <ColourField
-        label="All text colour"
-        value={look.textColour}
-        onChange={(textColour) => set({ textColour })}
-      />
+      <Field label="Corners (px)">
+        <NumberBox
+          min={0}
+          value={look.radius ?? CORNERS[kind] ?? 4}
+          onChange={(radius) => set({ radius: Math.max(0, radius) })}
+          className={inputClass}
+        />
+      </Field>
 
       {items && (
         <>
@@ -250,13 +240,17 @@ export function QuestionLookFields({
           <PartText
             label={`${items[0].toUpperCase()}${items.slice(1)} text`}
             bold={BOLD_ITEMS.has(kind) || (pills && look.answers === 'buttons')}
-            value={look.answerStyle ?? (look.answerText ? { color: look.answerText } : undefined)}
+            size={Math.round(base * (kind === 'likert' ? 0.85 : kind === 'hotspots' ? 0.9 : 1))}
+            colour={look.answerText}
+            value={look.answerStyle}
             onChange={(answerStyle) => set({ answerStyle, answerText: undefined })}
           />
           {labels && (
             <PartText
               label={labels}
               bold={kind === 'likert'}
+              size={Math.round(base * (kind === 'likert' ? 1 : 0.85))}
+              colour={ink}
               value={look.labelStyle}
               onChange={(labelStyle) => set({ labelStyle })}
             />
@@ -264,6 +258,8 @@ export function QuestionLookFields({
           {BODY[kind] && (
             <PartText
               label={BODY[kind]!}
+              size={base}
+              colour={ink}
               value={look.bodyStyle}
               onChange={(bodyStyle) => set({ bodyStyle })}
             />
@@ -277,11 +273,14 @@ export function QuestionLookFields({
           <PartText
             label="Number text"
             bold
+            size={base * 2}
             value={look.answerStyle}
             onChange={(answerStyle) => set({ answerStyle })}
           />
           <PartText
             label="End labels text"
+            size={Math.round(base * 0.85)}
+            colour={ink}
             value={look.labelStyle}
             onChange={(labelStyle) => set({ labelStyle })}
           />
@@ -294,21 +293,28 @@ export function QuestionLookFields({
           <PartText
             label="Score text"
             bold
+            size={base * 3}
             value={look.questionStyle}
             onChange={(questionStyle) => set({ questionStyle })}
           />
           <PartText
             label="Pass mark text"
+            size={Math.round(base * 0.875)}
+            colour={ink}
             value={look.hintStyle}
             onChange={(hintStyle) => set({ hintStyle })}
           />
           <PartText
             label="Message text"
+            size={base}
+            colour={ink}
             value={look.bodyStyle}
             onChange={(bodyStyle) => set({ bodyStyle })}
           />
           <PartText
             label="Review list text"
+            size={base}
+            colour={ink}
             value={look.labelStyle}
             onChange={(labelStyle) => set({ labelStyle })}
           />
@@ -321,11 +327,15 @@ export function QuestionLookFields({
           <PartText
             label="Title text"
             bold
+            size={kind === 'popup' ? 21 : Math.round((base * 17) / 16)}
+            colour={ink}
             value={look.questionStyle}
             onChange={(questionStyle) => set({ questionStyle })}
           />
           <PartText
             label="Body text"
+            size={base}
+            colour={ink}
             value={look.bodyStyle}
             onChange={(bodyStyle) => set({ bodyStyle })}
           />
@@ -338,6 +348,7 @@ export function QuestionLookFields({
           <PartText
             label="Button text"
             bold
+            size={base}
             value={look.buttonStyle}
             onChange={(buttonStyle) => set({ buttonStyle })}
           />
@@ -370,6 +381,7 @@ export function QuestionLookFields({
           {graded && (
             <PartText
               label="Feedback text"
+              size={base}
               value={look.feedbackStyle}
               onChange={(feedbackStyle) => set({ feedbackStyle })}
             />

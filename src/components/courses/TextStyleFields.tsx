@@ -393,8 +393,10 @@ export function TextStyleFields({
   colour = true,
   align,
   title = 'Text style',
+  freeSize = false,
 }: {
   title?: string | null;
+  freeSize?: boolean;
   value: TextStyle | undefined;
   boldByDefault?: boolean;
   emphasis?: boolean;
@@ -427,18 +429,27 @@ export function TextStyleFields({
           </select>
         </Field>
         <Field label="Size (px)">
-          <select
-            className={inputClass}
-            value={s.size ?? ''}
-            onChange={(e) => set({ size: num(e.target.value) })}
-          >
-            <option value="">Default</option>
-            {SIZES.map((x) => (
-              <option key={x} value={x}>
-                {x}
-              </option>
-            ))}
-          </select>
+          {freeSize ? (
+            <NumberBox
+              min={6}
+              value={s.size ?? 16}
+              onChange={(n) => set({ size: Math.max(6, n) })}
+              className={inputClass}
+            />
+          ) : (
+            <select
+              className={inputClass}
+              value={s.size ?? ''}
+              onChange={(e) => set({ size: num(e.target.value) })}
+            >
+              <option value="">Default</option>
+              {SIZES.map((x) => (
+                <option key={x} value={x}>
+                  {x}
+                </option>
+              ))}
+            </select>
+          )}
         </Field>
         <Field label="Line height">
           <input
