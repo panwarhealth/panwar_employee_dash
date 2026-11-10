@@ -104,6 +104,13 @@ const label = (list: { id: string; text?: string; label?: string }[], id: string
   return hit?.text ?? hit?.label ?? id;
 };
 
+const pieces = (text: string) => {
+  const chars = Array.from(text);
+  const out: string[] = [];
+  for (let i = 0; i < chars.length; i += 255) out.push(chars.slice(i, i + 255).join(''));
+  return out.length ? out : [''];
+};
+
 const split = (selected: string[]) => selected.map((s) => s.split('=') as [string, string]);
 
 export function describeAnswer(b: Asked, selected: string[]): string {
@@ -160,18 +167,21 @@ export function scormLms(doc: CourseDoc): Lms | null {
       const key = JSON.stringify(a.selected);
       if (!q || reported.get(id) === key || (!all && q.pageId === state.pageId)) continue;
       reported.set(id, key);
-      const n = `cmi.interactions.${count++}.`;
-      set(`${n}id`, id.replace(/[^A-Za-z0-9_.-]/g, '_'));
-      set(
-        `${n}type`,
-        q.block.type === 'drag' && q.block.style === 'order' ? 'sequencing' : KIND[q.block.type],
-      );
-      set(`${n}time`, clock(new Date()));
-      set(`${n}student_response`, describeAnswer(q.block, a.selected).slice(0, 255));
-      set(
-        `${n}result`,
-        'scored' in q.block && q.block.scored ? (a.correct ? 'correct' : 'wrong') : 'neutral',
-      );
+      const safe = id.replace(/[^A-Za-z0-9_.-]/g, '_');
+      const type =
+        q.block.type === 'drag' && q.block.style === 'order' ? 'sequencing' : KIND[q.block.type];
+      const result =
+        'scored' in q.block && q.block.scored ? (a.correct ? 'correct' : 'wrong') : 'neutral';
+      const time = clock(new Date());
+      const parts = pieces(describeAnswer(q.block, a.selected));
+      parts.forEach((part, i) => {
+        const n = `cmi.interactions.${count++}.`;
+        set(`${n}id`, parts.length > 1 ? `${safe}-part-${i + 1}-of-${parts.length}` : safe);
+        set(`${n}type`, type);
+        set(`${n}time`, time);
+        set(`${n}student_response`, part);
+        set(`${n}result`, result);
+      });
     }
   };
 
