@@ -13,7 +13,7 @@ import {
   type Transition,
   type TriggerEvent,
 } from './doc';
-import type { Lms, PlayState } from './scorm';
+import type { Lms, Outcome, PlayState } from './scorm';
 import type { BlockContext } from './context';
 import { accentStyle } from './util';
 import { CanvasStage } from './canvas';
@@ -189,6 +189,8 @@ export function Player({
   const settings = resultsSettings(doc);
   const results = computeResults(doc, state.answers, state.skip ?? []);
   const onResultsPage = !!page?.blocks.some((b) => b.type === 'results');
+  const outcome: Outcome =
+    results.score === null ? 'completed' : results.passed ? 'passed' : 'failed';
 
   useEffect(() => {
     if (!page) return;
@@ -196,8 +198,8 @@ export function Player({
   }, [page]);
 
   useEffect(() => {
-    if (pages.length) lms.save(state, Math.min(1, state.visited.length / pages.length));
-  }, [state, lms, pages.length]);
+    lms.save(state);
+  }, [state, lms]);
 
   const pageId = page?.id;
   useEffect(() => {
@@ -205,9 +207,8 @@ export function Player({
   }, [pageId]);
 
   useEffect(() => {
-    if (onResultsPage && results.passed)
-      lms.finish(results.score === null ? 'completed' : 'passed', results.score);
-  }, [onResultsPage, results.passed, results.score, lms]);
+    if (onResultsPage) lms.finish(outcome, results.score);
+  }, [onResultsPage, outcome, results.score, lms]);
 
   if (!page) return <div className="cp cp-shell" />;
 
@@ -255,7 +256,7 @@ export function Player({
   };
 
   const finish = () => {
-    if (results.passed) lms.finish(results.score === null ? 'completed' : 'passed', results.score);
+    lms.finish(outcome, results.score);
     if (!settings) setEnded(true);
   };
 

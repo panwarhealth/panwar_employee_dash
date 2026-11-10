@@ -21,6 +21,7 @@
     "@tanstack/react-router": "^1.114.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.3",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",

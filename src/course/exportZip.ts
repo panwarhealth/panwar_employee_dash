@@ -135,10 +135,10 @@ export const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '') || 'course';
 
-function manifest(title: string, slug: string): string {
+function manifest(title: string, id: string): string {
   const t = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="com.panwarhealth.${slug}" version="1.0"
+<manifest identifier="com.panwarhealth.course-${id}" version="1.0"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2">
   <metadata>
@@ -163,6 +163,7 @@ function manifest(title: string, slug: string): string {
 }
 
 export async function buildZip(
+  courseId: string,
   doc: CourseDoc,
   download: (url: string) => Promise<Blob>,
   onProgress: (text: string) => void,
@@ -190,7 +191,7 @@ export async function buildZip(
   }
 
   zip.file('course.json', json);
-  zip.file('imsmanifest.xml', manifest(doc.title, slugify(doc.title)));
+  zip.file('imsmanifest.xml', manifest(doc.title, courseId));
   onProgress('Zipping');
   return { blob: await zip.generateAsync({ type: 'blob' }), mediaBytes };
 }

@@ -31,7 +31,12 @@ export function ExportModal({
     setError(null);
     setProgress('Fetching the course player');
     try {
-      const { blob } = await buildZip(doc, (url) => downloadMedia(courseId, url), setProgress);
+      const { blob } = await buildZip(
+        courseId,
+        doc,
+        (url) => downloadMedia(courseId, url),
+        setProgress,
+      );
       saveBlob(blob, fileName);
       await markExported(courseId);
       onExported();

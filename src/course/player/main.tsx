@@ -9,6 +9,6 @@ fetch('./course.json')
   .then((raw) => {
     const doc = normalizeDoc(raw);
     document.title = doc.title;
-    const lms = scormLms() ?? memoryLms(`course:${doc.title}`);
+    const lms = scormLms(doc) ?? memoryLms(`course:${doc.title}`);
     createRoot(document.getElementById('root')!).render(<Player doc={doc} lms={lms} />);
   });
