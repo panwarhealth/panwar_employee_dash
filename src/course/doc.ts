@@ -108,7 +108,14 @@ export interface ReviewNote {
   text: string;
 }
 
-export type Transition = 'none' | 'fade' | 'slide';
+export type Transition =
+  | 'none'
+  | 'fade'
+  | 'slide'
+  | 'slideLeft'
+  | 'slideRight'
+  | 'slideUp'
+  | 'slideDown';
 export type AnimKind = 'none' | 'fade' | 'fadeUp' | 'slideLeft' | 'zoom';
 
 export interface Anim {

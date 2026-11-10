@@ -137,21 +137,27 @@ export function Inspector({
           <div className="grid grid-cols-2 gap-2">
             <Select
               label="Enter transition"
-              value={page.transition ?? 'none'}
+              value={page.transition === 'slide' ? 'slideLeft' : (page.transition ?? 'none')}
               options={[
                 { value: 'none', label: 'None' },
                 { value: 'fade', label: 'Fade in' },
-                { value: 'slide', label: 'Slide in' },
+                { value: 'slideLeft', label: 'Slide in from right' },
+                { value: 'slideRight', label: 'Slide in from left' },
+                { value: 'slideDown', label: 'Slide in from top' },
+                { value: 'slideUp', label: 'Slide in from bottom' },
               ]}
               onChange={(t) => onPage((p) => (p.transition = t))}
             />
             <Select
               label="Exit transition"
-              value={page.exitTransition ?? 'none'}
+              value={page.exitTransition === 'slide' ? 'slideLeft' : (page.exitTransition ?? 'none')}
               options={[
                 { value: 'none', label: 'None' },
                 { value: 'fade', label: 'Fade out' },
-                { value: 'slide', label: 'Slide out' },
+                { value: 'slideLeft', label: 'Slide out to left' },
+                { value: 'slideRight', label: 'Slide out to right' },
+                { value: 'slideUp', label: 'Slide out up' },
+                { value: 'slideDown', label: 'Slide out down' },
               ]}
               onChange={(t) => onPage((p) => (p.exitTransition = t))}
             />

@@ -10,6 +10,7 @@ import {
   type Layout,
   type Page,
   type PopupBlock,
+  type Transition,
   type TriggerEvent,
 } from './doc';
 import type { Lms, PlayState } from './scorm';
@@ -121,6 +122,11 @@ function leadsToSeen(page: Page, seen: string[]): string[] {
 
 const TRANSITION_MS = 550;
 
+const FLIP: Record<string, string> = { left: 'right', right: 'left', up: 'down', down: 'up' };
+
+const slideMove = (t: Transition | undefined) =>
+  t === 'slide' ? 'left' : t?.startsWith('slide') ? t.slice(5).toLowerCase() : null;
+
 const answered = (b: Block, state: PlayState) => !!state.answers[b.id]?.correct;
 
 function mustAnswer(b: Block): boolean {
@@ -205,9 +211,12 @@ export function Player({
 
   const show = (pageId: string) => {
     const to = pages.findIndex((p) => p.id === pageId);
-    const slide = pages[to]?.transition === 'slide' || page.exitTransition === 'slide';
-    const enter = slide ? 'slide' : (pages[to]?.transition ?? 'none');
-    const exit = slide ? 'slide' : (page.exitTransition ?? 'none');
+    const target = pages[to];
+    const turn = (m: string | null) => (to > index || !m ? m : FLIP[m]);
+    const moveIn = turn(slideMove(target?.transition) ?? slideMove(page.exitTransition));
+    const moveOut = turn(slideMove(page.exitTransition) ?? slideMove(target?.transition));
+    const enter = moveIn ?? (target?.transition === 'fade' ? 'fade' : 'none');
+    const exit = moveOut ?? (page.exitTransition === 'fade' ? 'fade' : 'none');
     window.clearTimeout(transitionTimer.current);
     if (pageId !== page.id && (enter !== 'none' || exit !== 'none')) {
       setPrevious({ page, hidden, leaving: hasExit(page), forward: to > index, enter, exit });
@@ -418,7 +427,7 @@ export function Player({
           {previous && previous.page.id !== page.id && (
             <div
               key={previous.page.id}
-              className={`cp-tr cp-tr-out-${previous.exit}${previous.forward ? '' : '-back'}${previous.enter === 'none' ? ' cp-tr-top' : ''}`}
+              className={`cp-tr cp-tr-out-${previous.exit}${previous.enter === 'none' ? ' cp-tr-top' : ''}`}
               aria-hidden
               inert
             >
@@ -436,7 +445,7 @@ export function Player({
             key={page.id}
             className={
               previous && previous.page.id !== page.id
-                ? `cp-tr cp-tr-in-${previous.enter}${previous.forward ? '' : '-back'}`
+                ? `cp-tr cp-tr-in-${previous.enter}`
                 : 'cp-tr'
             }
           >

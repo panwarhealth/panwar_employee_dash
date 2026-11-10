@@ -1298,12 +1298,10 @@
 .cp-tr-top {
   z-index: 1;
 }
-.cp-tr-in-fade,
-.cp-tr-in-fade-back {
+.cp-tr-in-fade {
   animation: cp-fade-in 0.5s ease both;
 }
-.cp-tr-out-fade,
-.cp-tr-out-fade-back {
+.cp-tr-out-fade {
   animation: cp-tr-fade-out 0.5s ease both;
 }
 @keyframes cp-tr-fade-out {
@@ -1311,67 +1309,80 @@
     opacity: 0;
   }
 }
-.cp-tr-in-slide,
-.cp-tr-in-slide-back,
-.cp-tr-out-slide,
-.cp-tr-out-slide-back {
+.cp-tr-in-left,
+.cp-tr-out-left,
+.cp-tr-in-right,
+.cp-tr-out-right,
+.cp-tr-in-up,
+.cp-tr-out-up,
+.cp-tr-in-down,
+.cp-tr-out-down {
   animation-duration: 0.5s;
   animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
   animation-fill-mode: both;
 }
-.cp-tr-in-slide {
-  animation-name: cp-tr-from-right;
+.cp-tr-in-left {
+  animation-name: cp-tr-in-left;
 }
-.cp-tr-out-slide {
-  animation-name: cp-tr-to-left;
+.cp-tr-out-left {
+  animation-name: cp-tr-out-left;
 }
-.cp-tr-in-slide-back {
-  animation-name: cp-tr-from-left;
-}
-.cp-tr-out-slide-back {
-  animation-name: cp-tr-to-right;
-}
-@keyframes cp-tr-from-right {
+@keyframes cp-tr-in-left {
   from {
     translate: 100% 0;
   }
 }
-@keyframes cp-tr-from-left {
-  from {
-    translate: -100% 0;
-  }
-}
-@keyframes cp-tr-to-left {
+@keyframes cp-tr-out-left {
   to {
     translate: -100% 0;
   }
 }
-@keyframes cp-tr-to-right {
+.cp-tr-in-right {
+  animation-name: cp-tr-in-right;
+}
+.cp-tr-out-right {
+  animation-name: cp-tr-out-right;
+}
+@keyframes cp-tr-in-right {
+  from {
+    translate: -100% 0;
+  }
+}
+@keyframes cp-tr-out-right {
   to {
     translate: 100% 0;
   }
 }
-@keyframes cp-fade-in {
+.cp-tr-in-up {
+  animation-name: cp-tr-in-up;
+}
+.cp-tr-out-up {
+  animation-name: cp-tr-out-up;
+}
+@keyframes cp-tr-in-up {
   from {
-    opacity: 0;
+    translate: 0 100%;
   }
 }
-@keyframes cp-fade-up-in {
-  from {
-    opacity: 0;
-    translate: 0 1.2em;
+@keyframes cp-tr-out-up {
+  to {
+    translate: 0 -100%;
   }
 }
-@keyframes cp-slide-left-in {
+.cp-tr-in-down {
+  animation-name: cp-tr-in-down;
+}
+.cp-tr-out-down {
+  animation-name: cp-tr-out-down;
+}
+@keyframes cp-tr-in-down {
   from {
-    opacity: 0;
-    translate: 2.5em 0;
+    translate: 0 -100%;
   }
 }
-@keyframes cp-zoom-in {
-  from {
-    opacity: 0;
-    scale: 0.85;
+@keyframes cp-tr-out-down {
+  to {
+    translate: 0 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {

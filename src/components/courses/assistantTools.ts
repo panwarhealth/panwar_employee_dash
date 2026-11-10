@@ -128,7 +128,7 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'update_page',
     description:
-      "Change a page's title, triggers, groups, pick rule, transition (how the page comes in) or exit_transition (how it leaves). triggers and groups each replace the whole list.",
+      "Change a page's title, triggers, groups, pick rule, transition (how the page comes in) or exit_transition (how it leaves). Slide values name the way the page moves: slideLeft enters from the right or leaves to the left, slideUp enters from the bottom or leaves upwards. A slide pushes both pages together. triggers and groups each replace the whole list.",
     input_schema: obj(
       {
         page_id: { type: 'string' },
@@ -136,8 +136,8 @@ export const ASSISTANT_TOOLS = [
         triggers: { type: 'array', items: { type: 'object' } },
         groups: { type: 'array', items: { type: 'object' } },
         pick: { type: ['object', 'null'] },
-        transition: { type: 'string', enum: ['none', 'fade', 'slide'] },
-        exit_transition: { type: 'string', enum: ['none', 'fade', 'slide'] },
+        transition: { type: 'string', enum: ['none', 'fade', 'slideLeft', 'slideRight', 'slideUp', 'slideDown'] },
+        exit_transition: { type: 'string', enum: ['none', 'fade', 'slideLeft', 'slideRight', 'slideUp', 'slideDown'] },
       },
       ['page_id'],
     ),
