@@ -23,6 +23,7 @@ export function lookVars(look: QuestionLook = {}): CSSProperties {
   }
   if (look.questionGap !== undefined) v['--cp-q-gap'] = px(look.questionGap);
   if (look.answerGap !== undefined) v['--cp-opt-gap'] = px(look.answerGap);
+  if (look.answerRowGap !== undefined) v['--cp-opt-rowgap'] = px(look.answerRowGap);
   if (look.answerPadding) v['--cp-opt-pad'] = look.answerPadding.map(px).join(' ');
   if (look.answerFill) v['--cp-opt-bg'] = look.answerFill;
   if (look.answerBorder) v['--cp-opt-line'] = look.answerBorder;

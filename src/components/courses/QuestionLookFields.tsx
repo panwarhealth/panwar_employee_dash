@@ -209,7 +209,7 @@ export function QuestionLookFields({
                 onChange={(answerAlign) => set({ answerAlign })}
               />
               {GAP[kind] !== undefined && (
-                <Field label="Gap between (px)">
+                <Field label={row ? 'Gap across (px)' : 'Gap between (px)'}>
                   <NumberBox
                     min={0}
                     value={look.answerGap ?? GAP[kind]!}
@@ -219,6 +219,16 @@ export function QuestionLookFields({
                 </Field>
               )}
             </div>
+          )}
+          {row && (
+            <Field label="Gap between rows (px)">
+              <NumberBox
+                min={0}
+                value={look.answerRowGap ?? look.answerGap ?? GAP[kind]!}
+                onChange={(answerRowGap) => set({ answerRowGap: Math.max(0, answerRowGap) })}
+                className={inputClass}
+              />
+            </Field>
           )}
           {PADDING[kind] && (
             <PaddingField

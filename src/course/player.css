@@ -275,7 +275,7 @@
 .cp-opts {
   display: flex;
   flex-direction: column;
-  gap: var(--cp-opt-gap, 8px);
+  gap: var(--cp-opt-rowgap, var(--cp-opt-gap, 8px)) var(--cp-opt-gap, 8px);
   width: 100%;
 }
 .cp-opts-short {
@@ -309,7 +309,7 @@
   padding: var(--cp-box-pad, 0.75em);
 }
 .cp-stage-phone .cp-opts {
-  gap: var(--cp-opt-gap, 0.35em);
+  gap: var(--cp-opt-rowgap, var(--cp-opt-gap, 0.35em)) var(--cp-opt-gap, 0.35em);
 }
 .cp-stage-phone .cp-opt {
   min-height: 0;

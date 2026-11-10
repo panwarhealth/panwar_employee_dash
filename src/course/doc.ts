@@ -430,6 +430,7 @@ export interface QuestionLook {
   buttonMargin?: Insets;
   answerAlign?: 'left' | 'center' | 'right';
   answerGap?: number;
+  answerRowGap?: number;
   answerPadding?: Insets;
   answerFill?: string;
   answerBorder?: string;
