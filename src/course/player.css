@@ -1316,7 +1316,7 @@
 .cp-tr-out-slide,
 .cp-tr-out-slide-back {
   animation-duration: 0.5s;
-  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
   animation-fill-mode: both;
 }
 .cp-tr-in-slide {
