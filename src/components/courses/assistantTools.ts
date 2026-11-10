@@ -128,7 +128,7 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'update_page',
     description:
-      "Change a page's title, triggers, groups, pick rule or transition. triggers and groups each replace the whole list.",
+      "Change a page's title, triggers, groups, pick rule, transition (how the page comes in) or exit_transition (how it leaves). triggers and groups each replace the whole list.",
     input_schema: obj(
       {
         page_id: { type: 'string' },
@@ -136,7 +136,8 @@ export const ASSISTANT_TOOLS = [
         triggers: { type: 'array', items: { type: 'object' } },
         groups: { type: 'array', items: { type: 'object' } },
         pick: { type: ['object', 'null'] },
-        transition: { type: 'string' },
+        transition: { type: 'string', enum: ['none', 'fade', 'slide'] },
+        exit_transition: { type: 'string', enum: ['none', 'fade', 'slide'] },
       },
       ['page_id'],
     ),
@@ -507,6 +508,8 @@ const updatePage: Handler = (doc, input) => {
     if (input.pick === null) delete p.pick;
     else if (input.pick && typeof input.pick === 'object') p.pick = input.pick as Page['pick'];
     if (typeof input.transition === 'string') p.transition = input.transition as Page['transition'];
+    if (typeof input.exit_transition === 'string')
+      p.exitTransition = input.exit_transition as Page['exitTransition'];
   });
   return checkedOutcome(next, page.id, new Set(), `Updated ${page.title}`);
 };

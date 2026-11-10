@@ -87,6 +87,7 @@ export interface Page {
   triggers: Trigger[];
   pick?: PickRule;
   transition?: Transition;
+  exitTransition?: Transition;
   background?: string;
   gradient?: Gradient;
   looks?: Partial<Record<Layout, PageLook>>;

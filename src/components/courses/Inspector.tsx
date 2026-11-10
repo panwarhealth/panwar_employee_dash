@@ -134,16 +134,28 @@ export function Inspector({
           onChange={(title) => onPage((p) => (p.title = title))}
         />
         <div className="mt-2">
-          <Select
-            label="Page transition"
-            value={page.transition ?? 'none'}
-            options={[
-              { value: 'none', label: 'None' },
-              { value: 'fade', label: 'Fade' },
-              { value: 'slide', label: 'Slide in' },
-            ]}
-            onChange={(t) => onPage((p) => (p.transition = t))}
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <Select
+              label="Enter transition"
+              value={page.transition ?? 'none'}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'fade', label: 'Fade in' },
+                { value: 'slide', label: 'Slide in' },
+              ]}
+              onChange={(t) => onPage((p) => (p.transition = t))}
+            />
+            <Select
+              label="Exit transition"
+              value={page.exitTransition ?? 'none'}
+              options={[
+                { value: 'none', label: 'None' },
+                { value: 'fade', label: 'Fade out' },
+                { value: 'slide', label: 'Slide out' },
+              ]}
+              onChange={(t) => onPage((p) => (p.exitTransition = t))}
+            />
+          </div>
         </div>
         <div className="mt-2">
           <PaintField

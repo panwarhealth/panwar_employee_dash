@@ -1295,9 +1295,21 @@
   align-items: center;
   justify-content: center;
 }
+.cp-tr-top {
+  z-index: 1;
+}
 .cp-tr-in-fade,
 .cp-tr-in-fade-back {
   animation: cp-fade-in 0.5s ease both;
+}
+.cp-tr-out-fade,
+.cp-tr-out-fade-back {
+  animation: cp-tr-fade-out 0.5s ease both;
+}
+@keyframes cp-tr-fade-out {
+  to {
+    opacity: 0;
+  }
 }
 .cp-tr-in-slide,
 .cp-tr-in-slide-back,

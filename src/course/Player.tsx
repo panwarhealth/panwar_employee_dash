@@ -162,6 +162,8 @@ export function Player({
     hidden: Set<string>;
     leaving: boolean;
     forward: boolean;
+    enter: string;
+    exit: string;
   } | null>(null);
   const transitionTimer = useRef(0);
   const dispatchRef = useRef<(event: TriggerEvent) => void>(() => {});
@@ -203,10 +205,11 @@ export function Player({
 
   const show = (pageId: string) => {
     const to = pages.findIndex((p) => p.id === pageId);
-    const kind = pages[to]?.transition;
+    const enter = pages[to]?.transition ?? 'none';
+    const exit = page.exitTransition ?? 'none';
     window.clearTimeout(transitionTimer.current);
-    if (pageId !== page.id && kind && kind !== 'none') {
-      setPrevious({ page, hidden, leaving: hasExit(page), forward: to > index });
+    if (pageId !== page.id && (enter !== 'none' || exit !== 'none')) {
+      setPrevious({ page, hidden, leaving: hasExit(page), forward: to > index, enter, exit });
       transitionTimer.current = window.setTimeout(() => setPrevious(null), TRANSITION_MS);
     } else setPrevious(null);
     setLeaving(false);
@@ -414,7 +417,7 @@ export function Player({
           {previous && previous.page.id !== page.id && (
             <div
               key={previous.page.id}
-              className={`cp-tr cp-tr-out-${page.transition}${previous.forward ? '' : '-back'}`}
+              className={`cp-tr cp-tr-out-${previous.exit}${previous.forward ? '' : '-back'}${previous.enter === 'none' ? ' cp-tr-top' : ''}`}
               aria-hidden
               inert
             >
@@ -432,7 +435,7 @@ export function Player({
             key={page.id}
             className={
               previous && previous.page.id !== page.id
-                ? `cp-tr cp-tr-in-${page.transition}${previous.forward ? '' : '-back'}`
+                ? `cp-tr cp-tr-in-${previous.enter}${previous.forward ? '' : '-back'}`
                 : 'cp-tr'
             }
           >
