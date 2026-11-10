@@ -109,6 +109,13 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
     setPageId(id);
     setBlockId(null);
   };
+  const goTo = (id: string, to: Layout | null, block: string | null) => {
+    const target = doc.pages.find((p) => p.id === id);
+    if (!target) return;
+    setPageId(id);
+    if (to && doc.screens === 'both') setPhone(to === 'phone');
+    setBlockId(block && target.blocks.some((b) => b.id === block) ? block : null);
+  };
 
   return (
     <FontOptions.Provider value={fontOptions(doc)}>
@@ -361,6 +368,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               )
             }
             onDeck={assistant.importDeck}
+            onGoTo={goTo}
             pendingDeck={assistant.pendingDeck}
             onDeckChoice={assistant.resolveDeck}
             canFinishDeck={assistant.canFinishDeck}

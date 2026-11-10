@@ -3,9 +3,12 @@ import { FileUp, Loader2, MessageSquarePlus, Paperclip, Undo2, X } from 'lucide-
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
+import type { Layout } from '@/course/doc';
 import type { ChatEntry, PendingDeck } from '@/hooks/useCourseAssistant';
 import { cn } from '@/lib/utils';
 import { chatImage, deckFiles, imageFiles } from './chatImage';
+
+const GO = '#go/';
 
 const markdownClass = cn(
   '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1.5 [&_strong]:font-semibold',
@@ -26,6 +29,7 @@ export function AssistantPanel({
   canUndo,
   onSend,
   onDeck,
+  onGoTo,
   pendingDeck,
   onDeckChoice,
   canFinishDeck,
@@ -43,6 +47,7 @@ export function AssistantPanel({
   canUndo: boolean;
   onSend: (text: string, images: string[], decks: File[]) => void;
   onDeck: (file: File) => void;
+  onGoTo: (pageId: string, layout: Layout | null, blockId: string | null) => void;
   pendingDeck: PendingDeck | null;
   onDeckChoice: (choice: 'replace' | 'add' | null) => void;
   canFinishDeck: boolean;
@@ -171,11 +176,29 @@ export function AssistantPanel({
                 <Markdown
                   remarkPlugins={[remarkGfm]}
                   components={{
-                    a: ({ href, children }) => (
-                      <a href={href} target="_blank" rel="noreferrer">
-                        {children}
-                      </a>
-                    ),
+                    a: ({ href, children }) => {
+                      const go = href?.startsWith(GO) && href.slice(GO.length).split('/');
+                      if (!go)
+                        return (
+                          <a href={href} target="_blank" rel="noreferrer">
+                            {children}
+                          </a>
+                        );
+                      const [page, second, third] = go.map(decodeURIComponent);
+                      const layout = second === 'phone' || second === 'desktop' ? second : null;
+                      const block = (layout ? third : second) || null;
+                      return (
+                        <a
+                          href={href}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onGoTo(page, layout, block);
+                          }}
+                        >
+                          {children}
+                        </a>
+                      );
+                    },
                   }}
                 >
                   {e.text}
