@@ -292,6 +292,7 @@ export interface ButtonBlock extends BlockBase {
   textStyle?: TextStyle;
   enabledWhen?: 'always' | 'picks' | 'visited' | 'condition';
   enabledIf?: Condition[];
+  hideWhenOff?: boolean;
 }
 
 export type ButtonAction =

@@ -183,7 +183,10 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
           (block.enabledWhen === 'visited' && !ctx.linksDone) ||
           (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])));
       return (
-        <div className="cp-btnrow">
+        <div
+          className="cp-btnrow"
+          style={locked && block.hideWhenOff ? { visibility: 'hidden' } : undefined}
+        >
           <button
             type="button"
             className={`cp-btn cp-btn-${block.style}`}

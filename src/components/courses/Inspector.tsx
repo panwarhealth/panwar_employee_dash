@@ -443,6 +443,11 @@ export function Inspector({
                     b.enabledIf = conditions;
                   })
                 }
+                onHideWhenOff={(hide) =>
+                  onChangeBlock(block.id, (b) => {
+                    if (b.type === 'button') b.hideWhenOff = hide || undefined;
+                  })
+                }
               />
               <div className="flex gap-4">
                 <button

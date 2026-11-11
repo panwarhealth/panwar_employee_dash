@@ -24,12 +24,14 @@ export function InteractionFields({
   page,
   onChange,
   onEnabledWhen,
+  onHideWhenOff,
 }: {
   doc: CourseDoc;
   block: Block;
   page: Page;
   onChange: (i: Interaction) => void;
   onEnabledWhen: (when: EnabledWhen, conditions: Condition[]) => void;
+  onHideWhenOff: (hide: boolean) => void;
 }) {
   const i = block.interact ?? NO_INTERACTION;
   const set = (patch: Partial<Interaction>) => onChange({ ...i, ...patch });
@@ -89,6 +91,11 @@ export function InteractionFields({
               onChange={(c) => onEnabledWhen('condition', c)}
             />
           )}
+          <Toggle
+            label="Hide until enabled"
+            checked={!!block.hideWhenOff}
+            onChange={onHideWhenOff}
+          />
         </>
       )}
     </>
