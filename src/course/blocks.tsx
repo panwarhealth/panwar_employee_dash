@@ -185,7 +185,15 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
       return (
         <div
           className="cp-btnrow"
-          style={locked && block.hideWhenOff ? { visibility: 'hidden' } : undefined}
+          style={
+            block.hideWhenOff
+              ? ctx.edit
+                ? { opacity: 0.5, filter: 'grayscale(1)' }
+                : locked
+                  ? { visibility: 'hidden' }
+                  : undefined
+              : undefined
+          }
         >
           <button
             type="button"
