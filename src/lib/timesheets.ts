@@ -92,7 +92,19 @@ export const roundHours = (hours: number) => Math.round(hours * 100) / 100;
 export const runningHours = (hours: number, timerStartedAt: string | null, now: number) =>
   timerStartedAt ? hours + (now - Date.parse(timerStartedAt)) / 3_600_000 : hours;
 
-export const jobLabel = (code: string, title: string) => (code ? `[${code}] ${title}` : title);
+export const fmtTimerStart = (timerStartedAt: string, now: number) => {
+  const started = new Date(timerStartedAt);
+  const time = started.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+  if (started.toDateString() === new Date(now).toDateString()) return time;
+  const day = started.toLocaleDateString('en-AU', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+  return `${day}, ${time}`;
+};
+
+export const jobLabel =(code: string, title: string) => (code ? `[${code}] ${title}` : title);
 
 export const initials = (name: string) =>
   name

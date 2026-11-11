@@ -644,6 +644,39 @@
   gap: 6px;
   box-shadow: none;
 }
+.ts .tipw {
+  position: relative;
+  display: inline-flex;
+}
+.ts .tip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  display: none;
+  grid-template-columns: auto auto;
+  gap: 2px 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #2b2c2c;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(43, 44, 44, 0.22);
+}
+.ts .tip b {
+  color: #fff;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ts .tipw:hover .tip,
+.ts .tipw:focus-within .tip {
+  display: grid;
+}
 .ts .da .st {
   border: 1px solid rgba(43, 44, 44, 0.25);
   justify-content: center;

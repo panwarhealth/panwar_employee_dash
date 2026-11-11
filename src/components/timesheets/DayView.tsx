@@ -1,5 +1,5 @@
 import type { TsEntry } from '@/api/timesheets';
-import { DAY_NAMES, fmtHm, jobLabel, runningHours } from '@/lib/timesheets';
+import { DAY_NAMES, fmtHm, fmtTimerStart, jobLabel, runningHours } from '@/lib/timesheets';
 
 export function DayView({
   days,
@@ -57,11 +57,19 @@ export function DayView({
             </div>
             <div className="hh">{fmtHm(hoursOf(e))}</div>
             <div className="da">
-              {running && onStop && (
-                <button type="button" className="primary" onClick={() => onStop(e)}>
-                  <i className="ck" />
-                  Stop
-                </button>
+              {e.timerStartedAt !== null && onStop && (
+                <span className="tipw">
+                  <button type="button" className="primary" onClick={() => onStop(e)}>
+                    <i className="ck" />
+                    Stop
+                  </button>
+                  <span className="tip" role="tooltip">
+                    <span>Started</span>
+                    <b>{fmtTimerStart(e.timerStartedAt, now)}</b>
+                    <span>Running for</span>
+                    <b>{fmtHm((now - Date.parse(e.timerStartedAt)) / 3_600_000)}</b>
+                  </span>
+                </span>
               )}
               {!running && onStart && (
                 <button type="button" className="btn st" onClick={() => onStart(e)}>
