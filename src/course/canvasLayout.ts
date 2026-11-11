@@ -25,7 +25,20 @@ export const MENU_CORNER: Record<Layout, { w: number; h: number }> = {
 export const frameFor = (page: Page, block: Block, layout: Layout): Frame =>
   block.frames?.[layout] ?? autoFrame(page, block, layout);
 
-export const growsToFit = (b: Block) => b.type === 'heading' || b.type === 'text';
+const GROWS = new Set([
+  'heading',
+  'text',
+  'check',
+  'drag',
+  'match',
+  'blank',
+  'slider',
+  'written',
+  'likert',
+  'results',
+]);
+
+export const growsToFit = (b: Block) => GROWS.has(b.type);
 
 export const backdropClass = (b: Block, frame: Frame) =>
   b.type === 'image' && isBackdrop(frame) ? 'cp-backdrop' : '';

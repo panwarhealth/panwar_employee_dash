@@ -115,7 +115,7 @@
   display: block;
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
+  border-radius: calc(4 * var(--px, 1px));
   margin: 0 auto;
 }
 .cp-img-full {
@@ -130,7 +130,7 @@
 .cp-video {
   display: block;
   width: 100%;
-  border-radius: 4px;
+  border-radius: calc(4 * var(--px, 1px));
   background: #000;
 }
 .cp-embed {
@@ -144,34 +144,34 @@
   width: 100%;
   height: 100%;
   border: 0;
-  border-radius: 4px;
+  border-radius: calc(4 * var(--px, 1px));
 }
 .cp-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 120px;
-  border: 2px dashed var(--cp-line);
-  border-radius: 4px;
+  min-height: calc(120 * var(--px, 1px));
+  border: calc(2 * var(--px, 1px)) dashed var(--cp-line);
+  border-radius: calc(4 * var(--px, 1px));
   color: var(--cp-ink-2);
-  font-size: 14px;
+  font-size: calc(14 * var(--px, 1px));
 }
 .cp-divider {
   width: 100%;
   border: 0;
-  border-top: 1px solid var(--cp-line);
-  margin: 4px 0;
+  border-top: calc(1 * var(--px, 1px)) solid var(--cp-line);
+  margin: calc(4 * var(--px, 1px)) 0;
 }
 
 .cp-btnrow {
   display: flex;
 }
 .cp-btn {
-  min-height: 44px;
-  padding: 10px 24px;
-  border-radius: 4px;
+  min-height: calc(44 * var(--px, 1px));
+  padding: calc(10 * var(--px, 1px)) calc(24 * var(--px, 1px));
+  border-radius: calc(4 * var(--px, 1px));
   font-weight: 700;
-  border: 2px solid var(--cp-accent);
+  border: calc(2 * var(--px, 1px)) solid var(--cp-accent);
   transition: filter 0.15s;
 }
 .cp-btn:hover:not(:disabled) {
@@ -204,14 +204,14 @@
   initial-value: 12px;
 }
 .cp-check {
-  --cp-gap: 12px;
+  --cp-gap: calc(12 * var(--px, 1px));
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--cp-gap);
-  border: 1px solid var(--cp-line);
-  border-radius: 6px;
-  padding: var(--cp-box-pad, 20px);
+  border: calc(1 * var(--px, 1px)) solid var(--cp-line);
+  border-radius: calc(6 * var(--px, 1px));
+  padding: var(--cp-box-pad, calc(20 * var(--px, 1px)));
   background: var(--cp-box-bg, transparent);
 }
 .cp-check > .cp-q:not(:has(+ .cp-hint)),
@@ -229,15 +229,15 @@
 .cp-check .cp-btn,
 .cp-looked .cp-btn,
 .cp-pop .cp-btn {
-  border-radius: var(--cp-r, 4px);
+  border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
 }
 .cp-pills .cp-opt {
   justify-content: var(--cp-opt-justify, center);
   text-align: var(--cp-opt-align, center);
   font-weight: 700;
   color: var(--cp-opt-ink, var(--cp-accent));
-  border: 2px solid var(--cp-opt-line, var(--cp-accent));
-  border-radius: var(--cp-r, 4px);
+  border: calc(2 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-accent));
+  border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
 }
 .cp-pills .cp-opts-short .cp-opt {
   flex: 0 1 auto;
@@ -275,7 +275,7 @@
 .cp-opts {
   display: flex;
   flex-direction: column;
-  gap: var(--cp-opt-rowgap, var(--cp-opt-gap, 8px)) var(--cp-opt-gap, 8px);
+  gap: var(--cp-opt-rowgap, var(--cp-opt-gap, calc(8 * var(--px, 1px)))) var(--cp-opt-gap, calc(8 * var(--px, 1px)));
   width: 100%;
 }
 .cp-opts-cols {
@@ -303,8 +303,8 @@
   text-align: var(--cp-opt-align, left);
   color: var(--cp-opt-ink, inherit);
   background: var(--cp-opt-bg, #fff);
-  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
-  border-radius: var(--cp-r, 4px);
+  border: calc(1.5 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
 }
 .cp-opt.cp-on {
   border-color: var(--cp-accent);
@@ -323,8 +323,8 @@
   line-height: 1.25;
 }
 .cp-stage-phone .cp-check .cp-btn {
-  min-height: 40px;
-  padding: 8px 18px;
+  min-height: calc(40 * var(--px, 1px));
+  padding: calc(8 * var(--px, 1px)) calc(18 * var(--px, 1px));
 }
 .cp-opt.cp-right {
   border-color: var(--cp-ok);
@@ -339,20 +339,20 @@
   flex: none;
   width: 1.125em;
   height: 1.125em;
-  border: 2px solid var(--cp-line);
+  border: calc(2 * var(--px, 1px)) solid var(--cp-line);
   background: #fff;
 }
 .cp-dot {
   border-radius: 50%;
 }
 .cp-box {
-  border-radius: 3px;
+  border-radius: calc(3 * var(--px, 1px));
 }
 .cp-on .cp-dot,
 .cp-on .cp-box {
   border-color: var(--cp-accent);
   background: var(--cp-accent);
-  box-shadow: inset 0 0 0 3px #fff;
+  box-shadow: inset 0 0 0 calc(3 * var(--px, 1px)) #fff;
 }
 .cp-fbrow {
   display: flex;
@@ -373,7 +373,7 @@
   width: 100%;
   margin: 0;
   padding: 0.7em 0.9em;
-  border: 1px solid;
+  border: calc(1 * var(--px, 1px)) solid;
   color: #2b2b33;
 }
 .cp-fb-ok {
@@ -671,7 +671,7 @@
   margin: 0 0 1em;
 }
 .cp-pickfb-text {
-  width: min(100%, 760px);
+  width: min(100%, calc(760 * var(--px, 1px)));
 }
 
 .cp-cue-hidden {
@@ -684,8 +684,8 @@
   align-items: center;
   gap: 0.75em;
   padding: 0.6em 0.8em;
-  border: 1px solid var(--cp-line);
-  border-radius: 6px;
+  border: calc(1 * var(--px, 1px)) solid var(--cp-line);
+  border-radius: calc(6 * var(--px, 1px));
   font-size: 0.9em;
 }
 .cp-audio-bg {
@@ -696,8 +696,8 @@
 .cp-audio-btn {
   min-height: 2.75em;
   padding: 0 1em;
-  border-radius: 999px;
-  border: 2px solid var(--cp-accent);
+  border-radius: calc(999 * var(--px, 1px));
+  border: calc(2 * var(--px, 1px)) solid var(--cp-accent);
   background: var(--cp-accent);
   color: #fff !important;
   font-weight: 700;
@@ -711,7 +711,7 @@
 }
 .cp-lottie {
   width: 100%;
-  min-height: 120px;
+  min-height: calc(120 * var(--px, 1px));
 }
 .cp-obj .cp-lottie {
   min-height: 0;
@@ -724,7 +724,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: calc(16 * var(--px, 1px));
   background: rgba(0, 0, 0, 0.45);
 }
 .cp-layer-card {
@@ -732,16 +732,16 @@
   display: flex;
   flex-direction: column;
   gap: 0.8em;
-  width: min(100%, 560px);
+  width: min(100%, calc(560 * var(--px, 1px)));
   max-height: calc(var(--cp-vh, 100vh) * 0.9);
   overflow: hidden;
   padding: var(--cp-box-pad, 1.6em);
-  border-radius: 8px;
+  border-radius: calc(8 * var(--px, 1px));
   background: var(--cp-box-bg, #fff);
   box-shadow: 0 1em 3em rgba(0, 0, 0, 0.3);
 }
 .cp-fbcard {
-  width: min(100%, 440px);
+  width: min(100%, calc(440 * var(--px, 1px)));
 }
 .cp-fbactions {
   display: flex;
@@ -770,10 +770,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--cp-opt-gap, 0);
-  border-top: 1px solid var(--cp-opt-line, var(--cp-line));
+  border-top: calc(1 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));
 }
 .cp-acc-item {
-  border-bottom: 1px solid var(--cp-opt-line, var(--cp-line));
+  border-bottom: calc(1 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));
 }
 .cp-acc-head {
   display: flex;
@@ -804,14 +804,14 @@
   flex-wrap: wrap;
   justify-content: var(--cp-opt-justify, flex-start);
   gap: var(--cp-opt-gap, 0.25em);
-  border-bottom: 2px solid var(--cp-opt-line, var(--cp-line));
+  border-bottom: calc(2 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));
 }
 .cp-tab {
   min-height: 2.75em;
   padding: var(--cp-opt-pad, 0 1em);
-  margin-bottom: -2px;
+  margin-bottom: calc(-2 * var(--px, 1px));
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: calc(2 * var(--px, 1px)) solid transparent;
   border-radius: var(--cp-r, 0) var(--cp-r, 0) 0 0;
   background: var(--cp-opt-bg, none);
   font-weight: 700;
@@ -858,13 +858,13 @@
   justify-content: center;
   gap: 0.5em;
   padding: var(--cp-opt-pad, 0.8em);
-  border-radius: var(--cp-r, 6px);
+  border-radius: var(--cp-r, calc(6 * var(--px, 1px)));
   backface-visibility: hidden;
   font-weight: 700;
   text-align: var(--cp-opt-align, center);
 }
 .cp-flip-front {
-  border: 2px solid var(--cp-opt-line, var(--cp-accent));
+  border: calc(2 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-accent));
   background: var(--cp-opt-bg, #fff);
   color: var(--cp-opt-ink, var(--cp-accent));
 }
@@ -940,7 +940,7 @@
 .cp-hotspots img {
   display: block;
   width: 100%;
-  border-radius: 4px;
+  border-radius: calc(4 * var(--px, 1px));
 }
 .cp-obj .cp-hotspots img {
   height: 100%;
@@ -951,7 +951,7 @@
   width: 2em;
   height: 2em;
   margin: -1em 0 0 -1em;
-  border: 3px solid var(--cp-opt-line, #fff);
+  border: calc(3 * var(--px, 1px)) solid var(--cp-opt-line, #fff);
   border-radius: 50%;
   background: var(--cp-opt-bg, var(--cp-accent));
   color: var(--cp-opt-ink, #fff) !important;
@@ -969,7 +969,7 @@
   translate: -50% 0;
   width: min(92%, 26em);
   padding: 1em 2.6em 1em 1em;
-  border-radius: 6px;
+  border-radius: calc(6 * var(--px, 1px));
   background: #fff;
   box-shadow: 0 0.6em 2em rgba(0, 0, 0, 0.25);
 }
@@ -978,8 +978,8 @@
   width: 100%;
   min-height: 2.75em;
   padding: var(--cp-opt-pad, 0.6em 0.8em);
-  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
-  border-radius: var(--cp-r, 4px);
+  border: calc(1.5 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
   background: var(--cp-opt-bg, Field);
   color: var(--cp-opt-ink, FieldText);
   font: inherit;
@@ -1037,8 +1037,8 @@
   min-width: 6em;
   min-height: 2.9em;
   padding: 0.3em;
-  border: 2px dashed var(--cp-line);
-  border-radius: 6px;
+  border: calc(2 * var(--px, 1px)) dashed var(--cp-line);
+  border-radius: calc(6 * var(--px, 1px));
 }
 .cp-dnd-groups .cp-zone {
   min-height: 7em;
@@ -1077,8 +1077,8 @@
   align-items: center;
   min-height: 2.4em;
   padding: var(--cp-opt-pad, 0.3em 0.8em);
-  border: 2px solid var(--cp-opt-line, var(--cp-accent));
-  border-radius: var(--cp-r, 4px);
+  border: calc(2 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-accent));
+  border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
   background: var(--cp-opt-bg, #fff);
   color: var(--cp-opt-ink, var(--cp-accent));
   font-weight: 700;
@@ -1121,8 +1121,8 @@
   align-items: center;
   gap: 0.75em;
   padding: var(--cp-opt-pad, 0.4em 0.6em);
-  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
-  border-radius: var(--cp-r, 4px);
+  border: calc(1.5 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
   background: var(--cp-opt-bg, transparent);
   color: var(--cp-opt-ink, inherit);
   text-align: var(--cp-opt-align, left);
@@ -1149,7 +1149,7 @@
   margin: 0 0.25em;
   padding: var(--cp-opt-pad, 0 0.4em);
   border: 0;
-  border-bottom: 2px solid var(--cp-opt-line, var(--cp-accent));
+  border-bottom: calc(2 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-accent));
   background: var(--cp-opt-bg, Field);
   color: var(--cp-opt-ink, FieldText);
   font: inherit;
@@ -1219,8 +1219,8 @@
   gap: 0.35em;
   min-height: 2.75em;
   padding: var(--cp-opt-pad, 0.5em 0.3em);
-  border: 1.5px solid var(--cp-opt-line, var(--cp-line));
-  border-radius: var(--cp-r, 4px);
+  border: calc(1.5 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));
+  border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
   background: var(--cp-opt-bg, #fff);
   color: var(--cp-opt-ink, inherit);
   font-size: 0.85em;
@@ -1252,7 +1252,7 @@
 }
 .cp-review li {
   padding: 0.5em 0;
-  border-bottom: 1px solid var(--cp-line);
+  border-bottom: calc(1 * var(--px, 1px)) solid var(--cp-line);
 }
 
 .cp-in {
@@ -1427,7 +1427,7 @@
   padding: var(--cp-box-pad, 0);
 }
 .cp-looked.cp-boxed {
-  border: 1px solid var(--cp-line);
-  border-radius: 6px;
+  border: calc(1 * var(--px, 1px)) solid var(--cp-line);
+  border-radius: calc(6 * var(--px, 1px));
   padding: var(--cp-box-pad, 1em);
 }

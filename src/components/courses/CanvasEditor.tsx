@@ -516,7 +516,7 @@ export function CanvasEditor({
                   onContextMenu={typing ? undefined : (e) => openMenu(e, b.id)}
                   onDoubleClick={() => {
                     if (groupBy.has(b.id) && selectedId !== b.id) onSelect(b.id);
-                    else if (growsToFit(b)) setEditing(b.id);
+                    else if (b.type === 'heading' || b.type === 'text') setEditing(b.id);
                   }}
                 >
                   {typing ? (
