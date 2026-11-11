@@ -153,9 +153,9 @@ export function QuestionLookFields({
   const graded = isQuestion(block);
   const items = ITEMS[kind];
   const pills = kind === 'check' || kind === 'pathway';
-  const cols = block.type === 'check' ? (look.answerColumns ?? 1) : 1;
+  const cols = block.type === 'check' ? look.answerColumns : undefined;
   const row =
-    block.type === 'check' && (cols > 1 || block.options.every((o) => o.text.length <= 20));
+    block.type === 'check' && (!!cols || block.options.every((o) => o.text.length <= 20));
   const button = graded
     ? block.submitLabel || 'Submit'
     : kind === 'results'
@@ -200,14 +200,15 @@ export function QuestionLookFields({
             />
           )}
           {kind === 'check' && (
-            <Field label="Columns">
-              <NumberBox
-                min={1}
-                value={cols}
-                onChange={(n) => set({ answerColumns: Math.max(1, n) })}
-                className={inputClass}
-              />
-            </Field>
+            <Select
+              label="Columns"
+              value={cols ? String(cols) : 'auto'}
+              options={[
+                { value: 'auto', label: 'Automatic (wrap to fit)' },
+                ...[1, 2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) })),
+              ]}
+              onChange={(v) => set({ answerColumns: v === 'auto' ? undefined : Number(v) })}
+            />
           )}
           {kind !== 'hotspots' && (
             <div className="grid grid-cols-2 gap-2">
@@ -222,7 +223,7 @@ export function QuestionLookFields({
                 options={[...SIDES]}
                 onChange={(answerAlign) => set({ answerAlign })}
               />
-              {GAP[kind] !== undefined && (
+              {GAP[kind] !== undefined && cols !== 1 && (
                 <Field label={row ? 'Gap across (px)' : 'Gap between (px)'}>
                   <NumberBox
                     min={0}

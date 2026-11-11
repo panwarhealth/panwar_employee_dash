@@ -176,7 +176,7 @@ function QuestionFrame({
 }
 
 export function CheckView({ block, ctx }: { block: CheckBlock; ctx: BlockContext }) {
-  const cols = block.look?.answerColumns ?? 1;
+  const cols = block.look?.answerColumns;
   const [selected, setSelected] = useState<string[]>(ctx.answers[block.id]?.selected ?? []);
   const options = useMemo(
     () => (block.shuffle && !ctx.edit ? shuffled(block.options) : block.options),
@@ -200,14 +200,14 @@ export function CheckView({ block, ctx }: { block: CheckBlock; ctx: BlockContext
       {({ locked, submitted }) => (
         <div
           className={`cp-opts${
-            cols > 1
+            cols
               ? ' cp-opts-cols'
               : options.every((o) => o.text.length <= 20)
                 ? ' cp-opts-short'
                 : ''
           }`}
           style={
-            cols > 1
+            cols
               ? {
                   gridTemplateColumns: `repeat(${cols}, auto)`,
                   gridTemplateRows: `repeat(${Math.ceil(options.length / cols)}, auto)`,
