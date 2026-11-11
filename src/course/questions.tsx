@@ -48,6 +48,8 @@ function QuestionFrame({
 }) {
   const [answered, setSubmitted] = useState(!!ctx.answers[block.id]);
   const [popupOpen, setPopupOpen] = useState(false);
+  const [shift, setShift] = useState({ x: 0, y: 0 });
+  const grab = useRef<{ x: number; y: number } | null>(null);
   const self = useRef<HTMLDivElement>(null);
   const submitted = answered || !!ctx.showFeedback;
   const shownCorrect = correct && !ctx.showFeedback;
@@ -122,7 +124,10 @@ function QuestionFrame({
           title={ready ? undefined : 'Answer the question first'}
           onClick={() => {
             setSubmitted(true);
-            if (popup) setPopupOpen(true);
+            if (popup) {
+              setShift({ x: 0, y: 0 });
+              setPopupOpen(true);
+            }
             ctx.answer(block.id, response, correct);
           }}
         >
@@ -137,7 +142,19 @@ function QuestionFrame({
               className="cp-layer-card cp-fbcard"
               role="dialog"
               aria-modal="true"
+              style={{ translate: `${shift.x}px ${shift.y}px` }}
               onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                grab.current = { x: e.clientX - shift.x, y: e.clientY - shift.y };
+              }}
+              onPointerMove={(e) => {
+                const g = grab.current;
+                if (g) setShift({ x: e.clientX - g.x, y: e.clientY - g.y });
+              }}
+              onPointerUp={() => (grab.current = null)}
+              onPointerCancel={() => (grab.current = null)}
             >
               {message}
               <div className="cp-fbactions">

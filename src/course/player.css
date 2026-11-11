@@ -742,6 +742,12 @@
 }
 .cp-fbcard {
   width: min(100%, calc(440 * var(--px, 1px)));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.cp-fbcard .cp-btn {
+  cursor: pointer;
 }
 .cp-fbactions {
   display: flex;
