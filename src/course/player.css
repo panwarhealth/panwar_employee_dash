@@ -281,7 +281,7 @@
 .cp-opts-cols {
   display: grid;
   grid-auto-flow: column;
-  justify-content: start;
+  justify-content: var(--cp-opt-justify, start);
 }
 .cp-opts-short {
   flex-direction: row;
