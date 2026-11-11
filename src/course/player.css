@@ -278,6 +278,11 @@
   gap: var(--cp-opt-rowgap, var(--cp-opt-gap, 8px)) var(--cp-opt-gap, 8px);
   width: 100%;
 }
+.cp-opts-cols {
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: start;
+}
 .cp-opts-short {
   flex-direction: row;
   flex-wrap: wrap;

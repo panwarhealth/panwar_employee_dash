@@ -153,7 +153,9 @@ export function QuestionLookFields({
   const graded = isQuestion(block);
   const items = ITEMS[kind];
   const pills = kind === 'check' || kind === 'pathway';
-  const row = block.type === 'check' && block.options.every((o) => o.text.length <= 20);
+  const cols = block.type === 'check' ? (look.answerColumns ?? 1) : 1;
+  const row =
+    block.type === 'check' && (cols > 1 || block.options.every((o) => o.text.length <= 20));
   const button = graded
     ? block.submitLabel || 'Submit'
     : kind === 'results'
@@ -197,13 +199,25 @@ export function QuestionLookFields({
               onChange={(answers) => set({ answers })}
             />
           )}
+          {kind === 'check' && (
+            <Field label="Columns">
+              <NumberBox
+                min={1}
+                value={cols}
+                onChange={(n) => set({ answerColumns: Math.max(1, n) })}
+                className={inputClass}
+              />
+            </Field>
+          )}
           {kind !== 'hotspots' && (
             <div className="grid grid-cols-2 gap-2">
               <Select
                 label="Text align"
                 value={
                   look.answerAlign ??
-                  (CENTRED.has(kind) || (pills && look.answers === 'buttons' && !row) ? 'center' : 'left')
+                  (CENTRED.has(kind) || (pills && look.answers === 'buttons' && !row)
+                    ? 'center'
+                    : 'left')
                 }
                 options={[...SIDES]}
                 onChange={(answerAlign) => set({ answerAlign })}

@@ -441,6 +441,7 @@ export interface QuestionLook {
   answerAlign?: 'left' | 'center' | 'right';
   answerGap?: number;
   answerRowGap?: number;
+  answerColumns?: number;
   answerPadding?: Insets;
   answerFill?: string;
   answerBorder?: string;
