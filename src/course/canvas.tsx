@@ -126,13 +126,21 @@ function Fit({ children }: { children: ReactNode }) {
     fit();
     const resize = new ResizeObserver(fit);
     resize.observe(outer);
+    resize.observe(content);
     const mutate = new MutationObserver(fit);
-    mutate.observe(content, { childList: true, subtree: true, characterData: true });
+    mutate.observe(content, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+    });
     content.addEventListener('load', fit, true);
+    document.fonts.addEventListener('loadingdone', fit);
     return () => {
       resize.disconnect();
       mutate.disconnect();
       content.removeEventListener('load', fit, true);
+      document.fonts.removeEventListener('loadingdone', fit);
     };
   }, []);
 
