@@ -80,7 +80,7 @@ export function ExportModal({
           {fileName}
           <br />
           <span className="text-ph-charcoal/60">
-            imsmanifest.xml · index.html · course.json · media/
+            imsmanifest.xml · index.html · course.json · fonts/ · media/
           </span>
         </div>
         {error && <p className="mb-3 text-sm text-red-700">{error}</p>}

@@ -5,6 +5,28 @@ import { layoutsFor } from './canvasLayout';
 
 const MEDIA_URL = /https:\/\/[^"\s]+\/courses\/[0-9a-f]{32}\/[0-9a-f]{32}\.[a-z0-9]+/g;
 const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+const WOFF2 = /url\(\s*["']?([^"')]+)["']?\s*\)\s*format\(\s*["']woff2["']\s*\)/;
+
+async function bundleFonts(zip: JSZip): Promise<string> {
+  const sheets = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')]
+    .map((l) => l.href)
+    .filter((href) => new URL(href).origin !== location.origin);
+  const faces: string[] = [];
+  for (const href of sheets) {
+    const res = await fetch(href);
+    if (!res.ok) throw new Error(`Could not fetch the fonts from ${new URL(href).host}`);
+    for (const face of (await res.text()).match(/@font-face\s*{[^}]*}/g) ?? []) {
+      const url = face.match(WOFF2)?.[1];
+      if (!url) continue;
+      const file = await fetch(new URL(url, href));
+      if (!file.ok) throw new Error(`Could not download a font file from ${new URL(href).host}`);
+      const name = `fonts/${faces.length + 1}.woff2`;
+      zip.file(name, await file.blob());
+      faces.push(face.replace(/src:[^;}]*/, `src:url("${name}") format("woff2")`));
+    }
+  }
+  return faces.join('\n');
+}
 
 export interface Check {
   ok: boolean;
@@ -176,6 +198,9 @@ export async function buildZip(
     if (!res.ok) throw new Error(`The course player is missing ${f}`);
     zip.file(f, await res.blob());
   }
+
+  onProgress('Bundling fonts');
+  zip.file('fonts.css', await bundleFonts(zip));
 
   let json = JSON.stringify(doc);
   let mediaBytes = 0;
