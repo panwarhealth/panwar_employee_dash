@@ -141,14 +141,13 @@ function QuestionFrame({
             >
               {message}
               <div className="cp-fbactions">
-                {!correct && tryAgain}
                 <button
                   type="button"
                   className="cp-btn cp-btn-solid"
                   style={partCss(ctx, look.buttonStyle)}
-                  onClick={() => setPopupOpen(false)}
+                  onClick={correct ? () => setPopupOpen(false) : retry}
                 >
-                  OK
+                  {correct ? 'OK' : 'Try again'}
                 </button>
               </div>
             </div>
