@@ -485,6 +485,12 @@
   display: flex;
   flex-direction: column;
 }
+.cp-off {
+  visibility: hidden;
+}
+.cp-obj:has(.cp-off) {
+  pointer-events: none;
+}
 .cp-obj[hidden] {
   display: none;
 }
