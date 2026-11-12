@@ -661,15 +661,19 @@ export function SliderView({ block, ctx }: { block: SliderBlock; ctx: BlockConte
 
 export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockContext }) {
   const [text, setText] = useState(ctx.answers[block.id]?.selected[0] ?? '');
+  const [sent, setSent] = useState(!!ctx.answers[block.id]);
+  const look = block.look ?? {};
+  const button = block.submit !== false;
+  const locked = ctx.edit || (button && sent);
   const save = () => {
     ctx.answer(block.id, [text], text.trim().length > 0);
     if (block.saveTo) ctx.setVar(block.saveTo, text.trim());
   };
+  const margin = (look.buttonMargin ?? BUTTON_MARGIN)
+    .map((n) => `calc(${n} * var(--px, 1px))`)
+    .join(' ');
   return (
-    <div
-      className={`cp-check${block.look?.card === false ? ' cp-bare' : ''}`}
-      style={lookVars(block.look)}
-    >
+    <div className={`cp-check${look.card === false ? ' cp-bare' : ''}`} style={lookVars(look)}>
       <label
         className="cp-q"
         htmlFor={`w-${block.id}`}
@@ -683,10 +687,10 @@ export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockCon
           className="cp-input cp-essay"
           style={itemCss(ctx, block.look?.answerStyle)}
           placeholder={block.placeholder}
-          disabled={ctx.edit}
+          disabled={locked}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onBlur={save}
+          onBlur={button ? undefined : save}
         />
       ) : (
         <input
@@ -694,11 +698,35 @@ export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockCon
           className="cp-input"
           style={itemCss(ctx, block.look?.answerStyle)}
           placeholder={block.placeholder}
-          disabled={ctx.edit}
+          disabled={locked}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onBlur={save}
+          onBlur={button ? undefined : save}
         />
+      )}
+      {button && !sent && (
+        <button
+          type="button"
+          className="cp-btn cp-btn-solid"
+          style={{
+            ...partCss(ctx, look.buttonStyle),
+            alignSelf: JUSTIFY[look.submitAlign ?? 'left'],
+            margin,
+          }}
+          disabled={!text.trim() || ctx.edit}
+          title={text.trim() ? undefined : 'Answer the question first'}
+          onClick={() => {
+            setSent(true);
+            save();
+          }}
+        >
+          {block.submitLabel || 'Submit'}
+        </button>
+      )}
+      {button && sent && block.modelAnswer && (
+        <div className="cp-fb cp-fb-ok" style={{ ...partCss(ctx, look.feedbackStyle), margin }}>
+          {block.modelAnswer}
+        </div>
       )}
     </div>
   );

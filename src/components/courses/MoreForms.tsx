@@ -828,6 +828,26 @@ export function WrittenForm({
         value={block.placeholder ?? ''}
         onChange={(v) => set((b) => (b.placeholder = v || undefined))}
       />
+      <Toggle
+        label="Submit button"
+        checked={block.submit !== false}
+        onChange={(v) => set((b) => (b.submit = v ? undefined : false))}
+      />
+      {block.submit !== false && (
+        <>
+          <TextInput
+            label="Button label"
+            value={block.submitLabel ?? ''}
+            placeholder="Submit"
+            onChange={(v) => set((b) => (b.submitLabel = v || undefined))}
+          />
+          <TextArea
+            label="Model answer shown after submitting"
+            value={block.modelAnswer ?? ''}
+            onChange={(v) => set((b) => (b.modelAnswer = v || undefined))}
+          />
+        </>
+      )}
       <Select
         label="Save the answer into a variable"
         value={block.saveTo ?? ''}

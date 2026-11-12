@@ -156,7 +156,13 @@ function blockDetail(doc: CourseDoc, page: Page, b: Block): Detail | null {
         ],
       };
     case 'written':
-      return { title: 'Written answer', lines: [stripTags(b.prompt)] };
+      return {
+        title: 'Written answer',
+        lines: [
+          stripTags(b.prompt),
+          ...(b.modelAnswer ? [`Model answer: ${b.modelAnswer}`] : []),
+        ],
+      };
     case 'likert':
       return {
         title: 'Rating scale',

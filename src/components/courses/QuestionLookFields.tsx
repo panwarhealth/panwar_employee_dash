@@ -156,9 +156,12 @@ export function QuestionLookFields({
   const cols = block.type === 'check' ? look.answerColumns : undefined;
   const row =
     block.type === 'check' && (!!cols || block.options.every((o) => o.text.length <= 20));
+  const written = block.type === 'written' && block.submit !== false;
   const button = graded
     ? block.submitLabel || 'Submit'
-    : kind === 'results'
+    : written
+      ? block.submitLabel || 'Submit'
+      : kind === 'results'
       ? 'Try again'
       : kind === 'popup'
         ? 'pop-up'
@@ -393,7 +396,7 @@ export function QuestionLookFields({
               />
               <PaddingField
                 label="Space around the button (px)"
-                value={look.buttonMargin ?? (graded ? BUTTON_MARGIN : [0, 0, 0, 0])}
+                value={look.buttonMargin ?? (graded || written ? BUTTON_MARGIN : [0, 0, 0, 0])}
                 onChange={(buttonMargin) => set({ buttonMargin })}
               />
             </>
@@ -409,9 +412,9 @@ export function QuestionLookFields({
               onChange={(feedback) => set({ feedback })}
             />
           )}
-          {graded && (
+          {(graded || (written && block.modelAnswer)) && (
             <PartText
-              label="Feedback text"
+              label={graded ? 'Feedback text' : 'Model answer text'}
               size={base}
               value={look.feedbackStyle}
               onChange={(feedbackStyle) => set({ feedbackStyle })}

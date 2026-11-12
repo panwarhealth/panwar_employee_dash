@@ -527,6 +527,9 @@ export interface WrittenBlock extends BlockBase {
   prompt: string;
   length: 'short' | 'essay';
   placeholder?: string;
+  submit?: boolean;
+  submitLabel?: string;
+  modelAnswer?: string;
   required: boolean;
   saveTo?: string;
   look?: QuestionLook;
