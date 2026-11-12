@@ -991,6 +991,13 @@
   font: inherit;
   text-align: var(--cp-opt-align, left);
 }
+.cp-input::placeholder {
+  color: currentColor;
+  opacity: 0.5;
+}
+.cp-input:disabled {
+  opacity: 1;
+}
 .cp-essay {
   min-height: 9em;
   resize: vertical;

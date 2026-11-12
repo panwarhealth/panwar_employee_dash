@@ -823,6 +823,11 @@ export function WrittenForm({
         ]}
         onChange={(v) => set((b) => (b.length = v))}
       />
+      <TextInput
+        label="Hint inside the box"
+        value={block.placeholder ?? ''}
+        onChange={(v) => set((b) => (b.placeholder = v || undefined))}
+      />
       <Select
         label="Save the answer into a variable"
         value={block.saveTo ?? ''}

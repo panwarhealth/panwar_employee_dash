@@ -682,6 +682,7 @@ export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockCon
           id={`w-${block.id}`}
           className="cp-input cp-essay"
           style={itemCss(ctx, block.look?.answerStyle)}
+          placeholder={block.placeholder}
           disabled={ctx.edit}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -692,6 +693,7 @@ export function WrittenView({ block, ctx }: { block: WrittenBlock; ctx: BlockCon
           id={`w-${block.id}`}
           className="cp-input"
           style={itemCss(ctx, block.look?.answerStyle)}
+          placeholder={block.placeholder}
           disabled={ctx.edit}
           value={text}
           onChange={(e) => setText(e.target.value)}
