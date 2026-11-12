@@ -232,8 +232,8 @@
   border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
 }
 .cp-pills .cp-opt {
-  justify-content: var(--cp-opt-justify, center);
-  text-align: var(--cp-opt-align, center);
+  justify-content: var(--cp-opt-inner, var(--cp-opt-justify, center));
+  text-align: var(--cp-opt-inner-align, var(--cp-opt-align, center));
   font-weight: 700;
   color: var(--cp-opt-ink, var(--cp-accent));
   border: calc(2 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-accent));
@@ -299,8 +299,8 @@
   width: 100%;
   min-height: 2.75em;
   padding: var(--cp-opt-pad, 0.625em 0.875em);
-  justify-content: var(--cp-opt-justify, flex-start);
-  text-align: var(--cp-opt-align, left);
+  justify-content: var(--cp-opt-inner, var(--cp-opt-justify, flex-start));
+  text-align: var(--cp-opt-inner-align, var(--cp-opt-align, left));
   color: var(--cp-opt-ink, inherit);
   background: var(--cp-opt-bg, #fff);
   border: calc(1.5 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-line));

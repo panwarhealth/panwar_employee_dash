@@ -21,6 +21,10 @@ export function lookVars(look: QuestionLook = {}): CSSProperties {
     v['--cp-opt-align'] = look.answerAlign;
     v['--cp-opt-justify'] = JUSTIFY[look.answerAlign];
   }
+  if (look.answerInside) {
+    v['--cp-opt-inner-align'] = look.answerInside;
+    v['--cp-opt-inner'] = JUSTIFY[look.answerInside];
+  }
   if (look.questionGap !== undefined) v['--cp-q-gap'] = px(look.questionGap);
   if (look.answerGap !== undefined) v['--cp-opt-gap'] = px(look.answerGap);
   if (look.answerRowGap !== undefined) v['--cp-opt-rowgap'] = px(look.answerRowGap);

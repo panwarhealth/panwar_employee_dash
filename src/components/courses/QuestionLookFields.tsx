@@ -163,6 +163,9 @@ export function QuestionLookFields({
       : kind === 'popup'
         ? 'pop-up'
         : null;
+  const align =
+    look.answerAlign ??
+    (CENTRED.has(kind) || (pills && look.answers === 'buttons' && !row) ? 'center' : 'left');
   const boxed = BOXED.has(kind);
   const base = look.size ?? 16;
   const ink = look.textColour;
@@ -214,15 +217,18 @@ export function QuestionLookFields({
             <div className="grid grid-cols-2 gap-2">
               <Select
                 label="Text align"
-                value={
-                  look.answerAlign ??
-                  (CENTRED.has(kind) || (pills && look.answers === 'buttons' && !row)
-                    ? 'center'
-                    : 'left')
-                }
+                value={align}
                 options={[...SIDES]}
                 onChange={(answerAlign) => set({ answerAlign })}
               />
+              {pills && (
+                <Select
+                  label="Inside each"
+                  value={look.answerInside ?? align}
+                  options={[...SIDES]}
+                  onChange={(answerInside) => set({ answerInside })}
+                />
+              )}
               {GAP[kind] !== undefined && cols !== 1 && (
                 <Field label={row ? 'Gap across (px)' : 'Gap between (px)'}>
                   <NumberBox

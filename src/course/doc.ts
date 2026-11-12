@@ -440,6 +440,7 @@ export interface QuestionLook {
   submitAlign?: 'left' | 'center' | 'right';
   buttonMargin?: Insets;
   answerAlign?: 'left' | 'center' | 'right';
+  answerInside?: 'left' | 'center' | 'right';
   answerGap?: number;
   answerRowGap?: number;
   answerColumns?: number;
