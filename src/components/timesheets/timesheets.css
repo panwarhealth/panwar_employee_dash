@@ -1191,6 +1191,7 @@
 /* schedule */
 .ts .card.fc {
   padding: 6px 0 10px;
+  overflow: clip;
 }
 .ts .fc-bar {
   display: flex;
@@ -1259,6 +1260,12 @@
   flex: 1;
   position: relative;
   margin: 0 var(--ex) 0 16px;
+}
+.ts .fc-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fff;
 }
 .ts .fc-head .fc-t {
   height: 50px;

@@ -24,7 +24,7 @@ export const Route = createFileRoute('/app/timesheets/')({
       typeof search.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(search.date)
         ? search.date
         : undefined,
-    view: search.view === 'week' ? 'week' : undefined,
+    view: search.view === 'week' || search.view === 'day' ? search.view : undefined,
     person:
       typeof search.person === 'string' && /^[0-9a-f-]{36}$/i.test(search.person)
         ? search.person
@@ -34,6 +34,15 @@ export const Route = createFileRoute('/app/timesheets/')({
 });
 
 const PHONE = '(max-width: 600px)';
+const VIEW_PREF = 'ts.view';
+
+const readViewPref = (): 'day' | 'week' => {
+  try {
+    return localStorage.getItem(VIEW_PREF) === 'week' ? 'week' : 'day';
+  } catch {
+    return 'day';
+  }
+};
 
 function TimesheetPage() {
   const search = Route.useSearch();
@@ -42,7 +51,7 @@ function TimesheetPage() {
   const today = todayIso();
   const date = search.date ?? today;
   const phone = useMediaQuery(PHONE);
-  const view = phone ? 'day' : (search.view ?? 'day');
+  const view = phone ? 'day' : (search.view ?? readViewPref());
   const start = weekStart(date);
   const days = weekDays(start);
 
@@ -76,6 +85,14 @@ function TimesheetPage() {
   });
 
   const go = (next: TimesheetSearch) => navigate({ search: (prev) => ({ ...prev, ...next }) });
+  const pickView = (v: 'day' | 'week') => {
+    go({ view: v });
+    try {
+      localStorage.setItem(VIEW_PREF, v);
+    } catch {
+      return;
+    }
+  };
   const step = view === 'day' ? 1 : 7;
   const label =
     view === 'day'
@@ -135,14 +152,14 @@ function TimesheetPage() {
               <button
                 type="button"
                 className={view === 'day' ? 'on' : ''}
-                onClick={() => go({ view: undefined })}
+                onClick={() => pickView('day')}
               >
                 Day
               </button>
               <button
                 type="button"
                 className={view === 'week' ? 'on' : ''}
-                onClick={() => go({ view: 'week' })}
+                onClick={() => pickView('week')}
               >
                 Week
               </button>
@@ -184,7 +201,7 @@ function TimesheetPage() {
           personId={personId}
           now={now}
           onEdit={setEditing}
-          onOpenDay={(d) => go({ date: d, view: undefined })}
+          onOpenDay={(d) => go({ date: d, view: 'day' })}
           onTrack={() => setTracking(true)}
         />
       )}
