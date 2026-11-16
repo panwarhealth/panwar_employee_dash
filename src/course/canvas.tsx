@@ -23,7 +23,7 @@ import {
 } from './canvasLayout';
 import { animClass, animStyle } from './anim';
 import { centreInside } from './geometry';
-import { passThrough } from './hit';
+import { hoverThrough, passThrough } from './hit';
 import { paintCss } from './typography';
 
 interface HoverUnit {
@@ -187,6 +187,7 @@ export function CanvasStage({
 }) {
   const throughTo = clickThrough(page, layout, ctx.clickable);
   const [hot, setHot] = useState<string | null>(null);
+  const moving = useRef(0);
   const groups = groupsOf(page);
   const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
   const bases = new Set(groups.map((g) => baseOf(page, g, layout)));
@@ -205,6 +206,21 @@ export function CanvasStage({
                 e.stopPropagation();
                 e.preventDefault();
               }
+        }
+        onPointerMove={
+          ctx.edit
+            ? undefined
+            : (e) => {
+                if (e.buttons || moving.current) return;
+                const { currentTarget: stage, clientX: x, clientY: y } = e;
+                moving.current = requestAnimationFrame(() => {
+                  moving.current = 0;
+                  hoverThrough(stage, x, y, '.cp-obj');
+                });
+              }
+        }
+        onPointerLeave={
+          ctx.edit ? undefined : (e) => hoverThrough(e.currentTarget, -1, -1, '.cp-obj')
         }
       >
         {page.blocks.map((b) => {

@@ -66,17 +66,47 @@ export function hitObject(x: number, y: number, selector: string): Element | nul
   return objs.find((o) => paintsAt(o, x, y)) ?? objs[0] ?? null;
 }
 
+export function hoverThrough(stage: Element, x: number, y: number, selector: string) {
+  stage.querySelectorAll<HTMLElement>('[data-through]').forEach((el) => {
+    el.style.pointerEvents = '';
+    delete el.dataset.through;
+  });
+  const objs = objectsAt(x, y, selector).filter((o) => o.closest('.cp-stage') === stage);
+  const hit = objs.find((o) => paintsAt(o, x, y));
+  if (!hit) return;
+  (objs.slice(0, objs.indexOf(hit)) as HTMLElement[]).forEach((el) => {
+    el.style.pointerEvents = 'none';
+    el.dataset.through = '';
+  });
+}
+
 export function passThrough(e: PointerEvent, selector: string): boolean {
   const top = (e.target as Element).closest(selector);
-  const objs = objectsAt(e.clientX, e.clientY, selector);
+  const stage = top?.closest('.cp-stage');
+  const objs = objectsAt(e.clientX, e.clientY, selector).filter(
+    (o) => o.closest('.cp-stage') === stage,
+  );
   const hit = objs.find((o) => paintsAt(o, e.clientX, e.clientY));
   if (!top || !hit || hit === top) return false;
   const above = objs.slice(0, objs.indexOf(hit)) as HTMLElement[];
   above.forEach((el) => (el.style.pointerEvents = 'none'));
-  const restore = () =>
-    window.setTimeout(() => above.forEach((el) => (el.style.pointerEvents = '')));
-  window.addEventListener('pointerup', restore, { once: true, capture: true });
-  window.addEventListener('pointercancel', restore, { once: true, capture: true });
+  let upOn: Element | null = null;
+  const onClick = (c: MouseEvent) => {
+    if (!upOn || !hit.contains(upOn) || hit.contains(c.target as Node)) return;
+    c.stopPropagation();
+    c.preventDefault();
+    upOn.dispatchEvent(new MouseEvent('click', c));
+  };
+  const onUp = (u: PointerEvent) => {
+    upOn = document.elementFromPoint(u.clientX, u.clientY);
+    window.setTimeout(() => {
+      above.forEach((el) => (el.style.pointerEvents = ''));
+      window.removeEventListener('click', onClick, true);
+    });
+  };
+  window.addEventListener('pointerup', onUp, { once: true, capture: true });
+  window.addEventListener('pointercancel', onUp, { once: true, capture: true });
+  window.addEventListener('click', onClick, { once: true, capture: true });
   const under = document.elementFromPoint(e.clientX, e.clientY);
   under?.dispatchEvent(new PointerEvent('pointerdown', e));
   return true;
