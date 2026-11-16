@@ -246,7 +246,7 @@ export function CheckView({ block, ctx }: { block: CheckBlock; ctx: BlockContext
           style={
             cols
               ? {
-                  gridTemplateColumns: `repeat(${cols}, auto)`,
+                  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
                   gridTemplateRows: `repeat(${Math.ceil(options.length / cols)}, auto)`,
                 }
               : undefined
