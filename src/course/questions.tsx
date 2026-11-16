@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useMemo,
   useRef,
   useState,
@@ -490,9 +491,15 @@ export function MatchView({ block, ctx }: { block: MatchBlock; ctx: BlockContext
       (ctx.edit ? block.pairs : shuffled(block.pairs)).map((p) => ({ id: p.id, text: p.right })),
     [block.pairs, ctx.edit],
   );
-  const marks = Object.fromEntries(block.pairs.map((p) => [p.id, placement[p.id] === p.id]));
+  const grid = block.mode === 'grid';
+  const columns = block.columns ?? [];
+  const marks = Object.fromEntries(
+    block.pairs.map((p) => [p.id, grid ? placement[p.id] === p.right : placement[p.id] === p.id]),
+  );
   const correct = Object.values(marks).every(Boolean);
-  const ready = Object.values(placement).some(Boolean);
+  const ready = grid
+    ? block.pairs.every((p) => placement[p.id])
+    : Object.values(placement).some(Boolean);
 
   return (
     <QuestionFrame
@@ -508,7 +515,57 @@ export function MatchView({ block, ctx }: { block: MatchBlock; ctx: BlockContext
       onReset={() => setPlacement({})}
     >
       {({ locked, submitted }) =>
-        block.mode === 'drag' ? (
+        grid ? (
+          <div
+            className="cp-grid"
+            role="group"
+            style={{ gridTemplateColumns: `minmax(0, 1fr) repeat(${columns.length}, auto)` }}
+          >
+            <span />
+            {columns.map((c, i) => (
+              <span
+                key={i}
+                className="cp-grid-head"
+                style={itemCss(ctx, block.look?.answerStyle)}
+              >
+                {c}
+              </span>
+            ))}
+            {block.pairs.map((p) => (
+              <Fragment key={p.id}>
+                <span className="cp-grid-label" style={partCss(ctx, block.look?.labelStyle)}>
+                  {p.left}
+                </span>
+                {columns.map((c, i) => {
+                  const on = placement[p.id] === c;
+                  const mark = submitted && on ? (marks[p.id] ? ' cp-right' : ' cp-wrong') : '';
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`cp-grid-cell${on ? ' cp-on' : ''}${mark}`}
+                      aria-pressed={on}
+                      aria-label={`${p.left}: ${c}`}
+                      disabled={locked}
+                      onClick={() => setPlacement((now) => ({ ...now, [p.id]: c }))}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M5 12.5l4.5 4.5L19 7.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  );
+                })}
+              </Fragment>
+            ))}
+          </div>
+        ) : block.mode === 'drag' ? (
           <DragBoard
             items={rights}
             zones={block.pairs.map((p) => ({ id: p.id, label: p.left, capacity: 1 }))}

@@ -154,8 +154,10 @@ export function QuestionLookFields({
   const items = ITEMS[kind];
   const pills = kind === 'check' || kind === 'pathway';
   const cols = block.type === 'check' ? look.answerColumns : undefined;
+  const grid = block.type === 'match' && block.mode === 'grid';
   const row =
-    block.type === 'check' && (!!cols || block.options.every((o) => o.text.length <= 20));
+    grid ||
+    (block.type === 'check' && (!!cols || block.options.every((o) => o.text.length <= 20)));
   const written = block.type === 'written' && block.submit !== false;
   const button = graded
     ? block.submitLabel || 'Submit'
@@ -172,7 +174,11 @@ export function QuestionLookFields({
   const boxed = BOXED.has(kind);
   const base = look.size ?? 16;
   const ink = look.textColour;
-  const labels = block.type !== 'match' || block.mode === 'drag' ? LABELS[kind] : undefined;
+  const labels = grid
+    ? 'Row labels'
+    : block.type !== 'match' || block.mode === 'drag'
+      ? LABELS[kind]
+      : undefined;
   const box = kind === 'popup' ? 'Pop-up window' : kind === 'hotspots' ? null : 'Box';
   return (
     <>
@@ -254,7 +260,7 @@ export function QuestionLookFields({
               />
             </Field>
           )}
-          {PADDING[kind] && (
+          {PADDING[kind] && !grid && (
             <PaddingField
               label={`Padding inside the ${items} (px)`}
               value={look.answerPadding ?? PADDING[kind]!}
@@ -272,7 +278,7 @@ export function QuestionLookFields({
             onChange={(answerBorder) => set({ answerBorder })}
           />
           <PartText
-            label={`${items[0].toUpperCase()}${items.slice(1)} text`}
+            label={grid ? 'Column headings' : `${items[0].toUpperCase()}${items.slice(1)} text`}
             bold={BOLD_ITEMS.has(kind) || (pills && look.answers === 'buttons')}
             size={Math.round(base * (kind === 'likert' ? 0.85 : kind === 'hotspots' ? 0.9 : 1))}
             colour={look.answerText}

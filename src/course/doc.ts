@@ -501,7 +501,8 @@ export interface DragBlock extends QuestionBase {
 export interface MatchBlock extends QuestionBase {
   type: 'match';
   prompt: string;
-  mode: 'drag' | 'dropdown';
+  mode: 'drag' | 'dropdown' | 'grid';
+  columns?: string[];
   pairs: { id: string; left: string; right: string }[];
 }
 

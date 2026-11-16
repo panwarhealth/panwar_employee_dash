@@ -1161,6 +1161,59 @@
   border-color: var(--cp-bad);
   color: var(--cp-bad);
 }
+.cp-grid {
+  display: grid;
+  align-items: center;
+  gap: var(--cp-opt-rowgap, calc(10 * var(--px, 1px))) var(--cp-opt-gap, calc(24 * var(--px, 1px)));
+  width: 100%;
+}
+.cp-grid-head {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--cp-opt-ink, inherit);
+  text-align: center;
+}
+.cp-grid-label {
+  font-weight: 700;
+  text-align: var(--cp-opt-align, left);
+}
+.cp-grid-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: calc(2 * var(--px, 1px)) solid var(--cp-opt-line, var(--cp-accent));
+  border-radius: 50%;
+  background: var(--cp-opt-bg, #fff);
+  color: #fff;
+  cursor: pointer;
+}
+.cp-grid-cell:disabled {
+  cursor: default;
+}
+.cp-grid-cell svg {
+  width: 70%;
+  height: 70%;
+  visibility: hidden;
+}
+.cp-grid-cell.cp-on {
+  border-color: var(--cp-accent);
+  background: var(--cp-accent);
+}
+.cp-grid-cell.cp-on svg {
+  visibility: visible;
+}
+.cp-grid-cell.cp-right {
+  border-color: var(--cp-ok);
+  background: var(--cp-ok);
+}
+.cp-grid-cell.cp-wrong {
+  border-color: var(--cp-bad);
+  background: var(--cp-bad);
+}
 .cp-blank {
   line-height: 2.4;
 }

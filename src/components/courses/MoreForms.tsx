@@ -692,6 +692,8 @@ export function DragForm({
 }
 
 export function MatchForm({ block, set }: { block: MatchBlock; set: Edit<MatchBlock> }) {
+  const grid = block.mode === 'grid';
+  const columns = block.columns ?? [];
   return (
     <>
       <TextArea
@@ -706,31 +708,114 @@ export function MatchForm({ block, set }: { block: MatchBlock; set: Edit<MatchBl
         options={[
           { value: 'drag', label: 'Dragging' },
           { value: 'dropdown', label: 'Dropdowns' },
+          { value: 'grid', label: 'Picking one column per row' },
         ]}
-        onChange={(v) => set((b) => (b.mode = v))}
+        onChange={(v) =>
+          set((b) => {
+            b.mode = v;
+            if (v !== 'grid' || b.columns?.length) return;
+            const rights = [...new Set(b.pairs.map((p) => p.right))];
+            b.columns = rights.length > 1 ? rights : ['Option 1', 'Option 2'];
+            b.pairs.forEach((p) => {
+              if (!b.columns!.includes(p.right)) p.right = b.columns![0];
+            });
+          })
+        }
       />
+      {grid && (
+        <div>
+          <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">Columns</span>
+          <div className="flex flex-col gap-2">
+            {columns.map((c, i) => (
+              <div key={i} className="flex items-end gap-2">
+                <div className="flex-1">
+                  <TextInput
+                    label={`Column ${i + 1}`}
+                    value={c}
+                    onChange={(v) =>
+                      set((b) => {
+                        b.pairs.forEach((p) => {
+                          if (p.right === c) p.right = v;
+                        });
+                        b.columns![i] = v;
+                      })
+                    }
+                  />
+                </div>
+                {columns.length > 2 && (
+                  <button
+                    type="button"
+                    className={`${linkClass} mb-2 text-xs`}
+                    onClick={() =>
+                      set((b) => {
+                        b.columns!.splice(i, 1);
+                        b.pairs.forEach((p) => {
+                          if (p.right === c) p.right = b.columns![0];
+                        });
+                      })
+                    }
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className={`${linkClass} mt-1.5`}
+            onClick={() => set((b) => b.columns!.push(`Option ${b.columns!.length + 1}`))}
+          >
+            + Add column
+          </button>
+        </div>
+      )}
       <ListEditor
-        label="Pairs"
+        label={grid ? 'Rows' : 'Pairs'}
         items={block.pairs}
         min={2}
-        addLabel="+ Add pair"
-        onAdd={() => set((b) => b.pairs.push({ id: uid(), left: 'Item', right: 'Match' }))}
+        addLabel={grid ? '+ Add row' : '+ Add pair'}
+        onAdd={() =>
+          set((b) =>
+            b.pairs.push({
+              id: uid(),
+              left: 'Item',
+              right: grid ? (b.columns?.[0] ?? '') : 'Match',
+            }),
+          )
+        }
         onRemove={(i) => set((b) => b.pairs.splice(i, 1))}
       >
-        {(p, i) => (
-          <div className="grid grid-cols-2 gap-2">
-            <TextInput
-              label="Item"
-              value={p.left}
-              onChange={(v) => set((b) => (b.pairs[i].left = v))}
-            />
-            <TextInput
-              label="Matches"
-              value={p.right}
-              onChange={(v) => set((b) => (b.pairs[i].right = v))}
-            />
-          </div>
-        )}
+        {(p, i) =>
+          grid ? (
+            <div className="grid grid-cols-2 gap-2">
+              <TextInput
+                label="Row"
+                value={p.left}
+                onChange={(v) => set((b) => (b.pairs[i].left = v))}
+              />
+              <Select
+                label="Correct column"
+                value={p.right}
+                options={columns.map((c) => ({ value: c, label: c }))}
+                onChange={(v) => set((b) => (b.pairs[i].right = v))}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <TextInput
+                label="Item"
+                value={p.left}
+                onChange={(v) => set((b) => (b.pairs[i].left = v))}
+              />
+              <TextInput
+                label="Matches"
+                value={p.right}
+                onChange={(v) => set((b) => (b.pairs[i].right = v))}
+              />
+            </div>
+          )
+        }
       </ListEditor>
       <QuestionCommon block={block} set={set} />
     </>
