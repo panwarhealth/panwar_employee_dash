@@ -290,6 +290,17 @@ const fromPlacement = (p: Placement) =>
     .filter(([, zone]) => zone)
     .map(([item, zone]) => `${item}=${zone}`);
 
+function frameOf(root: Element) {
+  for (let el: Element | null = root; el; el = el.parentElement) {
+    const css = getComputedStyle(el);
+    if (css.transform === 'none' && css.scale === 'none' && css.translate === 'none') continue;
+    const box = el.getBoundingClientRect();
+    const s = (el as HTMLElement).offsetWidth ? box.width / (el as HTMLElement).offsetWidth : 1;
+    return { x: box.left, y: box.top, s: s || 1 };
+  }
+  return { x: 0, y: 0, s: 1 };
+}
+
 function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void) {
   const [selected, setSelected] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{
@@ -309,11 +320,18 @@ function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void
       const sy = e.clientY;
       const root = e.currentTarget.closest('.cp') ?? document.body;
       const fontSize = getComputedStyle(e.currentTarget).fontSize;
+      const frame = frameOf(root);
       let moved = false;
       const move = (ev: PointerEvent) => {
         if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
         moved = true;
-        setGhost({ text, x: ev.clientX, y: ev.clientY, root, fontSize });
+        setGhost({
+          text,
+          x: (ev.clientX - frame.x) / frame.s,
+          y: (ev.clientY - frame.y) / frame.s,
+          root,
+          fontSize,
+        });
       };
       const up = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', move);
