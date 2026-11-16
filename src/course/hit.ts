@@ -16,21 +16,33 @@ function onBorder(s: CSSStyleDeclaration, r: DOMRect, x: number, y: number): boo
   );
 }
 
-function paintedAt(el: Element, r: DOMRect, x: number, y: number): boolean {
+function paintedAt(el: Element, r: DOMRect, x: number, y: number): string | null {
   const s = getComputedStyle(el);
-  if (s.visibility === 'hidden' || s.opacity === '0') return false;
-  if (SOLID_TAGS.has(el.tagName.toUpperCase()) || el.tagName === 'IFRAME') return true;
-  if (el.matches('.cp-shape, .cp-click')) return true;
-  if (!clear(s.backgroundColor) || s.backgroundImage !== 'none') return true;
-  return onBorder(s, r, x, y);
+  if (s.visibility === 'hidden' || s.opacity === '0') return null;
+  if (SOLID_TAGS.has(el.tagName.toUpperCase()) || el.tagName === 'IFRAME') return 'media';
+  if (el.matches('.cp-shape, .cp-click')) return 'shape or clickable';
+  if (!clear(s.backgroundColor)) return `fill ${s.backgroundColor}`;
+  if (s.backgroundImage !== 'none') return 'background image';
+  return onBorder(s, r, x, y) ? `border ${s.borderTopWidth} ${s.borderTopColor}` : null;
 }
 
+const describe = (el: Element) =>
+  `${el.tagName.toLowerCase()}${[...el.classList]
+    .filter((c) => c.startsWith('cp-'))
+    .map((c) => `.${c}`)
+    .join('')}`;
+
 export function paintsAt(root: Element, x: number, y: number): boolean {
-  if (getComputedStyle(root).opacity === '0') return false;
-  if (!inside(root.getBoundingClientRect(), x, y)) return false;
+  return !!solidReason(root, x, y);
+}
+
+export function solidReason(root: Element, x: number, y: number): string | null {
+  if (getComputedStyle(root).opacity === '0') return null;
+  if (!inside(root.getBoundingClientRect(), x, y)) return null;
   for (const el of [root, ...root.querySelectorAll('*')]) {
     const r = el.getBoundingClientRect();
-    if (inside(r, x, y) && paintedAt(el, r, x, y)) return true;
+    const why = inside(r, x, y) ? paintedAt(el, r, x, y) : null;
+    if (why) return `${describe(el)}: ${why}`;
   }
   const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const range = document.createRange();
@@ -38,9 +50,10 @@ export function paintsAt(root: Element, x: number, y: number): boolean {
     if (!n.textContent?.trim()) continue;
     if (n.parentElement && getComputedStyle(n.parentElement).visibility === 'hidden') continue;
     range.selectNodeContents(n);
-    for (const r of range.getClientRects()) if (inside(r, x, y)) return true;
+    for (const r of range.getClientRects())
+      if (inside(r, x, y)) return `text "${n.textContent.trim().slice(0, 30)}"`;
   }
-  return false;
+  return null;
 }
 
 export function objectsAt(x: number, y: number, selector: string): Element[] {

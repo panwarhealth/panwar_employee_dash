@@ -28,7 +28,7 @@ import {
   type Page,
 } from '@/course/doc';
 import { bounds } from '@/course/geometry';
-import { hitObject } from '@/course/hit';
+import { hitObject, objectsAt, solidReason } from '@/course/hit';
 import { cn } from '@/lib/utils';
 import { isDecor } from './blockKinds';
 import { readFlag, saveFlag } from './flags';
@@ -133,6 +133,7 @@ export function CanvasEditor({
   const [live, setLive] = useState<Frame | null>(null);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
   const [showSafeZone, setShowSafeZone] = useState(() => readFlag(SAFE_ZONE_KEY));
+  const [debug, setDebug] = useState<string[] | null>(null);
   const [snap, setSnap] = useState(() => readFlag(SNAP_KEY));
   const [zoom, setZoom] = useState(1);
   const [editing, setEditing] = useState<string | null>(null);
@@ -468,7 +469,20 @@ export function CanvasEditor({
           />
           Show safe zone
         </label>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            checked={debug !== null}
+            onChange={(e) => setDebug(e.target.checked ? [] : null)}
+          />
+          Click debug
+        </label>
       </div>
+      {debug && (
+        <pre className="whitespace-pre-wrap rounded-lg bg-ph-charcoal/5 p-2 text-[11px] leading-snug">
+          {debug.length ? debug.join('\n') : 'Click anywhere on the slide.'}
+        </pre>
+      )}
       <div
         ref={stage}
         className={cn(
@@ -479,6 +493,20 @@ export function CanvasEditor({
         style={zoom === 1 ? undefined : { width: STAGE_PX[layout] * zoom }}
         onPointerMove={move}
         onPointerUp={end}
+        onPointerDownCapture={
+          debug
+            ? (e) => {
+                const lines = objectsAt(e.clientX, e.clientY, '[data-obj]').map((o, i) => {
+                  const id = o.getAttribute('data-obj');
+                  const b = page.blocks.find((x) => x.id === id);
+                  const why = solidReason(o, e.clientX, e.clientY);
+                  return `${i + 1}. ${b?.type ?? '?'} ${id} - ${why ? `solid (${why})` : 'see-through'}`;
+                });
+                const pick = under(e, 'none');
+                setDebug([...lines, `Picked: ${pick}`]);
+              }
+            : undefined
+        }
         onPointerDown={() => {
           setPicked([]);
           onSelect(null);
