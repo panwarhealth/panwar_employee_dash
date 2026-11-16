@@ -1,8 +1,18 @@
 import { Link } from '@tanstack/react-router';
-import { BarChart3, Clock, LayoutGrid, Link2, Mail, QrCode, Shield, X } from 'lucide-react';
+import {
+  BarChart3,
+  Clock,
+  LayoutGrid,
+  Link2,
+  Mail,
+  MonitorPlay,
+  QrCode,
+  Shield,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHasRole } from '@/hooks/useAuth';
-import { MAILER_ROLES } from '@/lib/roles';
+import { COURSE_EDITOR_ROLES, MAILER_ROLES } from '@/lib/roles';
 
 interface NavItem {
   to: string;
@@ -20,11 +30,13 @@ function useNavItems(): NavItem[] {
   const isAdmin = useHasRole('panwar-admin');
   const canEdit = useHasRole('panwar-admin', 'dashboard-editor', 'medical-writer');
   const canMail = useHasRole(...MAILER_ROLES);
+  const canCourse = useHasRole(...COURSE_EDITOR_ROLES);
 
   return [
     { to: '/app', label: 'Home', icon: LayoutGrid, exact: true },
     ...(canEdit ? [{ to: '/app/clients', label: 'Client Dashboards', icon: BarChart3 }] : []),
     ...(canMail ? [{ to: '/app/edm', label: 'eDM Mailer', icon: Mail }] : []),
+    ...(canCourse ? [{ to: '/app/courses', label: 'Course Editor', icon: MonitorPlay }] : []),
     { to: '/app/timesheets', label: 'Timesheets', icon: Clock },
     { to: '/app/qr', label: 'QR Codes', icon: QrCode },
     { to: '/app/links', label: 'UTM Links', icon: Link2 },
