@@ -418,6 +418,16 @@ function DragBoard({
     </span>
   );
   const inZone = (zoneId: string) => items.filter((it) => (placement[it.id] ?? '') === zoneId);
+  const longest = items.reduce((a, b) => (b.text.length > a.length ? b.text : a), '');
+  const filled = (zoneId: string) => {
+    const here = inZone(zoneId);
+    if (here.length) return here.map(tileEl);
+    return (
+      <span className="cp-tile cp-tile-ghost" style={itemStyle} aria-hidden="true">
+        {longest}
+      </span>
+    );
+  };
 
   return (
     <div className={`cp-dnd cp-dnd-${layout}`}>
@@ -441,14 +451,7 @@ function DragBoard({
           ))}
         </div>
       ) : layout === 'table' ? (
-        <div
-          className="cp-table"
-          style={
-            {
-              '--cp-zone-w': `${Math.max(0, ...items.map((i) => i.text.length))}ch`,
-            } as CSSProperties
-          }
-        >
+        <div className="cp-table">
           {headings?.some(Boolean) && (
             <div className="cp-table-row cp-table-head" style={headStyle}>
               <span>{headings[0]}</span>
@@ -458,7 +461,7 @@ function DragBoard({
           {zones.map((z) => (
             <div key={z.id} className="cp-table-row">
               <div className="cp-zone" {...dnd.zone(z.id)}>
-                {inZone(z.id).map(tileEl)}
+                {filled(z.id)}
               </div>
               <span className="cp-table-text" style={labelStyle}>
                 {z.label}
@@ -476,7 +479,7 @@ function DragBoard({
                 </span>
               )}
               <div className="cp-zone" {...dnd.zone(z.id)}>
-                {inZone(z.id).map(tileEl)}
+                {z.capacity === 1 ? filled(z.id) : inZone(z.id).map(tileEl)}
               </div>
             </div>
           ))}

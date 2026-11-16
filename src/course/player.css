@@ -1107,6 +1107,10 @@
   touch-action: none;
   user-select: none;
 }
+.cp-tile-ghost {
+  visibility: hidden;
+  pointer-events: none;
+}
 .cp-tile-on {
   background: var(--cp-accent);
   color: #fff;
@@ -1151,14 +1155,13 @@
 }
 .cp-table .cp-zone {
   justify-content: center;
-  min-width: calc(var(--cp-zone-w, 6ch) + 2.4em);
   min-height: 2.4em;
   border: 0;
   border-radius: 0;
   outline: calc(2 * var(--px, 1px)) dashed color-mix(in srgb, var(--cp-accent) 35%, transparent);
   outline-offset: calc(-5 * var(--px, 1px));
 }
-.cp-table .cp-zone:has(.cp-tile) {
+.cp-table .cp-zone:has(.cp-tile:not(.cp-tile-ghost)) {
   outline: 0;
 }
 .cp-table .cp-zone .cp-tile {
