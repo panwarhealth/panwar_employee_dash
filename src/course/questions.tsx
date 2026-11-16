@@ -34,7 +34,9 @@ function QuestionFrame({
   response,
   correct,
   ready,
+  wrong,
   onReset,
+  onStartOver,
   children,
 }: {
   block: GradedBlock;
@@ -44,7 +46,9 @@ function QuestionFrame({
   response: string[];
   correct: boolean;
   ready: boolean;
+  wrong?: string;
   onReset: () => void;
+  onStartOver?: () => void;
   children: (state: { locked: boolean; submitted: boolean }) => ReactNode;
 }) {
   const [answered, setSubmitted] = useState(!!ctx.answers[block.id]);
@@ -76,18 +80,37 @@ function QuestionFrame({
       className={`cp-fb ${shownCorrect ? 'cp-fb-ok' : 'cp-fb-bad'}`}
       style={partCss(ctx, look.feedbackStyle)}
     >
-      {ctx.showFeedback ? longest : correct ? block.feedbackCorrect : block.feedbackWrong}
+      {ctx.showFeedback
+        ? longest
+        : correct
+          ? block.feedbackCorrect
+          : (wrong ?? block.feedbackWrong)}
     </div>
   );
   const tryAgain = (
-    <button
-      type="button"
-      className="cp-btn cp-btn-outline"
-      style={partCss(ctx, look.buttonStyle)}
-      onClick={retry}
-    >
-      Try again
-    </button>
+    <>
+      <button
+        type="button"
+        className={`cp-btn ${onStartOver ? 'cp-btn-solid' : 'cp-btn-outline'}`}
+        style={partCss(ctx, look.buttonStyle)}
+        onClick={retry}
+      >
+        Try again
+      </button>
+      {onStartOver && (
+        <button
+          type="button"
+          className="cp-btn cp-btn-outline"
+          style={partCss(ctx, look.buttonStyle)}
+          onClick={() => {
+            retry();
+            onStartOver();
+          }}
+        >
+          Start over
+        </button>
+      )}
+    </>
   );
   const player = self.current?.closest<HTMLElement>('.cp');
   return (
@@ -159,14 +182,27 @@ function QuestionFrame({
             >
               {message}
               <div className="cp-fbactions">
-                <button
-                  type="button"
-                  className="cp-btn cp-btn-solid"
-                  style={partCss(ctx, look.buttonStyle)}
-                  onClick={correct ? () => setPopupOpen(false) : retry}
-                >
-                  {correct ? 'OK' : 'Try again'}
-                </button>
+                {correct ? (
+                  <button
+                    type="button"
+                    className="cp-btn cp-btn-solid"
+                    style={partCss(ctx, look.buttonStyle)}
+                    onClick={() => setPopupOpen(false)}
+                  >
+                    OK
+                  </button>
+                ) : onStartOver ? (
+                  tryAgain
+                ) : (
+                  <button
+                    type="button"
+                    className="cp-btn cp-btn-solid"
+                    style={partCss(ctx, look.buttonStyle)}
+                    onClick={retry}
+                  >
+                    Try again
+                  </button>
+                )}
               </div>
             </div>
           </div>,
@@ -425,7 +461,147 @@ function DragBoard({
   );
 }
 
+function startOrder(block: DragBlock, saved: string[] | undefined, edit: boolean): string[] {
+  const ids = block.items.map((i) => i.id);
+  const slots = toPlacement(saved);
+  if (ids.every((id) => slots[id]))
+    return [...ids].sort((a, b) => Number(slots[a].slice(1)) - Number(slots[b].slice(1)));
+  if (edit || ids.length < 2) return ids;
+  let out = shuffled(ids);
+  while (out.every((id, i) => id === ids[i])) out = shuffled(ids);
+  return out;
+}
+
+function OrderView({ block, ctx }: { block: DragBlock; ctx: BlockContext }) {
+  const [order, setOrder] = useState(() =>
+    startOrder(block, ctx.answers[block.id]?.selected, ctx.edit),
+  );
+  const [drag, setDrag] = useState<{ id: string; dy: number } | null>(null);
+  const grab = useRef<{ y0: number; top0: number } | null>(null);
+  const rows = useRef<Record<string, HTMLDivElement | null>>({});
+  const right = block.items.map((i) => i.id);
+  const correct = order.every((id, i) => id === right[i]);
+  const text = (id: string) => block.items.find((i) => i.id === id)?.text ?? '';
+  const miss = order.findIndex((id, i) => id !== right[i]);
+  const nextHint =
+    miss < 0
+      ? undefined
+      : `${block.feedbackWrong} Perhaps ${text(right[miss])} would go above ${text(order[miss])}?`;
+  const move = (from: number, to: number) =>
+    setOrder((now) => {
+      const next = [...now];
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      return next;
+    });
+
+  const onMove = (e: ReactPointerEvent, id: string) => {
+    const g = grab.current;
+    const el = rows.current[id];
+    if (!g || !el || !drag) return;
+    const box = el.getBoundingClientRect();
+    const scale = box.height / el.offsetHeight || 1;
+    const top = g.top0 + (e.clientY - g.y0);
+    const natural = box.top - drag.dy * scale;
+    const i = order.indexOf(id);
+    const below = rows.current[order[i + 1]]?.getBoundingClientRect();
+    const above = rows.current[order[i - 1]]?.getBoundingClientRect();
+    const mid = top + box.height / 2;
+    if (below && mid > below.top + below.height / 2) {
+      move(i, i + 1);
+      setDrag({ id, dy: (top - (natural + below.height + (below.top - box.bottom))) / scale });
+    } else if (above && mid < above.top + above.height / 2) {
+      move(i, i - 1);
+      setDrag({ id, dy: (top - (natural - above.height - (box.top - above.bottom))) / scale });
+    } else setDrag({ id, dy: (top - natural) / scale });
+  };
+
+  return (
+    <QuestionFrame
+      block={block}
+      ctx={ctx}
+      prompt={block.prompt}
+      hint="Drag the items into order, or use the arrows."
+      response={order.map((id, i) => `${id}=s${i}`)}
+      correct={correct}
+      ready
+      wrong={nextHint}
+      onReset={() => {}}
+      onStartOver={() => setOrder(startOrder(block, undefined, false))}
+    >
+      {({ locked, submitted }) => (
+        <div className={`cp-order${submitted && correct ? ' cp-right' : ''}`}>
+          {order.map((id, i) => (
+            <div key={id} className="cp-order-row">
+              <span className="cp-order-num" style={partCss(ctx, block.look?.labelStyle)}>
+                {i + 1}.
+              </span>
+              <div
+                ref={(el) => {
+                  rows.current[id] = el;
+                }}
+                className={`cp-order-item${drag?.id === id ? ' cp-dragging' : ''}`}
+                style={{
+                  ...itemCss(ctx, block.look?.answerStyle),
+                  translate: drag?.id === id ? `0 ${drag.dy}px` : undefined,
+                  cursor: locked ? 'default' : undefined,
+                }}
+                onPointerDown={(e) => {
+                  if (locked || (e.target as HTMLElement).closest('button')) return;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  grab.current = {
+                    y0: e.clientY,
+                    top0: e.currentTarget.getBoundingClientRect().top,
+                  };
+                  setDrag({ id, dy: 0 });
+                }}
+                onPointerMove={(e) => onMove(e, id)}
+                onPointerUp={() => {
+                  grab.current = null;
+                  setDrag(null);
+                }}
+                onPointerCancel={() => {
+                  grab.current = null;
+                  setDrag(null);
+                }}
+              >
+                <span className="cp-order-text">{text(id)}</span>
+                <button
+                  type="button"
+                  className="cp-order-move"
+                  aria-label={`Move ${text(id)} up`}
+                  disabled={locked || i === 0}
+                  onClick={() => move(i, i - 1)}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 15l6-6 6 6" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="cp-order-move"
+                  aria-label={`Move ${text(id)} down`}
+                  disabled={locked || i === order.length - 1}
+                  onClick={() => move(i, i + 1)}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </QuestionFrame>
+  );
+}
+
 export function DragView({ block, ctx }: { block: DragBlock; ctx: BlockContext }) {
+  if (block.style === 'order') return <OrderView block={block} ctx={ctx} />;
+  return <BoardView block={block} ctx={ctx} />;
+}
+
+function BoardView({ block, ctx }: { block: DragBlock; ctx: BlockContext }) {
   const [placement, setPlacement] = useState<Placement>(
     toPlacement(ctx.answers[block.id]?.selected),
   );

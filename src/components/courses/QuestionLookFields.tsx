@@ -176,6 +176,8 @@ export function QuestionLookFields({
   const ink = look.textColour;
   const labels = grid
     ? 'Row labels'
+    : block.type === 'drag' && block.style === 'order'
+      ? 'Numbers'
     : block.type !== 'match' || block.mode === 'drag'
       ? LABELS[kind]
       : undefined;

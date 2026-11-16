@@ -562,7 +562,7 @@ export function DragForm({
         label="Type"
         value={block.style}
         options={[
-          { value: 'order', label: 'Order the items into slots' },
+          { value: 'order', label: 'Rank the items in order' },
           { value: 'targets', label: 'Drop items onto targets on an image' },
           { value: 'groups', label: 'Sort items into groups' },
         ]}
