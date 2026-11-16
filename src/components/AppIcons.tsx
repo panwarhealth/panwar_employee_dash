@@ -108,7 +108,7 @@ export const APPS: readonly AppDefinition[] = [
   },
   {
     to: '/app/timesheets',
-    name: 'Timesheets',
+    name: 'Justin',
     group: 'Team',
     colour: '#b41e8c',
     roles: null,

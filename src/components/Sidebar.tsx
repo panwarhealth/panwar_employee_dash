@@ -37,7 +37,7 @@ function useNavItems(): NavItem[] {
     ...(canEdit ? [{ to: '/app/clients', label: 'Client Dashboards', icon: BarChart3 }] : []),
     ...(canMail ? [{ to: '/app/edm', label: 'eDM Mailer', icon: Mail }] : []),
     ...(canCourse ? [{ to: '/app/courses', label: 'Course Editor', icon: MonitorPlay }] : []),
-    { to: '/app/timesheets', label: 'Timesheets', icon: Clock },
+    { to: '/app/timesheets', label: 'Justin', icon: Clock },
     { to: '/app/qr', label: 'QR Codes', icon: QrCode },
     { to: '/app/links', label: 'UTM Links', icon: Link2 },
     ...(isAdmin ? [{ to: '/app/admin', label: 'Users & Roles', icon: Shield }] : []),

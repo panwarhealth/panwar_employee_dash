@@ -24,8 +24,8 @@ const AVAILABLE_ROLES = [
   { value: 'medical-writer', label: 'Medical Writer' },
   { value: 'mailer', label: 'Mailer' },
   { value: 'course-editor', label: 'Course Editor' },
-  { value: 'timesheets-admin', label: 'Timesheets Admin' },
-  { value: 'timesheets-manager', label: 'Timesheets Manager' },
+  { value: 'timesheets-admin', label: 'Justin Admin' },
+  { value: 'timesheets-manager', label: 'Justin Manager' },
 ];
 
 function AdminPage() {

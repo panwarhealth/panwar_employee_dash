@@ -59,7 +59,7 @@ function TimesheetsLayout() {
   return (
     <div className="ts ts-page">
       <div className={wide ? 'wrap wide' : 'wrap'}>
-        <div className="tool">Timesheets</div>
+        <div className="tool">Justin</div>
         <nav className="tabs">
           {level &&
             TABS.filter((t) => t.min.includes(level)).map((t) => (
@@ -73,7 +73,7 @@ function TimesheetsLayout() {
               </Link>
             ))}
         </nav>
-        {viewer.isError && <p className="err">Timesheets couldn't load. Refresh to try again.</p>}
+        {viewer.isError && <p className="err">Justin couldn't load. Refresh to try again.</p>}
         {level && <Outlet />}
       </div>
     </div>
