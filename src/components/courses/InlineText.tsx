@@ -33,7 +33,7 @@ export function InlineText({
     onDone(
       block.type === 'text'
         ? sanitizeHtml(node.innerHTML)
-        : node.innerText.replace(/\s*\n\s*/g, ' ').trim(),
+        : node.innerText.replace(/[ \t]*\n[ \t]*/g, '\n').trim(),
     );
   };
 
@@ -50,8 +50,8 @@ export function InlineText({
       onBlur={commit}
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
-        if (block.type === 'text' && breakLine(e.nativeEvent, el.current!)) return;
-        if (e.key === 'Escape' || (block.type === 'heading' && e.key === 'Enter')) {
+        if (breakLine(e.nativeEvent, el.current!)) return;
+        if (e.key === 'Escape') {
           e.preventDefault();
           el.current!.blur();
         }

@@ -63,6 +63,10 @@
   justify-content: center;
 }
 
+.cp-h1,
+.cp-h2 {
+  white-space: pre-line;
+}
 .cp-h1 {
   font-size: 28px;
   line-height: 1.2;

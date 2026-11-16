@@ -205,7 +205,7 @@ export function BlockForm({
     case 'heading':
       return (
         <>
-          <TextInput
+          <TextArea
             label="Text"
             value={block.text}
             onChange={(v) => set<typeof block>((b) => (b.text = v))}
