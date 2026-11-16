@@ -368,8 +368,10 @@ function DragBoard({
   marks,
   layout,
   image,
+  headings,
   itemStyle,
   labelStyle,
+  headStyle,
 }: {
   items: { id: string; text: string }[];
   zones: {
@@ -382,10 +384,12 @@ function DragBoard({
   setPlacement: (p: Placement) => void;
   locked: boolean;
   marks: Record<string, boolean> | null;
-  layout: 'slots' | 'image' | 'groups' | 'pairs';
+  layout: 'slots' | 'image' | 'groups' | 'pairs' | 'table';
   image?: string;
+  headings?: [string, string];
   itemStyle?: CSSProperties;
   labelStyle?: CSSProperties;
+  headStyle?: CSSProperties;
 }) {
   const place = (itemId: string, zoneId: string) => {
     const next = { ...placement, [itemId]: zoneId };
@@ -433,6 +437,32 @@ function DragBoard({
               {...dnd.zone(z.id)}
             >
               {inZone(z.id).map(tileEl)}
+            </div>
+          ))}
+        </div>
+      ) : layout === 'table' ? (
+        <div
+          className="cp-table"
+          style={
+            {
+              '--cp-zone-w': `${Math.max(0, ...items.map((i) => i.text.length))}ch`,
+            } as CSSProperties
+          }
+        >
+          {headings?.some(Boolean) && (
+            <div className="cp-table-row cp-table-head" style={headStyle}>
+              <span>{headings[0]}</span>
+              <span>{headings[1]}</span>
+            </div>
+          )}
+          {zones.map((z) => (
+            <div key={z.id} className="cp-table-row">
+              <div className="cp-zone" {...dnd.zone(z.id)}>
+                {inZone(z.id).map(tileEl)}
+              </div>
+              <span className="cp-table-text" style={labelStyle}>
+                {z.label}
+              </span>
             </div>
           ))}
         </div>
@@ -750,9 +780,11 @@ export function MatchView({ block, ctx }: { block: MatchBlock; ctx: BlockContext
             setPlacement={setPlacement}
             locked={locked}
             marks={submitted ? marks : null}
-            layout="pairs"
+            layout={block.table ? 'table' : 'pairs'}
+            headings={block.headings}
             itemStyle={itemCss(ctx, block.look?.answerStyle)}
             labelStyle={partCss(ctx, block.look?.labelStyle)}
+            headStyle={partCss(ctx, block.look?.bodyStyle)}
           />
         ) : (
           <div className="cp-matchrows">

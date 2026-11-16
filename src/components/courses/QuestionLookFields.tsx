@@ -151,7 +151,7 @@ export function QuestionLookFields({
   const set = (patch: Partial<QuestionLook>) => onChange({ ...look, ...patch });
   const kind = block.type;
   const graded = isQuestion(block);
-  const items = ITEMS[kind];
+  const items = block.type === 'match' && block.mode === 'drag' ? 'tiles' : ITEMS[kind];
   const pills = kind === 'check' || kind === 'pathway';
   const cols = block.type === 'check' ? look.answerColumns : undefined;
   const grid = block.type === 'match' && block.mode === 'grid';
@@ -297,9 +297,9 @@ export function QuestionLookFields({
               onChange={(labelStyle) => set({ labelStyle })}
             />
           )}
-          {BODY[kind] && (
+          {(BODY[kind] || (block.type === 'match' && block.table)) && (
             <PartText
-              label={BODY[kind]!}
+              label={BODY[kind] ?? 'Heading row text'}
               size={base}
               colour={ink}
               value={look.bodyStyle}

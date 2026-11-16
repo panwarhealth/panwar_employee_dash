@@ -1116,11 +1116,59 @@
 }
 .cp-tile.cp-right {
   border-color: var(--cp-ok);
-  color: var(--cp-ok);
+  background: var(--cp-ok);
+  color: #fff;
 }
 .cp-tile.cp-wrong {
   border-color: var(--cp-bad);
-  color: var(--cp-bad);
+  background: var(--cp-bad);
+  color: #fff;
+}
+.cp-table {
+  display: grid;
+  grid-template-columns: minmax(7em, max-content) 1fr;
+  gap: calc(2 * var(--px, 1px));
+}
+.cp-table-row {
+  display: contents;
+}
+.cp-table-row > * {
+  padding: 0.25em 0.5em;
+  background: color-mix(in srgb, var(--cp-accent) 16%, #fff);
+}
+.cp-table-head > * {
+  padding: 0.3em 0.5em;
+  background: var(--cp-accent);
+  color: #fff;
+  font-weight: 700;
+}
+.cp-table-text {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  color: var(--cp-accent);
+}
+.cp-table .cp-zone {
+  justify-content: center;
+  min-width: calc(var(--cp-zone-w, 6ch) + 2.4em);
+  min-height: 2.4em;
+  border: 0;
+  border-radius: 0;
+  outline: calc(2 * var(--px, 1px)) dashed color-mix(in srgb, var(--cp-accent) 35%, transparent);
+  outline-offset: calc(-5 * var(--px, 1px));
+}
+.cp-table .cp-zone:has(.cp-tile) {
+  outline: 0;
+}
+.cp-table .cp-zone .cp-tile {
+  flex: 1;
+  justify-content: center;
+}
+.cp-dnd-table .cp-bank {
+  justify-content: var(--cp-opt-justify, center);
+  border: 0;
+  background: none;
 }
 .cp-ghost {
   position: fixed;

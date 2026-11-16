@@ -745,6 +745,27 @@ export function MatchForm({ block, set }: { block: MatchBlock; set: Edit<MatchBl
           })
         }
       />
+      {block.mode === 'drag' && (
+        <Toggle
+          label="Show as a table"
+          checked={!!block.table}
+          onChange={(v) => set((b) => (b.table = v || undefined))}
+        />
+      )}
+      {block.mode === 'drag' && block.table && (
+        <div className="grid grid-cols-2 gap-2">
+          <TextInput
+            label="Heading over the drop column"
+            value={block.headings?.[0] ?? ''}
+            onChange={(v) => set((b) => (b.headings = [v, b.headings?.[1] ?? '']))}
+          />
+          <TextInput
+            label="Heading over the text column"
+            value={block.headings?.[1] ?? ''}
+            onChange={(v) => set((b) => (b.headings = [b.headings?.[0] ?? '', v]))}
+          />
+        </div>
+      )}
       {grid && (
         <div>
           <span className="mb-1 block text-xs font-semibold text-ph-charcoal/60">Columns</span>

@@ -504,6 +504,8 @@ export interface MatchBlock extends QuestionBase {
   prompt: string;
   mode: 'drag' | 'dropdown' | 'grid';
   columns?: string[];
+  table?: boolean;
+  headings?: [string, string];
   pairs: { id: string; left: string; right: string }[];
 }
 
