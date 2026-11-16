@@ -165,6 +165,7 @@ export function Player({
   const [leaving, setLeaving] = useState(false);
   const [previous, setPrevious] = useState<{
     page: Page;
+    ctx: BlockContext;
     hidden: Set<string>;
     leaving: boolean;
     forward: boolean;
@@ -230,6 +231,7 @@ export function Player({
       const outTime = (ownOut ? page.exitTransitionTime : target?.transitionTime) ?? TRANSITION_TIME;
       setPrevious({
         page,
+        ctx,
         hidden,
         leaving: hasExit(page),
         forward: to > index,
@@ -456,7 +458,7 @@ export function Player({
               <PageBody
                 page={previous.page}
                 layout={layout}
-                ctx={ctx}
+                ctx={previous.ctx}
                 hidden={previous.hidden}
                 leaving={previous.leaving}
                 onRetryPicks={() => {}}
