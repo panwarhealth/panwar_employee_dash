@@ -64,7 +64,10 @@
 }
 
 .cp-h1,
-.cp-h2 {
+.cp-h2,
+.cp-q,
+.cp-fb,
+.cp-flip-back {
   white-space: pre-line;
 }
 .cp-h1 {
