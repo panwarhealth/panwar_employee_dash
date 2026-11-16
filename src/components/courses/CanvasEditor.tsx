@@ -28,6 +28,7 @@ import {
   type Page,
 } from '@/course/doc';
 import { bounds } from '@/course/geometry';
+import { hitObject } from '@/course/hit';
 import { cn } from '@/lib/utils';
 import { isDecor } from './blockKinds';
 import { readFlag, saveFlag } from './flags';
@@ -66,6 +67,10 @@ interface Guides {
 const SNAP = 1;
 const PICKED = '__picked';
 const MIN = 2;
+
+function under(e: { clientX: number; clientY: number }, fallback: string): string {
+  return hitObject(e.clientX, e.clientY, '[data-obj]')?.getAttribute('data-obj') ?? fallback;
+}
 
 function selectionOf(page: Page, selectedId: string | null): string[] {
   if (!selectedId) return [];
@@ -512,11 +517,13 @@ export function CanvasEditor({
                     picked.includes(b.id) && 'outline-dashed outline-2 outline-ph-purple',
                   )}
                   style={frameStyle(f, growsToFit(b))}
-                  onPointerDown={typing ? undefined : (e) => begin(e, b.id, 'move')}
-                  onContextMenu={typing ? undefined : (e) => openMenu(e, b.id)}
-                  onDoubleClick={() => {
-                    if (groupBy.has(b.id) && selectedId !== b.id) onSelect(b.id);
-                    else if (b.type === 'heading' || b.type === 'text') setEditing(b.id);
+                  onPointerDown={typing ? undefined : (e) => begin(e, under(e, b.id), 'move')}
+                  onContextMenu={typing ? undefined : (e) => openMenu(e, under(e, b.id))}
+                  onDoubleClick={(e) => {
+                    const id = under(e, b.id);
+                    const hit = page.blocks.find((x) => x.id === id);
+                    if (groupBy.has(id) && selectedId !== id) onSelect(id);
+                    else if (hit?.type === 'heading' || hit?.type === 'text') setEditing(id);
                   }}
                 >
                   {typing ? (

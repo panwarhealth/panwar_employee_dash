@@ -23,6 +23,7 @@ import {
 } from './canvasLayout';
 import { animClass, animStyle } from './anim';
 import { centreInside } from './geometry';
+import { passThrough } from './hit';
 import { paintCss } from './typography';
 
 interface HoverUnit {
@@ -196,6 +197,15 @@ export function CanvasStage({
       <div
         className={`cp-stage cp-stage-${layout}`}
         style={paintCss(...pagePaint(page, layout))}
+        onPointerDownCapture={
+          ctx.edit
+            ? undefined
+            : (e) => {
+                if (!passThrough(e.nativeEvent, '.cp-obj')) return;
+                e.stopPropagation();
+                e.preventDefault();
+              }
+        }
       >
         {page.blocks.map((b) => {
           if (isHiddenPopup(b) || b.hidden) return <div key={b.id} className="cp-obj" hidden />;
