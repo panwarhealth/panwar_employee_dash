@@ -1,4 +1,11 @@
-import { groupsOf, type Block, type ButtonAction, type CourseDoc, type Page } from '@/course/doc';
+import {
+  counts,
+  groupsOf,
+  type Block,
+  type ButtonAction,
+  type CourseDoc,
+  type Page,
+} from '@/course/doc';
 import { blockText, htmlLines, stripTags } from '@/course/text';
 
 export interface Detail {
@@ -122,11 +129,14 @@ function blockDetail(doc: CourseDoc, page: Page, b: Block): Detail | null {
       const place = (id: string) =>
         b.targets.find((t) => t.id === id)?.label ?? b.groups.find((g) => g.id === id)?.label ?? '';
       return {
-        title: `Drag and drop${b.scored ? ' (scored)' : ''}`,
+        title: `Drag and drop${counts(b) ? ' (scored)' : ''}`,
         lines: [
           stripTags(b.prompt),
           ...(b.style === 'order'
-            ? ['Correct order:', ...b.items.map((i, n) => `   ${n + 1}. ${i.text}`)]
+            ? [
+                b.anyOrder ? 'Any order is correct:' : 'Correct order:',
+                ...b.items.map((i, n) => `   ${n + 1}. ${i.text}`),
+              ]
             : b.items.map((i) => `   ${i.text}: ${place(i.target)}`)),
           ...feedback(b.feedbackCorrect, b.feedbackWrong),
         ],

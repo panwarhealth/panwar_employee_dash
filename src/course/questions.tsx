@@ -480,7 +480,8 @@ function OrderView({ block, ctx }: { block: DragBlock; ctx: BlockContext }) {
   const grab = useRef<{ y0: number; top0: number } | null>(null);
   const rows = useRef<Record<string, HTMLDivElement | null>>({});
   const right = block.items.map((i) => i.id);
-  const correct = order.every((id, i) => id === right[i]);
+  const open = !!block.anyOrder;
+  const correct = open || order.every((id, i) => id === right[i]);
   const text = (id: string) => block.items.find((i) => i.id === id)?.text ?? '';
   const miss = order.findIndex((id, i) => id !== right[i]);
   const nextHint =
@@ -529,7 +530,7 @@ function OrderView({ block, ctx }: { block: DragBlock; ctx: BlockContext }) {
       onStartOver={() => setOrder(startOrder(block, undefined, false))}
     >
       {({ locked, submitted }) => (
-        <div className={`cp-order${submitted && correct ? ' cp-right' : ''}`}>
+        <div className={`cp-order${submitted && correct && !open ? ' cp-right' : ''}`}>
           {order.map((id, i) => (
             <div key={id} className="cp-order-row">
               <span className="cp-order-num" style={partCss(ctx, block.look?.labelStyle)}>

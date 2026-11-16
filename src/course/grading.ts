@@ -1,4 +1,11 @@
-import { isQuestion, type CourseDoc, type GradedBlock, type Page, type ResultsBlock } from './doc';
+import {
+  counts,
+  isQuestion,
+  type CourseDoc,
+  type GradedBlock,
+  type Page,
+  type ResultsBlock,
+} from './doc';
 import type { ResultsData } from './context';
 import type { Answer } from './scorm';
 import { shuffled } from './util';
@@ -21,7 +28,7 @@ export function resultsSettings(doc: CourseDoc): ResultsBlock | undefined {
 
 export function choosePool(doc: CourseDoc): string[] {
   const size = resultsSettings(doc)?.pool;
-  const quizPages = doc.pages.filter((p) => p.blocks.some((b) => isQuestion(b) && b.scored));
+  const quizPages = doc.pages.filter((p) => p.blocks.some((b) => isQuestion(b) && counts(b)));
   if (!size || size >= quizPages.length) return [];
   return shuffled(quizPages)
     .slice(size)
@@ -36,7 +43,7 @@ export function computeResults(
   const questions = doc.pages
     .filter((p) => !skip.includes(p.id))
     .flatMap((p) => p.blocks)
-    .filter((b): b is GradedBlock => isQuestion(b) && b.scored);
+    .filter((b): b is GradedBlock => isQuestion(b) && counts(b));
   const review = questions.map((q) => ({
     id: q.id,
     prompt: questionPrompt(q),

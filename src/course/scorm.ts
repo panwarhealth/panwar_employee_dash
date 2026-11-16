@@ -1,5 +1,5 @@
 import { deflateSync, inflateSync, strFromU8, strToU8 } from 'fflate';
-import type { Block, CourseDoc } from './doc';
+import { counts, isQuestion, type Block, type CourseDoc } from './doc';
 
 export interface Answer {
   selected: string[];
@@ -171,7 +171,7 @@ export function scormLms(doc: CourseDoc): Lms | null {
       const type =
         q.block.type === 'drag' && q.block.style === 'order' ? 'sequencing' : KIND[q.block.type];
       const result =
-        'scored' in q.block && q.block.scored ? (a.correct ? 'correct' : 'wrong') : 'neutral';
+        isQuestion(q.block) && counts(q.block) ? (a.correct ? 'correct' : 'wrong') : 'neutral';
       const time = clock(new Date());
       const parts = pieces(describeAnswer(q.block, a.selected));
       parts.forEach((part, i) => {

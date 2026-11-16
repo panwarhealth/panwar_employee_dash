@@ -490,6 +490,7 @@ export interface DropTarget {
 export interface DragBlock extends QuestionBase {
   type: 'drag';
   style: 'order' | 'targets' | 'groups';
+  anyOrder?: boolean;
   prompt: string;
   items: DragItem[];
   targets: DropTarget[];
@@ -842,8 +843,11 @@ export const hasLook = (b: Block): b is LookedBlock => LOOKED.has(b.type);
 export function scoredQuestions(doc: CourseDoc): GradedBlock[] {
   return doc.pages
     .flatMap((p) => p.blocks)
-    .filter((b): b is GradedBlock => isQuestion(b) && b.scored);
+    .filter((b): b is GradedBlock => isQuestion(b) && counts(b));
 }
+
+export const counts = (b: GradedBlock) =>
+  b.scored && !(b.type === 'drag' && b.style === 'order' && b.anyOrder);
 
 export function moveItem<T>(list: T[], from: number, to: number): void {
   const [item] = list.splice(from, 1);

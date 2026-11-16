@@ -103,7 +103,15 @@ function NumberInput({
   );
 }
 
-function QuestionCommon<B extends QuestionBase>({ block, set }: { block: B; set: Edit<B> }) {
+function QuestionCommon<B extends QuestionBase>({
+  block,
+  set,
+  open = false,
+}: {
+  block: B;
+  set: Edit<B>;
+  open?: boolean;
+}) {
   return (
     <>
       <TextInput
@@ -113,25 +121,29 @@ function QuestionCommon<B extends QuestionBase>({ block, set }: { block: B; set:
         onChange={(v) => set((b) => (b.submitLabel = v || undefined))}
       />
       <TextInput
-        label="Feedback when correct"
+        label={open ? 'Feedback after submitting' : 'Feedback when correct'}
         value={block.feedbackCorrect}
         onChange={(v) => set((b) => (b.feedbackCorrect = v))}
       />
-      <TextInput
-        label="Feedback when wrong"
-        value={block.feedbackWrong}
-        onChange={(v) => set((b) => (b.feedbackWrong = v))}
-      />
+      {!open && (
+        <TextInput
+          label="Feedback when wrong"
+          value={block.feedbackWrong}
+          onChange={(v) => set((b) => (b.feedbackWrong = v))}
+        />
+      )}
       <Toggle
-        label="Must get it right before continuing"
+        label={open ? 'Must submit before continuing' : 'Must get it right before continuing'}
         checked={block.required}
         onChange={(v) => set((b) => (b.required = v))}
       />
-      <Toggle
-        label="Counts toward the pass mark"
-        checked={block.scored}
-        onChange={(v) => set((b) => (b.scored = v))}
-      />
+      {!open && (
+        <Toggle
+          label="Counts toward the pass mark"
+          checked={block.scored}
+          onChange={(v) => set((b) => (b.scored = v))}
+        />
+      )}
     </>
   );
 }
@@ -661,7 +673,11 @@ export function DragForm({
       )}
       <ListEditor
         label={
-          block.style === 'order' ? 'Items, in the correct order' : 'Items and where each belongs'
+          block.style !== 'order'
+            ? 'Items and where each belongs'
+            : block.anyOrder
+              ? 'Items'
+              : 'Items, in the correct order'
         }
         items={block.items}
         addLabel="+ Add item"
@@ -686,7 +702,14 @@ export function DragForm({
           </>
         )}
       </ListEditor>
-      <QuestionCommon block={block} set={set} />
+      {block.style === 'order' && (
+        <Toggle
+          label="Any order is correct"
+          checked={!!block.anyOrder}
+          onChange={(v) => set((b) => (b.anyOrder = v || undefined))}
+        />
+      )}
+      <QuestionCommon block={block} set={set} open={block.style === 'order' && !!block.anyOrder} />
     </>
   );
 }
