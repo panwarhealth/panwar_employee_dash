@@ -437,6 +437,12 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           courseId={courseId}
           doc={doc}
           onExported={() => void queryClient.invalidateQueries({ queryKey: ['courses'] })}
+          onGoTo={selectPage}
+          fixing={assistant.busy}
+          onFix={(request) => {
+            setAssistantOpen(true);
+            void assistant.send({ pageId: page.id, layout, selectedId: blockId }, request);
+          }}
         />
         {assistantOpen && (
           <AssistantPanel

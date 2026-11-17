@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import type { CourseDoc } from './doc';
+import type { Action, Block, ButtonAction, CourseDoc, Page } from './doc';
 import { groupsOf, scoredQuestions } from './doc';
 import { layoutsFor } from './canvasLayout';
 
@@ -31,7 +31,10 @@ async function bundleFonts(zip: JSZip): Promise<string> {
 export interface Check {
   ok: boolean;
   text: string;
+  pages?: { id: string; title: string }[];
 }
+
+const named = (pages: Page[]) => pages.map((p) => ({ id: p.id, title: p.title || 'Untitled' }));
 
 export function mediaUrls(doc: CourseDoc): string[] {
   return [...new Set(JSON.stringify(doc).match(MEDIA_URL) ?? [])];
@@ -45,7 +48,8 @@ export function preflight(doc: CourseDoc): Check[] {
     emptyPages.length
       ? {
           ok: false,
-          text: `${plural(emptyPages.length, 'page')} with nothing on it: ${emptyPages.map((p) => p.title).join(', ')}`,
+          text: `${plural(emptyPages.length, 'page')} with nothing on it`,
+          pages: named(emptyPages),
         }
       : {
           ok: true,
@@ -54,41 +58,40 @@ export function preflight(doc: CourseDoc): Check[] {
   );
 
   const needsFile = ['image', 'video', 'audio', 'animation', 'hotspots'];
-  const missing = blocks.filter(
-    (b) =>
-      (needsFile.includes(b.type) && 'src' in b && !b.src) ||
-      (b.type === 'embed' && !b.url) ||
-      (b.type === 'drag' && b.style === 'targets' && !b.src),
-  );
+  const unfilled = (b: Block) =>
+    (needsFile.includes(b.type) && 'src' in b && !b.src) ||
+    (b.type === 'embed' && !b.url) ||
+    (b.type === 'drag' && b.style === 'targets' && !b.src);
+  const missing = blocks.filter(unfilled);
   if (missing.length)
     checks.push({
       ok: false,
       text: `${plural(missing.length, 'media block')} without a file or link`,
+      pages: named(doc.pages.filter((p) => p.blocks.some(unfilled))),
     });
 
   const notes = doc.pages.filter((p) => p.notes?.length);
   if (notes.length)
     checks.push({
       ok: false,
-      text: `Review notes still open on: ${notes.map((p) => p.title).join(', ')}`,
+      text: 'Review notes still open',
+      pages: named(notes),
     });
 
   const pageIds = new Set(doc.pages.map((p) => p.id));
-  const triggerActions = doc.pages.flatMap((p) => p.triggers.map((t) => t.action));
-  const targets = [
-    ...triggerActions,
-    ...blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
+  const actionsOn = (p: Page): (Action | ButtonAction)[] => [
+    ...p.triggers.map((t) => t.action),
+    ...p.blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
   ];
   const blockIds = new Set([
     ...blocks.map((b) => b.id),
     ...doc.pages.flatMap((p) => groupsOf(p).map((g) => g.id)),
   ]);
-  const deadLinks = targets.filter(
-    (a) =>
-      (a.kind === 'page' && !pageIds.has(a.pageId)) ||
-      ((a.kind === 'popup' || a.kind === 'show' || a.kind === 'hide') && !blockIds.has(a.blockId)),
-  );
-  const leaves = (a: { kind: string }) => ['next', 'page', 'finish'].includes(a.kind);
+  const dead = (a: Action | ButtonAction) =>
+    (a.kind === 'page' && !pageIds.has(a.pageId)) ||
+    ((a.kind === 'popup' || a.kind === 'show' || a.kind === 'hide') && !blockIds.has(a.blockId));
+  const deadLinks = doc.pages.flatMap(actionsOn).filter(dead);
+  const leaves = (a: { kind: string }) => ['next', 'prev', 'page', 'finish'].includes(a.kind);
   const stuck = doc.navBar
     ? []
     : doc.pages.filter(
@@ -103,21 +106,24 @@ export function preflight(doc: CourseDoc): Check[] {
   if (stuck.length)
     checks.push({
       ok: false,
-      text: `No way to move on from: ${stuck.map((p) => p.title).join(', ')} (add a button that goes to the next page, or turn on the Back and Continue bar in course settings)`,
+      text: 'No way to leave these pages. Add a button or trigger that goes somewhere, or turn on the Back and Continue bar in course settings.',
+      pages: named(stuck),
     });
 
-  const unsetPaths = blocks.filter(
-    (b) => b.type === 'pathway' && b.choices.some((c) => !pageIds.has(c.pageId)),
-  );
+  const unsetPath = (b: Block) =>
+    b.type === 'pathway' && b.choices.some((c) => !pageIds.has(c.pageId));
+  const unsetPaths = blocks.filter(unsetPath);
   if (unsetPaths.length)
     checks.push({
       ok: false,
       text: `${plural(unsetPaths.length, 'pathway choice')} block with a choice that goes nowhere`,
+      pages: named(doc.pages.filter((p) => p.blocks.some(unsetPath))),
     });
   if (deadLinks.length)
     checks.push({
       ok: false,
-      text: `${plural(deadLinks.length, 'click action')} going to a page or pop-up that no longer exists`,
+      text: `${plural(deadLinks.length, 'click action')} going to a page, pop-up or object that no longer exists`,
+      pages: named(doc.pages.filter((p) => actionsOn(p).some(dead))),
     });
 
   for (const layout of layoutsFor(doc.screens)) {
@@ -125,7 +131,8 @@ export function preflight(doc: CourseDoc): Check[] {
     if (unset.length)
       checks.push({
         ok: false,
-        text: `${layout === 'phone' ? 'Phone' : 'Desktop'} layout not set up on: ${unset.map((p) => p.title).join(', ')}`,
+        text: `${layout === 'phone' ? 'Phone' : 'Desktop'} layout not set up`,
+        pages: named(unset),
       });
   }
 

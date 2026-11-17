@@ -1,10 +1,17 @@
 import { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, Sparkles, X } from 'lucide-react';
 import { downloadMedia, markExported } from '@/api/courses';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
-import { buildZip, mediaUrls, plural, preflight, slugify } from '@/course/exportZip';
+import {
+  buildZip,
+  mediaUrls,
+  plural,
+  preflight,
+  slugify,
+  type Check as Finding,
+} from '@/course/exportZip';
 import { cn, saveBlob } from '@/lib/utils';
 
 export function ExportModal({
@@ -13,12 +20,18 @@ export function ExportModal({
   courseId,
   doc,
   onExported,
+  onGoTo,
+  onFix,
+  fixing,
 }: {
   open: boolean;
   onClose: () => void;
   courseId: string;
   doc: CourseDoc;
   onExported: () => void;
+  onGoTo: (pageId: string) => void;
+  onFix: (request: string) => void;
+  fixing: boolean;
 }) {
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +39,21 @@ export function ExportModal({
   const ready = checks.every((c) => c.ok);
   const media = mediaUrls(doc).length;
   const fileName = `${slugify(doc.title)}.zip`;
+  const number = (id: string) => doc.pages.findIndex((p) => p.id === id) + 1;
+  const shown: Finding[] = [
+    ...checks,
+    { ok: true, text: media ? `${plural(media, 'media file')} to bundle` : 'No media files' },
+  ];
+  const request = [
+    'The export check found these problems. Fix them, and ask me first if a fix means deleting',
+    'anything or guessing where a link should go.',
+    ...checks
+      .filter((c) => !c.ok)
+      .map((c) => {
+        const where = c.pages?.map((p) => `"${p.title}" (${p.id})`).join(', ');
+        return `- ${c.text}${where ? ` Pages: ${where}` : ''}`;
+      }),
+  ].join('\n');
 
   const run = async () => {
     setError(null);
@@ -56,13 +84,7 @@ export function ExportModal({
           SCORM 1.2.
         </p>
         <ol className="mb-5 flex flex-col gap-3">
-          {[
-            ...checks,
-            {
-              ok: true,
-              text: media ? `${plural(media, 'media file')} to bundle` : 'No media files',
-            },
-          ].map((c) => (
+          {shown.map((c) => (
             <li key={c.text} className="flex items-start gap-3 text-sm text-ph-charcoal">
               <i
                 className={cn(
@@ -72,7 +94,26 @@ export function ExportModal({
               >
                 {c.ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
               </i>
-              <span className="pt-0.5">{c.text}</span>
+              <span className="pt-0.5">
+                {c.text}
+                {c.pages && (
+                  <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                    {c.pages.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          onGoTo(p.id);
+                          onClose();
+                        }}
+                        className="text-ph-purple underline underline-offset-2"
+                      >
+                        {number(p.id)}. {p.title}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </span>
             </li>
           ))}
         </ol>
@@ -83,13 +124,29 @@ export function ExportModal({
             imsmanifest.xml · index.html · course.json · fonts/ · media/
           </span>
         </div>
+        {!ready && (
+          <p className="mb-3 text-sm text-ph-charcoal/60">
+            The zip will still download, with the problems above in it.
+          </p>
+        )}
         {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
         <div className="flex items-center gap-4">
-          <Button size="lg" disabled={!ready || progress !== null} onClick={() => void run()}>
-            {progress ?? 'Download zip'}
+          <Button size="lg" disabled={progress !== null} onClick={() => void run()}>
+            {progress ?? (ready ? 'Download zip' : 'Download anyway')}
           </Button>
           {!ready && (
-            <span className="text-sm text-ph-charcoal/60">Fix the items above first.</span>
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={fixing || progress !== null}
+              onClick={() => {
+                onFix(request);
+                onClose();
+              }}
+            >
+              <Sparkles className="mr-1.5 h-4 w-4" />
+              Fix with AI
+            </Button>
           )}
         </div>
       </div>
