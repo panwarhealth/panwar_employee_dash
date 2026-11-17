@@ -95,6 +95,7 @@ export interface Page {
   looks?: Partial<Record<Layout, PageLook>>;
   notes?: ReviewNote[];
   groups?: Group[];
+  flow?: { x: number; y: number };
 }
 
 export interface Group {

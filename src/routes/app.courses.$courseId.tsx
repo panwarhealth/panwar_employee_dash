@@ -10,6 +10,7 @@ import {
   Smartphone,
   Sparkles,
   Undo2,
+  Workflow,
 } from 'lucide-react';
 import { CanvasEditor } from '@/components/courses/CanvasEditor';
 import { relayout } from '@/components/courses/deckToPages';
@@ -18,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { AddBlockMenu } from '@/components/courses/AddBlockMenu';
 import { AssistantPanel } from '@/components/courses/AssistantPanel';
 import { ExportModal } from '@/components/courses/ExportModal';
+import { FlowView } from '@/components/courses/FlowView';
 import { HistoryModal } from '@/components/courses/HistoryModal';
 import { Inspector } from '@/components/courses/Inspector';
 import { PageList } from '@/components/courses/PageList';
@@ -86,7 +88,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const [blockId, setBlockId] = useState<string | null>(null);
   const [phone, setPhone] = useState(initial.screens === 'phone');
   const [modal, setModal] = useState<
-    'add' | 'export' | 'pdf' | 'settings' | 'preview' | 'variables' | 'history' | null
+    'add' | 'export' | 'pdf' | 'settings' | 'preview' | 'variables' | 'history' | 'flow' | null
   >(null);
   const save = useCourseAutosave(courseId, doc);
   const assistant = useCourseAssistant(courseId, doc, setDoc);
@@ -255,6 +257,14 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               </button>
               <button
                 type="button"
+                onClick={() => setModal('flow')}
+                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
+              >
+                <Workflow className="h-3.5 w-3.5" />
+                Flow
+              </button>
+              <button
+                type="button"
                 onClick={() => setModal('variables')}
                 className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
               >
@@ -380,6 +390,18 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             setModal(null);
           }}
         />
+        {modal === 'flow' && (
+          <FlowView
+            doc={doc}
+            setDoc={setDoc}
+            currentId={page.id}
+            onOpen={(id) => {
+              selectPage(id);
+              setModal(null);
+            }}
+            onClose={() => setModal(null)}
+          />
+        )}
         {modal === 'history' && (
           <HistoryModal
             courseId={courseId}
