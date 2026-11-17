@@ -39,6 +39,31 @@ export const deleteCourse = (id: string, title: string): Promise<void> =>
     method: 'DELETE',
   });
 
+export interface CourseVersion {
+  id: string;
+  savedAt: string;
+  savedByName: string | null;
+  title: string;
+}
+
+export const listVersions = (id: string): Promise<CourseVersion[]> =>
+  apiFetch<{ versions: CourseVersion[] }>(`/courses/${id}/versions`).then((r) => r.versions);
+
+export const restoreVersion = (id: string, versionId: string): Promise<Course> =>
+  apiFetch(`/courses/${id}/versions/${versionId}/restore`, { method: 'POST' });
+
+export interface Presence {
+  userId: string;
+  name: string;
+  pageId: string | null;
+}
+
+export const sendPresence = (id: string, pageId: string): Promise<Presence[]> =>
+  apiFetch<{ people: Presence[] }>(`/courses/${id}/presence`, {
+    method: 'POST',
+    body: { pageId },
+  }).then((r) => r.people);
+
 export const markExported = (id: string): Promise<Course> =>
   apiFetch(`/courses/${id}/exported`, { method: 'POST' });
 

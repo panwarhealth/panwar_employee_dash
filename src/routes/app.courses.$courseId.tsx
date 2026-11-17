@@ -1,7 +1,16 @@
 import { useCallback, useState, type ReactNode, type SetStateAction } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Monitor, Redo2, Settings, Smartphone, Sparkles, Undo2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  History,
+  Monitor,
+  Redo2,
+  Settings,
+  Smartphone,
+  Sparkles,
+  Undo2,
+} from 'lucide-react';
 import { CanvasEditor } from '@/components/courses/CanvasEditor';
 import { relayout } from '@/components/courses/deckToPages';
 import { getCourse } from '@/api/courses';
@@ -9,9 +18,11 @@ import { Button } from '@/components/ui/button';
 import { AddBlockMenu } from '@/components/courses/AddBlockMenu';
 import { AssistantPanel } from '@/components/courses/AssistantPanel';
 import { ExportModal } from '@/components/courses/ExportModal';
+import { HistoryModal } from '@/components/courses/HistoryModal';
 import { Inspector } from '@/components/courses/Inspector';
 import { PageList } from '@/components/courses/PageList';
 import { PdfModal } from '@/components/courses/PdfModal';
+import { PresenceAvatar } from '@/components/courses/PresenceAvatar';
 import { PreviewModal } from '@/components/courses/PreviewModal';
 import { SettingsModal } from '@/components/courses/SettingsModal';
 import { VariablesModal } from '@/components/courses/VariablesModal';
@@ -32,6 +43,7 @@ import { CourseColours, courseColours } from '@/components/courses/colourContext
 import { FontOptions } from '@/components/courses/fontContext';
 import { useCourseAssistant } from '@/hooks/useCourseAssistant';
 import { useCourseAutosave } from '@/hooks/useCourseAutosave';
+import { useCoursePresence } from '@/hooks/useCoursePresence';
 import { useUndoable } from '@/hooks/useUndoable';
 import { useNonBreakingSpace } from '@/components/courses/nbsp';
 import { cn } from '@/lib/utils';
@@ -53,7 +65,9 @@ function EditorPage() {
   if (isLoading) return <p className="p-6 text-sm text-ph-charcoal/60">Loading…</p>;
   if (error || !data)
     return <p className="p-6 text-sm text-red-700">{error?.message ?? 'Course not found'}</p>;
-  return <Editor courseId={courseId} initial={normalizeDoc(data.content)} />;
+  return (
+    <Editor key={data.updatedAt} courseId={courseId} initial={normalizeDoc(data.content)} />
+  );
 }
 
 function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc }) {
@@ -71,13 +85,18 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const [blockId, setBlockId] = useState<string | null>(null);
   const [phone, setPhone] = useState(initial.screens === 'phone');
   const [modal, setModal] = useState<
-    'add' | 'export' | 'pdf' | 'settings' | 'preview' | 'variables' | null
+    'add' | 'export' | 'pdf' | 'settings' | 'preview' | 'variables' | 'history' | null
   >(null);
   const save = useCourseAutosave(courseId, doc);
   const assistant = useCourseAssistant(courseId, doc, setDoc);
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   const page = doc.pages.find((p) => p.id === pageId) ?? doc.pages[0];
+  const people = useCoursePresence(courseId, page.id);
+  const pageTitle = (id: string | null) => {
+    const i = doc.pages.findIndex((p) => p.id === id);
+    return i < 0 ? 'no page' : `page ${i + 1}, ${doc.pages[i].title || 'Untitled'}`;
+  };
   const layout: Layout = doc.screens === 'both' ? (phone ? 'phone' : 'desktop') : doc.screens;
   const otherLayout: Layout | null =
     doc.screens === 'both' ? (layout === 'phone' ? 'desktop' : 'phone') : null;
@@ -125,6 +144,7 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
         <PageList
           pages={doc.pages}
           currentId={page.id}
+          people={people}
           onSelect={selectPage}
           onAdd={() => {
             const p = newPage(`Page ${doc.pages.length + 1}`);
@@ -194,6 +214,18 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               </button>
             </div>
             <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              {people.length > 0 && (
+                <div className="flex -space-x-1.5">
+                  {people.map((p) => (
+                    <PresenceAvatar
+                      key={p.userId}
+                      person={p}
+                      title={`${p.name} is on ${pageTitle(p.pageId)}`}
+                      onClick={() => p.pageId && selectPage(p.pageId)}
+                    />
+                  ))}
+                </div>
+              )}
               {doc.screens === 'both' && (
                 <div className="flex gap-1">
                   <SegButton
@@ -227,6 +259,14 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
                 className="rounded-md px-2 py-1.5 text-xs font-medium text-ph-charcoal/70 hover:bg-ph-charcoal/5 hover:text-ph-purple"
               >
                 Variables
+              </button>
+              <button
+                type="button"
+                title="Version history"
+                onClick={() => setModal('history')}
+                className="rounded-md p-1.5 text-ph-charcoal/60 hover:bg-ph-charcoal/5 hover:text-ph-purple"
+              >
+                <History className="h-4 w-4" />
               </button>
               <button
                 type="button"
@@ -325,6 +365,13 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             setModal(null);
           }}
         />
+        {modal === 'history' && (
+          <HistoryModal
+            courseId={courseId}
+            canRestore={save === 'saved'}
+            onClose={() => setModal(null)}
+          />
+        )}
         <SettingsModal
           open={modal === 'settings'}
           onClose={() => setModal(null)}

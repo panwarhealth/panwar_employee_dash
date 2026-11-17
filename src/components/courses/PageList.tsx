@@ -1,6 +1,8 @@
 import { Copy, Trash2 } from 'lucide-react';
+import type { Presence } from '@/api/courses';
 import type { Page } from '@/course/doc';
 import { cn } from '@/lib/utils';
+import { PresenceAvatar } from './PresenceAvatar';
 import { SortableList } from './SortableList';
 
 function pageTag(page: Page, last: boolean): string {
@@ -11,6 +13,7 @@ function pageTag(page: Page, last: boolean): string {
 export function PageList({
   pages,
   currentId,
+  people,
   onSelect,
   onAdd,
   onDuplicate,
@@ -19,6 +22,7 @@ export function PageList({
 }: {
   pages: Page[];
   currentId: string;
+  people: Presence[];
   onSelect: (id: string) => void;
   onAdd: () => void;
   onDuplicate: (id: string) => void;
@@ -53,6 +57,15 @@ export function PageList({
                 </em>
                 <span className="truncate">{p.title || 'Untitled'}</span>
               </button>
+              {people.some((u) => u.pageId === p.id) && (
+                <span className="flex shrink-0 -space-x-1">
+                  {people
+                    .filter((u) => u.pageId === p.id)
+                    .map((u) => (
+                      <PresenceAvatar key={u.userId} person={u} title={u.name} small />
+                    ))}
+                </span>
+              )}
               {!!p.notes?.length && (
                 <span
                   title={`${p.notes.length} to check`}
