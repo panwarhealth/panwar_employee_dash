@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Trash2 } from 'lucide-react';
 import { uid, type CourseDoc, type Page, type Trigger } from '@/course/doc';
 import { objectOptions } from './blockMeta';
 import { readFlag, saveFlag } from './flags';
@@ -27,6 +27,9 @@ export function TriggersPanel({
       .filter((o) => page.triggers.some((t) => triggerGroup(t) === o.value))
       .map((o) => ({ id: o.value as string | null, title: o.label.slice(0, 34) })),
   ].filter((g) => g.id !== null || page.triggers.some((t) => triggerGroup(t) === null));
+
+  const swap = (a: Trigger, b: Trigger) =>
+    onChange(page.triggers.map((x) => (x.id === a.id ? b : x.id === b.id ? a : x)));
 
   const save = (t: Trigger) => {
     const exists = page.triggers.some((x) => x.id === t.id);
@@ -69,24 +72,35 @@ export function TriggersPanel({
         </p>
       )}
       {open &&
-        groups.map((g) => (
-          <div key={g.id ?? 'page'} className="mb-2">
-            <p
-              className={
-                g.id && g.id === selectedId
-                  ? 'text-xs font-bold text-ph-purple'
-                  : 'text-xs font-bold text-ph-charcoal/70'
-              }
-            >
-              {g.title}
-            </p>
-            {page.triggers
-              .filter((t) => triggerGroup(t) === g.id)
-              .map((t) => (
+        groups.map((g) => {
+          const list = page.triggers.filter((t) => triggerGroup(t) === g.id);
+          const button = page.blocks.find((x) => x.id === g.id && x.type === 'button');
+          return (
+            <div key={g.id ?? 'page'} className="mb-2">
+              <p
+                className={
+                  g.id && g.id === selectedId
+                    ? 'text-xs font-bold text-ph-purple'
+                    : 'text-xs font-bold text-ph-charcoal/70'
+                }
+              >
+                {g.title}
+              </p>
+              {list.length > 1 && (
+                <p className="text-[11px] text-ph-charcoal/50">
+                  Run top to bottom. The first one that goes somewhere wins.
+                </p>
+              )}
+              {list.map((t, i) => (
                 <div
                   key={t.id}
                   className="group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white"
                 >
+                  {list.length > 1 && (
+                    <span className="w-4 shrink-0 pt-0.5 text-xs font-semibold text-ph-charcoal/40">
+                      {i + 1}.
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left"
@@ -104,6 +118,28 @@ export function TriggersPanel({
                       </span>
                     )}
                   </button>
+                  {list.length > 1 && (
+                    <span className="invisible flex flex-col group-hover:visible">
+                      <button
+                        type="button"
+                        title="Run earlier"
+                        disabled={i === 0}
+                        className="text-ph-charcoal/40 hover:text-ph-purple disabled:opacity-30"
+                        onClick={() => swap(t, list[i - 1])}
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Run later"
+                        disabled={i === list.length - 1}
+                        className="text-ph-charcoal/40 hover:text-ph-purple disabled:opacity-30"
+                        onClick={() => swap(t, list[i + 1])}
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )}
                   <button
                     type="button"
                     title="Delete trigger"
@@ -114,8 +150,15 @@ export function TriggersPanel({
                   </button>
                 </div>
               ))}
-          </div>
-        ))}
+              {button?.type === 'button' && (
+                <p className="px-2 text-xs text-ph-charcoal/60">
+                  {list.length > 1 ? 'If none of these goes anywhere' : 'If that goes nowhere'},
+                  the button does: {actionText(button.action, doc, page)}
+                </p>
+              )}
+            </div>
+          );
+        })}
       {editing && (
         <TriggerWizard
           doc={doc}
