@@ -27,7 +27,7 @@ export interface BlockContext {
   picksCorrect: boolean;
   linksDone: boolean;
   click(id: string): void;
-  openPopup(blockId: string): void;
+  openPopup(blockId: string | null): void;
   audioProgress(blockId: string, seconds: number): void;
   results(): ResultsData;
   retry(): void;

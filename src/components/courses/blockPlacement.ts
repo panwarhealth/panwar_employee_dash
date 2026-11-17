@@ -1,4 +1,4 @@
-import { isHiddenPopup, type Block, type Frame, type Layout, type Page } from '@/course/doc';
+import { inPopup, type Block, type Frame, type Layout, type Page } from '@/course/doc';
 import { bounds, centreInside, isBackdrop, round1 } from '@/course/geometry';
 import { isPanel } from './blockKinds';
 
@@ -12,7 +12,7 @@ function enclosingBox(page: Page, held: Block[]): Block | undefined {
     if (!held.every((b) => frame(b) && centreInside(f, frame(b)!))) return false;
     return page.blocks.every((o) => {
       const of = frame(o);
-      if (o === c || held.includes(o) || isHiddenPopup(o) || !of || areaOf(o) >= areaOf(c))
+      if (o === c || held.includes(o) || inPopup(o) || !of || areaOf(o) >= areaOf(c))
         return true;
       return !centreInside(f, of);
     });

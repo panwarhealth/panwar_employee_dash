@@ -29,6 +29,7 @@ import { VariablesModal } from '@/components/courses/VariablesModal';
 import { frameFor, newFrame } from '@/course/canvasLayout';
 import {
   fixNbsp,
+  layerOf,
   newBlock,
   newPage,
   normalizeDoc,
@@ -108,22 +109,21 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
     setBlockId(null);
   };
   const [clipboard, setClipboard] = useState<Block[]>([]);
+  const layer = layerOf(page, blockId);
   const addCopies = (copies: Block[], after: (i: number) => string | null) => {
     setDoc((d) => copies.reduce((acc, c, i) => ops.insertBlock(acc, page.id, after(i), c), d));
-    setBlockId(copies.length === 1 ? copies[0].id : null);
+    const top = copies.filter((c) => !c.parent || c.parent === layer);
+    setBlockId(top.length === 1 ? top[0].id : null);
   };
-  const duplicateBlocks = (ids: string[]) =>
-    addCopies(
-      ids.map((id) => ops.copyBlock(page.blocks.find((b) => b.id === id)!)),
-      (i) => ids[i],
-    );
+  const duplicateBlocks = (ids: string[]) => {
+    const sources = ops.withChildren(page, ids);
+    const copies = ops.cloneAll(sources, layer);
+    addCopies(copies, (i) => (ids.includes(sources[i].id) ? sources[i].id : copies[i - 1].id));
+  };
   const copyBlocks = (ids: string[]) =>
-    setClipboard(ids.map((id) => structuredClone(page.blocks.find((b) => b.id === id)!)));
+    setClipboard(ops.withChildren(page, ids).map((b) => structuredClone(b)));
   const pasteBlocks = () =>
-    addCopies(
-      clipboard.map((b) => ops.copyBlock(b)),
-      () => null,
-    );
+    addCopies(ops.cloneAll(clipboard, layer), () => null);
   const selectPage = (id: string) => {
     setPageId(id);
     setBlockId(null);
@@ -357,9 +357,18 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           onClose={() => setModal(null)}
           onPick={(type) => {
             const b = newBlock(type);
+            let frame = newFrame(type, layout);
+            const card = page.blocks.find((x) => x.id === layer);
+            if (card && type !== 'popup') {
+              b.parent = card.id;
+              const c = frameFor(page, card, layout);
+              const w = Math.min(frame.w, c.w * 0.88);
+              const h = Math.min(frame.h, c.h * 0.88);
+              frame = { ...frame, w, h, x: c.x + (c.w - w) / 2, y: c.y + (c.h - h) / 2 };
+            }
             setDoc((d) => {
               const next = ops.insertBlock(d, page.id, blockId, b);
-              return ops.setFrame(next, page.id, b.id, layout, newFrame(type, layout));
+              return ops.setFrame(next, page.id, b.id, layout, frame);
             });
             setBlockId(b.id);
             setModal(null);

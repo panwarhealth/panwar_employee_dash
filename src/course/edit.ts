@@ -28,7 +28,17 @@ export function copyPage(page: Page): Page {
   const copy = structuredClone(page);
   copy.id = uid();
   copy.title = `${page.title} copy`;
-  copy.blocks.forEach((b) => (b.id = uid()));
+  const ids = new Map(copy.blocks.map((b) => [b.id, uid()]));
+  const to = (id: string) => ids.get(id) ?? id;
+  copy.blocks.forEach((b) => {
+    b.id = to(b.id);
+    if (b.parent) b.parent = to(b.parent);
+  });
+  copy.groups?.forEach((g) => (g.members = g.members.map(to)));
+  copy.triggers.forEach((t) => {
+    if ('blockId' in t.when) t.when.blockId = to(t.when.blockId);
+    if ('blockId' in t.action) t.action.blockId = to(t.action.blockId);
+  });
   return copy;
 }
 
@@ -51,6 +61,25 @@ export const copyBlock = (block: Block): Block => ({
   ...structuredClone(block),
   id: uid(),
 });
+
+export const withChildren = (page: Page, ids: string[]): Block[] =>
+  ids.flatMap((id) => {
+    const b = page.blocks.find((x) => x.id === id);
+    if (!b) return [];
+    return b.type === 'popup' ? [b, ...page.blocks.filter((k) => k.parent === id)] : [b];
+  });
+
+export function cloneAll(blocks: Block[], layer: string | null): Block[] {
+  const ids = new Map(blocks.map((b) => [b.id, uid()]));
+  return blocks.map((b) => {
+    const c: Block = { ...structuredClone(b), id: ids.get(b.id)! };
+    const parent = b.parent && ids.get(b.parent);
+    if (parent) c.parent = parent;
+    else if (layer && c.type !== 'popup') c.parent = layer;
+    else delete c.parent;
+    return c;
+  });
+}
 
 export const updateBlock = (
   doc: CourseDoc,
@@ -144,9 +173,11 @@ export const setFrames = (
 
 export const removeBlocks = (doc: CourseDoc, pageId: string, ids: string[]) =>
   updatePage(doc, pageId, (p) => {
-    p.blocks = p.blocks.filter((b) => !ids.includes(b.id));
+    const gone = new Set(ids);
+    p.blocks.forEach((b) => b.parent && gone.has(b.parent) && gone.add(b.id));
+    p.blocks = p.blocks.filter((b) => !gone.has(b.id));
     p.groups = (p.groups ?? [])
-      .map((g) => ({ ...g, members: g.members.filter((m) => !ids.includes(m)) }))
+      .map((g) => ({ ...g, members: g.members.filter((m) => !gone.has(m)) }))
       .filter((g) => g.members.length > 1);
     if (!p.groups.length) delete p.groups;
   });

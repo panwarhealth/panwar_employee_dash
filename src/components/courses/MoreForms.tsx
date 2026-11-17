@@ -14,7 +14,6 @@ import {
   type Page,
   type Panel,
   type PathwayBlock,
-  type PopupBlock,
   type QuestionBase,
   type ResultsBlock,
   type SliderBlock,
@@ -240,62 +239,6 @@ export function AnimationForm({
         }
       />
       <Toggle label="Loop" checked={block.loop} onChange={(v) => set((b) => (b.loop = v))} />
-    </>
-  );
-}
-
-export function PopupForm({
-  block,
-  courseId,
-  set,
-}: {
-  block: PopupBlock;
-  courseId: string;
-  set: Edit<PopupBlock>;
-}) {
-  return (
-    <>
-      <Toggle
-        label="Show a button that opens it"
-        checked={block.showButton}
-        onChange={(v) => set((b) => (b.showButton = v))}
-      />
-      {block.showButton && (
-        <TextInput
-          label="Button label"
-          value={block.label}
-          onChange={(v) => set((b) => (b.label = v))}
-        />
-      )}
-      <TextInput
-        label="Pop-up title"
-        value={block.title}
-        onChange={(v) => set((b) => (b.title = v))}
-      />
-      <RichText
-        key={block.id}
-        label="Pop-up text"
-        html={block.html}
-        onChange={(v) => set((b) => (b.html = v))}
-      />
-      <MediaInput
-        label="Pop-up image (optional)"
-        courseId={courseId}
-        value={block.src}
-        fileName={block.fileName}
-        accept=".jpg,.jpeg,.png,.webp,.svg,.gif"
-        onChange={(url, file) =>
-          set((b) => {
-            b.src = url;
-            b.fileName = file.name;
-          })
-        }
-      />
-      {!block.showButton && (
-        <p className="text-xs text-ph-charcoal/60">
-          Open it from an object on a canvas page: On click, Open a pop-up layer.
-        </p>
-      )}
     </>
   );
 }

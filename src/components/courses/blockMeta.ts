@@ -18,7 +18,7 @@ export const BLOCKS: BlockMeta[] = [
   { type: 'animation', name: 'Animation', detail: 'Lottie or GIF', group: 'Content' },
   { type: 'divider', name: 'Divider', detail: 'Thin line', group: 'Content' },
   { type: 'shape', name: 'Shape', detail: 'Box or circle, gradient, shadow', group: 'Content' },
-  { type: 'popup', name: 'Pop-up', detail: 'Button that opens a layer', group: 'Interactive' },
+  { type: 'popup', name: 'Pop-up', detail: 'A layer you design like a page', group: 'Interactive' },
   {
     type: 'accordion',
     name: 'Accordion',
@@ -98,8 +98,6 @@ function labelText(b: Block): string {
       return b.url;
     case 'button':
       return b.label;
-    case 'popup':
-      return b.title;
     case 'accordion':
     case 'tabs':
       return b.items.map((i) => i.title).join(', ');
@@ -119,6 +117,7 @@ function labelText(b: Block): string {
       return b.prompt;
     case 'divider':
     case 'shape':
+    case 'popup':
     case 'results':
       return '';
   }

@@ -45,7 +45,7 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'look_at_page',
     description:
-      'See a picture of one page in one layout, as the learner first sees it. Hidden popups and objects that start hidden are left out. Use it to judge how a page looks, and to check your changes.',
+      'See a picture of one page in one layout, as the learner first sees it. Popups, their contents and objects that start hidden are left out. Use it to judge how a page looks, and to check your changes.',
     input_schema: obj(
       {
         page_id: { type: 'string' },
@@ -416,10 +416,7 @@ const addBlocks: Handler = (doc, input) => {
 const removeBlocks: Handler = (doc, input) => {
   const page = pageOf(doc, input);
   if (!page) return fail(doc, 'No page with that id.');
-  const ids = list<string>(input.block_ids);
-  const next = ops.updatePage(doc, page.id, (p) => {
-    p.blocks = p.blocks.filter((b) => !ids.includes(b.id));
-  });
+  const next = ops.removeBlocks(doc, page.id, list<string>(input.block_ids));
   return checkedOutcome(next, page.id, new Set(), `Removed objects from ${page.title}`);
 };
 

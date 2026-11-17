@@ -57,7 +57,9 @@ export function solidReason(root: Element, x: number, y: number): string | null 
 }
 
 export function objectsAt(x: number, y: number, selector: string): Element[] {
-  const found = document.elementsFromPoint(x, y).map((el) => el.closest(selector));
+  const stack = document.elementsFromPoint(x, y);
+  const cut = stack.findIndex((el) => el.matches('.cp-backdrop'));
+  const found = (cut < 0 ? stack : stack.slice(0, cut)).map((el) => el.closest(selector));
   return [...new Set(found.filter((el): el is Element => !!el))];
 }
 

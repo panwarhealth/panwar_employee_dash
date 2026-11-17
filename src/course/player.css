@@ -234,8 +234,7 @@
   background: var(--cp-box-bg, none);
 }
 .cp-check .cp-btn,
-.cp-looked .cp-btn,
-.cp-pop .cp-btn {
+.cp-looked .cp-btn {
   border-radius: var(--cp-r, calc(4 * var(--px, 1px)));
 }
 .cp-pills .cp-opt {
@@ -763,10 +762,13 @@
   justify-content: flex-end;
   gap: 0.6em;
 }
-.cp-layer-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8em;
+.cp-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+.cp-popcard {
+  position: relative;
 }
 .cp-layer-x {
   position: absolute;

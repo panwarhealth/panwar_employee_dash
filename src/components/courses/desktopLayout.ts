@@ -1,4 +1,4 @@
-import { isHiddenPopup, type Block, type CourseDoc, type Page } from '@/course/doc';
+import { inPopup, type Block, type CourseDoc, type Page } from '@/course/doc';
 import { bounds, centreInside, overlaps, round1, type Box } from '@/course/geometry';
 import { DESIGN, EDGE_PX, grows, isDecor, isHolder } from './blockKinds';
 import { measureHeights } from './pageFit';
@@ -11,7 +11,7 @@ const MIN_CHANGE = 0.01;
 const at = (b: Block) => b.frames!.desktop!;
 
 const placed = (page: Page) =>
-  page.blocks.filter((b) => b.frames?.desktop && !isHiddenPopup(b) && !isDecor(b));
+  page.blocks.filter((b) => b.frames?.desktop && !inPopup(b) && !isDecor(b));
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 

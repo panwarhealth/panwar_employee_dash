@@ -9,7 +9,6 @@ import {
   type CourseDoc,
   type Layout,
   type Page,
-  type PopupBlock,
   type Transition,
   type TriggerEvent,
 } from './doc';
@@ -20,7 +19,6 @@ import { CanvasStage } from './canvas';
 import { useCanvasLayout } from './canvasLayout';
 import { pickBlocks, pickStatus, togglePick } from './picks';
 import { choosePool, computeResults, cueHidden, resultsSettings } from './grading';
-import { PopupLayer } from './interactive';
 import { fontFaces, textStyleCss } from './typography';
 import { hasExit, OUT_MS } from './anim';
 import { applySet, eventMatches, initialVars, mergeText, passes, type Vars } from './logic';
@@ -60,6 +58,8 @@ function PageBody({
   hidden,
   leaving,
   onRetryPicks,
+  popup = null,
+  onClosePopup,
 }: {
   page: Page;
   layout: Layout;
@@ -67,6 +67,8 @@ function PageBody({
   hidden: Set<string>;
   leaving: boolean;
   onRetryPicks: () => void;
+  popup?: string | null;
+  onClosePopup?: () => void;
 }) {
   const status = pickStatus(page, ctx.picked);
   const feedback = status.done && (
@@ -74,7 +76,15 @@ function PageBody({
   );
   return page.pick?.showAs === 'text' ? (
     <div className="cp-canvascol">
-      <CanvasStage page={page} layout={layout} ctx={ctx} hidden={hidden} leaving={leaving} />
+      <CanvasStage
+        page={page}
+        layout={layout}
+        ctx={ctx}
+        hidden={hidden}
+        leaving={leaving}
+        layer={popup}
+        onBackdrop={onClosePopup}
+      />
       {feedback}
     </div>
   ) : (
@@ -85,6 +95,8 @@ function PageBody({
       hidden={hidden}
       leaving={leaving}
       overlay={feedback}
+      layer={popup}
+      onBackdrop={onClosePopup}
     />
   );
 }
@@ -413,7 +425,6 @@ export function Player({
   };
 
   const last = index === pages.length - 1;
-  const openPopup = page.blocks.find((b): b is PopupBlock => b.type === 'popup' && b.id === popup);
 
   if (ended) {
     return (
@@ -487,11 +498,12 @@ export function Player({
               hidden={hidden}
               leaving={leaving}
               onRetryPicks={() => setPicks([])}
+              popup={popup}
+              onClosePopup={() => setPopup(null)}
             />
           </div>
         </div>
       </main>
-      {openPopup && <PopupLayer block={openPopup} ctx={ctx} onClose={() => setPopup(null)} />}
       {doc.navBar && (
         <nav className="cp-nav">
           <button

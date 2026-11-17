@@ -6,6 +6,7 @@ import type {
   HeadingBlock,
   ImageBlock,
   Page,
+  PopupBlock,
   ShapeBlock,
   TextBlock,
 } from '@/course/doc';
@@ -25,6 +26,7 @@ import {
 } from './fields';
 import { BOX_PADDING } from '@/course/typography';
 import { QuestionTextFields } from './QuestionLookFields';
+import { blockLabel } from './blockMeta';
 import { RevealForm } from './RevealForm';
 import { RichText } from './RichText';
 import { BorderField, PaintField, ShadowField, TextStyleFields } from './TextStyleFields';
@@ -40,7 +42,6 @@ import {
   MatchForm,
   PanelsForm,
   PathwayForm,
-  PopupForm,
   ResultsForm,
   WrittenForm,
 } from './MoreForms';
@@ -52,7 +53,7 @@ const ALIGN = [
   { value: 'justify' as const, label: 'Justify' },
 ];
 
-type Boxed = HeadingBlock | TextBlock | ImageBlock | ShapeBlock;
+type Boxed = HeadingBlock | TextBlock | ImageBlock | ShapeBlock | PopupBlock;
 
 function AlignFields<B extends HeadingBlock | TextBlock>({
   block,
@@ -338,6 +339,9 @@ export function BlockForm({
           <ActionFields
             action={block.action}
             pages={pages}
+            popups={page.blocks
+              .filter((b) => b.type === 'popup')
+              .map((b) => ({ value: b.id, label: blockLabel(b) }))}
             otherwise={page.triggers.some(
               (t) => t.when.kind === 'click' && t.when.blockId === block.id,
             )}
@@ -392,7 +396,15 @@ export function BlockForm({
     case 'animation':
       return <AnimationForm block={block} courseId={courseId} set={set<typeof block>} />;
     case 'popup':
-      return <PopupForm block={block} courseId={courseId} set={set<typeof block>} />;
+      return (
+        <>
+          <p className="text-xs text-ph-charcoal/60">
+            While this pop-up or anything in it is selected, new objects go inside it. Open it
+            from a button set to Open a pop-up, or with a trigger.
+          </p>
+          <BoxFields block={block} set={set<typeof block>} />
+        </>
+      );
     case 'accordion':
     case 'tabs':
       return <PanelsForm block={block} set={set<typeof block>} />;
@@ -424,11 +436,13 @@ export function BlockForm({
 function ActionFields({
   action,
   pages,
+  popups,
   otherwise,
   onChange,
 }: {
   action: ButtonAction;
   pages: Page[];
+  popups: { value: string; label: string }[];
   otherwise: boolean;
   onChange: (a: ButtonAction) => void;
 }) {
@@ -447,6 +461,9 @@ function ActionFields({
           { value: 'next', label: 'Go to next page' },
           { value: 'page', label: 'Go to a page...' },
           { value: 'link', label: 'Open a link' },
+          ...(popups.length || action.kind === 'popup'
+            ? [{ value: 'popup', label: 'Open a pop-up...' }]
+            : []),
         ]}
         onChange={(k) =>
           onChange(
@@ -454,10 +471,20 @@ function ActionFields({
               ? { kind: 'page', pageId: pages[0]?.id ?? '' }
               : k === 'link'
                 ? { kind: 'link', url: '' }
-                : { kind: 'next' },
+                : k === 'popup'
+                  ? { kind: 'popup', blockId: popups[0]?.value ?? '' }
+                  : { kind: 'next' },
           )
         }
       />
+      {action.kind === 'popup' && (
+        <Select
+          label="Pop-up"
+          value={action.blockId}
+          options={popups}
+          onChange={(blockId) => onChange({ kind: 'popup', blockId })}
+        />
+      )}
       {action.kind === 'page' && (
         <Select
           label="Page"

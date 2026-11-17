@@ -18,7 +18,8 @@ const pageTitle = (doc: CourseDoc, pageId: string) =>
 
 function labelOf(b: Block | undefined): string {
   if (!b) return 'an object';
-  if (b.type === 'button' || b.type === 'popup') return `"${b.label}"`;
+  if (b.type === 'button') return `"${b.label}"`;
+  if (b.type === 'popup') return `the pop-up "${b.name ?? 'Pop-up'}"`;
   const text = blockText(b).split('\n')[0];
   if (text) return `"${text.length > 60 ? `${text.slice(0, 57)}...` : text}"`;
   return b.type === 'image' && b.alt ? `the picture "${b.alt}"` : `the ${b.type}`;
@@ -47,7 +48,9 @@ const goesTo = (doc: CourseDoc, a: ButtonAction) =>
     ? 'the next page'
     : a.kind === 'page'
       ? `"${pageTitle(doc, a.pageId)}"${a.back ? ', then back here' : ''}`
-      : a.url;
+      : a.kind === 'popup'
+        ? 'a pop-up on this page'
+        : a.url;
 
 const feedback = (right: string, wrong: string) => [
   ...(right ? [`If right: ${stripTags(right)}`] : []),
@@ -76,11 +79,15 @@ function blockDetail(doc: CourseDoc, page: Page, b: Block): Detail | null {
       };
     case 'popup':
       return {
-        title: `Pop-up "${b.title}"`,
+        title: `Pop-up "${b.name ?? 'Pop-up'}"`,
         lines: [
           revealedBy(page, b.id),
-          ...htmlLines(b.html),
-          ...(b.src ? [`Picture: ${b.fileName}`] : []),
+          ...page.blocks
+            .filter((k) => k.parent === b.id)
+            .flatMap((k) => {
+              const d = blockDetail(doc, page, k);
+              return d ? [d.title, ...d.lines.map((l) => `   ${l}`)] : [];
+            }),
         ],
       };
     case 'accordion':
@@ -206,9 +213,7 @@ function blockDetail(doc: CourseDoc, page: Page, b: Block): Detail | null {
 }
 
 export function pageDetails(doc: CourseDoc, page: Page): Detail[] {
-  const out = page.blocks.flatMap((b) => blockDetail(doc, page, b) ?? []);
-  const linked = page.blocks.flatMap((b) =>
-    b.type === 'text' || b.type === 'popup' ? links(b.html) : [],
-  );
+  const out = page.blocks.flatMap((b) => (b.parent ? [] : (blockDetail(doc, page, b) ?? [])));
+  const linked = page.blocks.flatMap((b) => (b.type === 'text' ? links(b.html) : []));
   return linked.length ? [...out, { title: 'Links', lines: linked }] : out;
 }

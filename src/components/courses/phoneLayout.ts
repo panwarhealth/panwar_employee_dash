@@ -1,5 +1,5 @@
 import type { Block, CourseDoc, Frame, HeadingBlock, Page, TextBlock } from '@/course/doc';
-import { groupsOf, isHiddenPopup } from '@/course/doc';
+import { groupsOf, inPopup } from '@/course/doc';
 import {
   bounds,
   centreInside,
@@ -145,7 +145,7 @@ function reflows(b: Block): boolean {
 const TOUCH = 1;
 
 export function phoneClusters(page: Page): Cluster[] {
-  const blocks = page.blocks.filter((b) => b.frames?.desktop && !isHiddenPopup(b));
+  const blocks = page.blocks.filter((b) => b.frames?.desktop && !inPopup(b));
   const byId = new Map(blocks.map((b) => [b.id, b]));
   const desk = (id: string) => desktopOf(byId.get(id)!);
   const inside = (outer: string, id: string) => centreInside(desk(outer), desk(id));

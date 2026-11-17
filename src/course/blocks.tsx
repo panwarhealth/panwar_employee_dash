@@ -10,7 +10,6 @@ import {
   FlipView,
   HotspotView,
   PathwayView,
-  PopupTrigger,
   TabsView,
 } from './interactive';
 import {
@@ -178,7 +177,7 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
     case 'button': {
       const locked =
         !ctx.edit &&
-        ((block.action.kind !== 'link' && !ctx.canLeave) ||
+        ((block.action.kind !== 'link' && block.action.kind !== 'popup' && !ctx.canLeave) ||
           (block.enabledWhen === 'picks' && !ctx.picksCorrect) ||
           (block.enabledWhen === 'visited' && !ctx.linksDone) ||
           (block.enabledWhen === 'condition' && !ctx.passes(block.enabledIf ?? [])));
@@ -220,7 +219,26 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
     case 'animation':
       return <AnimationView block={block} />;
     case 'popup':
-      return <PopupTrigger block={block} ctx={ctx} />;
+      return (
+        <div
+          className="cp-shape cp-popcard"
+          style={{
+            ...paintCss(block.fill, block.gradient),
+            ...borderCss(block.border),
+            ...radiusCss(block.radius, block.corners),
+            ...shadowCss(block.shadow, 'box'),
+          }}
+        >
+          <button
+            type="button"
+            className="cp-layer-x"
+            aria-label="Close"
+            onClick={() => !ctx.edit && ctx.openPopup(null)}
+          >
+            ×
+          </button>
+        </div>
+      );
     case 'accordion':
       return <AccordionView block={block} ctx={ctx} />;
     case 'tabs':

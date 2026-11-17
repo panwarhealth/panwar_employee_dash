@@ -1,10 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type {
   AccordionBlock,
   FlipBlock,
   HotspotBlock,
   PathwayBlock,
-  PopupBlock,
   TabsBlock,
 } from './doc';
 import type { BlockContext } from './context';
@@ -27,89 +26,6 @@ const Html = ({
     dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
   />
 );
-
-export function PopupTrigger({ block, ctx }: { block: PopupBlock; ctx: BlockContext }) {
-  if (!block.showButton)
-    return ctx.edit ? <div className="cp-empty">Pop-up: {block.title}</div> : null;
-  return (
-    <div className="cp-btnrow cp-pop" style={lookVars(block.look)}>
-      <button
-        type="button"
-        className="cp-btn cp-btn-outline"
-        style={partCss(ctx, block.look?.buttonStyle)}
-        onClick={() => !ctx.edit && ctx.openPopup(block.id)}
-      >
-        {block.label}
-      </button>
-    </div>
-  );
-}
-
-function useShrinkToFit() {
-  const card = useRef<HTMLDivElement>(null);
-  const body = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const fit = () => {
-      const c = card.current;
-      const b = body.current;
-      if (!c || !b) return;
-      b.style.zoom = '';
-      const style = getComputedStyle(c);
-      const room =
-        parseFloat(style.maxHeight) -
-        parseFloat(style.paddingTop) -
-        parseFloat(style.paddingBottom);
-      if (b.scrollHeight > room) b.style.zoom = String(room / b.scrollHeight);
-    };
-    fit();
-    const b = body.current;
-    window.addEventListener('resize', fit);
-    b?.addEventListener('load', fit, true);
-    return () => {
-      window.removeEventListener('resize', fit);
-      b?.removeEventListener('load', fit, true);
-    };
-  }, []);
-  return { card, body };
-}
-
-export function PopupLayer({
-  block,
-  ctx,
-  onClose,
-}: {
-  block: PopupBlock;
-  ctx: BlockContext;
-  onClose: () => void;
-}) {
-  const { card, body } = useShrinkToFit();
-  return (
-    <div className="cp-layer" onClick={onClose}>
-      <div
-        ref={card}
-        className="cp-layer-card"
-        style={lookVars(block.look)}
-        role="dialog"
-        aria-modal="true"
-        aria-label={block.title}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button type="button" className="cp-layer-x" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-        <div ref={body} className="cp-layer-body">
-          {block.title && (
-            <h2 className="cp-h2" style={partCss(ctx, block.look?.questionStyle)}>
-              {block.title}
-            </h2>
-          )}
-          {block.src && <img className="cp-img cp-img-full" src={block.src} alt="" />}
-          <Html html={block.html} style={partCss(ctx, block.look?.bodyStyle)} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function AccordionView({ block, ctx }: { block: AccordionBlock; ctx: BlockContext }) {
   const [open, setOpen] = useState<string | null>(null);

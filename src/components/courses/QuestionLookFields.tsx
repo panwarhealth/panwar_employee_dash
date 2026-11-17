@@ -165,9 +165,7 @@ export function QuestionLookFields({
       ? block.submitLabel || 'Submit'
       : kind === 'results'
       ? 'Try again'
-      : kind === 'popup'
-        ? 'pop-up'
-        : null;
+      : null;
   const align =
     look.answerAlign ??
     (CENTRED.has(kind) || (pills && look.answers === 'buttons' && !row) ? 'center' : 'left');
@@ -181,7 +179,7 @@ export function QuestionLookFields({
     : block.type !== 'match' || block.mode === 'drag'
       ? LABELS[kind]
       : undefined;
-  const box = kind === 'popup' ? 'Pop-up window' : kind === 'hotspots' ? null : 'Box';
+  const box = kind === 'hotspots' ? null : 'Box';
   return (
     <>
       <h4 className={heading}>Look</h4>
@@ -363,13 +361,13 @@ export function QuestionLookFields({
         </>
       )}
 
-      {(kind === 'popup' || kind === 'hotspots') && (
+      {kind === 'hotspots' && (
         <>
           <h4 className={heading}>Pop-up text</h4>
           <PartText
             label="Title text"
             bold
-            size={kind === 'popup' ? 21 : Math.round((base * 17) / 16)}
+            size={Math.round((base * 17) / 16)}
             colour={ink}
             value={look.questionStyle}
             onChange={(questionStyle) => set({ questionStyle })}
@@ -394,21 +392,17 @@ export function QuestionLookFields({
             value={look.buttonStyle}
             onChange={(buttonStyle) => set({ buttonStyle })}
           />
-          {kind !== 'popup' && (
-            <>
-              <Select
-                label="Position"
-                value={look.submitAlign ?? (kind === 'results' ? 'center' : 'left')}
-                options={[...SIDES]}
-                onChange={(submitAlign) => set({ submitAlign })}
-              />
-              <PaddingField
-                label="Space around the button (px)"
-                value={look.buttonMargin ?? (graded || written ? BUTTON_MARGIN : [0, 0, 0, 0])}
-                onChange={(buttonMargin) => set({ buttonMargin })}
-              />
-            </>
-          )}
+          <Select
+            label="Position"
+            value={look.submitAlign ?? (kind === 'results' ? 'center' : 'left')}
+            options={[...SIDES]}
+            onChange={(submitAlign) => set({ submitAlign })}
+          />
+          <PaddingField
+            label="Space around the button (px)"
+            value={look.buttonMargin ?? (graded || written ? BUTTON_MARGIN : [0, 0, 0, 0])}
+            onChange={(buttonMargin) => set({ buttonMargin })}
+          />
           {graded && (
             <Select
               label="Feedback"
@@ -434,13 +428,11 @@ export function QuestionLookFields({
       {box && (
         <>
           <h4 className={heading}>{box}</h4>
-          {kind !== 'popup' && (
-            <Toggle
-              label="Outline"
-              checked={boxed ? look.card !== false : !!look.card}
-              onChange={(card) => set({ card })}
-            />
-          )}
+          <Toggle
+            label="Outline"
+            checked={boxed ? look.card !== false : !!look.card}
+            onChange={(card) => set({ card })}
+          />
           <ColourField
             label="Background"
             value={look.fill}
@@ -450,11 +442,7 @@ export function QuestionLookFields({
             label="Padding (px)"
             value={
               look.boxPadding ??
-              (kind === 'popup'
-                ? [26, 26, 26, 26]
-                : (boxed ? look.card !== false : look.card)
-                  ? [16, 16, 16, 16]
-                  : [0, 0, 0, 0])
+              ((boxed ? look.card !== false : look.card) ? [16, 16, 16, 16] : [0, 0, 0, 0])
             }
             onChange={(boxPadding) => set({ boxPadding })}
           />

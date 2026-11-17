@@ -201,6 +201,7 @@ export interface BlockBase {
   interact?: Interaction;
   anim?: Anim;
   startHidden?: boolean;
+  parent?: string;
 }
 
 export interface HeadingBlock extends BlockBase {
@@ -298,7 +299,8 @@ export interface ButtonBlock extends BlockBase {
 export type ButtonAction =
   | { kind: 'next' }
   | { kind: 'page'; pageId: string; back?: boolean }
-  | { kind: 'link'; url: string };
+  | { kind: 'link'; url: string }
+  | { kind: 'popup'; blockId: string };
 
 export interface CheckOption {
   id: string;
@@ -349,13 +351,12 @@ export interface Panel {
 
 export interface PopupBlock extends BlockBase {
   type: 'popup';
-  label: string;
-  title: string;
-  html: string;
-  src: string;
-  fileName: string;
-  showButton: boolean;
-  look?: QuestionLook;
+  fill?: string;
+  gradient?: Gradient;
+  shadow?: Shadow;
+  border?: Border;
+  radius?: number;
+  corners?: Corners;
 }
 
 export interface AccordionBlock extends BlockBase {
@@ -657,16 +658,7 @@ export function newBlock(type: BlockType): Block {
     case 'animation':
       return { id, type, src: '', fileName: '', loop: true };
     case 'popup':
-      return {
-        id,
-        type,
-        label: 'Learn more',
-        title: 'More information',
-        html: '<p>Type the pop-up content here.</p>',
-        src: '',
-        fileName: '',
-        showButton: true,
-      };
+      return { id, type, fill: '#ffffff', radius: 16, shadow: { ...CARD_SHADOW } };
     case 'accordion':
       return { id, type, items: [panel(1), panel(2)] };
     case 'tabs':
@@ -797,11 +789,23 @@ const panel = (n: number) => ({
   html: '<p>Type the content here.</p>',
 });
 
-export const isHiddenPopup = (b: Block) => b.type === 'popup' && !b.showButton;
+export const inPopup = (b: Block) => b.type === 'popup' || !!b.parent;
+
+export function layerOf(page: Page, blockId: string | null): string | null {
+  const b = page.blocks.find((x) => x.id === blockId);
+  if (!b) return null;
+  return b.type === 'popup' ? b.id : (b.parent ?? null);
+}
 
 export const withoutHidden = (doc: CourseDoc): CourseDoc => ({
   ...doc,
-  pages: doc.pages.map((p) => ({ ...p, blocks: p.blocks.filter((b) => !b.hidden) })),
+  pages: doc.pages.map((p) => {
+    const gone = new Set(p.blocks.filter((b) => b.hidden).map((b) => b.id));
+    return {
+      ...p,
+      blocks: p.blocks.filter((b) => !gone.has(b.id) && !(b.parent && gone.has(b.parent))),
+    };
+  }),
 });
 
 export const isQuestion = (b: Block): b is GradedBlock =>
@@ -816,7 +820,6 @@ export type LookedBlock =
   | WrittenBlock
   | LikertBlock
   | ResultsBlock
-  | PopupBlock
   | AccordionBlock
   | TabsBlock
   | FlipBlock
@@ -832,7 +835,6 @@ const LOOKED = new Set<Block['type']>([
   'written',
   'likert',
   'results',
-  'popup',
   'accordion',
   'tabs',
   'flip',
@@ -964,8 +966,104 @@ function upgradeBlock(stored: Block): Block {
   return text;
 }
 
+interface OldPopup extends BlockBase {
+  type: 'popup';
+  label?: string;
+  title?: string;
+  html?: string;
+  src?: string;
+  fileName?: string;
+  showButton?: boolean;
+}
+
+const CARD_SHADOW: Shadow = { colour: '#000000', opacity: 0.3, x: 0, y: 16, blur: 48 };
+
+const CARD: Record<Layout, Frame> = {
+  desktop: { x: 15, y: 12, w: 70, h: 76, r: 0 },
+  phone: { x: 5, y: 15, w: 90, h: 70, r: 0 },
+};
+
+function inside(card: Partial<Record<Layout, Frame>>, top: number, height: number) {
+  const out: Partial<Record<Layout, Frame>> = {};
+  for (const [layout, f] of Object.entries(card) as [Layout, Frame][]) {
+    out[layout] = {
+      ...f,
+      x: f.x + f.w * 0.06,
+      w: f.w * 0.88,
+      y: f.y + f.h * top,
+      h: f.h * height,
+      r: 0,
+    };
+  }
+  return out;
+}
+
+function upgradePopup(old: OldPopup): Block[] {
+  const card: PopupBlock = {
+    id: old.id,
+    type: 'popup',
+    fill: '#ffffff',
+    radius: 16,
+    shadow: { ...CARD_SHADOW },
+    frames: old.showButton || !old.frames ? { ...CARD } : old.frames,
+    ...(old.name || old.title ? { name: old.name || old.title } : {}),
+    ...(old.hidden ? { hidden: true } : {}),
+  };
+  const frames = card.frames!;
+  const out: Block[] = [card];
+  const image = !!old.src;
+  if (old.title)
+    out.push({
+      id: `${old.id}-title`,
+      type: 'heading',
+      text: old.title,
+      level: 2,
+      align: 'left',
+      parent: old.id,
+      frames: inside(frames, 0.06, 0.12),
+    });
+  if (image)
+    out.push({
+      id: `${old.id}-image`,
+      type: 'image',
+      src: old.src!,
+      fileName: old.fileName ?? '',
+      alt: '',
+      size: 'full',
+      parent: old.id,
+      frames: inside(frames, 0.2, 0.3),
+    });
+  out.push({
+    id: `${old.id}-text`,
+    type: 'text',
+    html: old.html ?? '',
+    align: 'left',
+    parent: old.id,
+    frames: inside(frames, image ? 0.52 : 0.2, image ? 0.42 : 0.74),
+  });
+  if (old.showButton)
+    out.push({
+      id: `${old.id}-button`,
+      type: 'button',
+      label: old.label || 'Learn more',
+      style: 'outline',
+      action: { kind: 'popup', blockId: old.id },
+      frames: old.frames,
+    });
+  return out;
+}
+
+const upgradePopups = (blocks: Block[]): Block[] =>
+  blocks.flatMap((b) =>
+    b.type === 'popup' && 'html' in b ? upgradePopup(b as unknown as OldPopup) : [b],
+  );
+
 function upgradePage(p: Page): Page {
-  const page = { ...p, triggers: p.triggers ?? [], blocks: p.blocks.map(upgradeBlock) };
+  const page = {
+    ...p,
+    triggers: p.triggers ?? [],
+    blocks: upgradePopups(p.blocks.map(upgradeBlock)),
+  };
   delete (page as Page & { kind?: string }).kind;
   delete (page as Page & { sideways?: boolean }).sideways;
   return page;

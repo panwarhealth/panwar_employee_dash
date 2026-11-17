@@ -12,6 +12,7 @@ import {
   type Frame,
   type Layout,
   type Page,
+  layerOf,
 } from '@/course/doc';
 import { useCallback, useState } from 'react';
 import { Eye, EyeOff, Trash2, Wand2 } from 'lucide-react';
@@ -57,7 +58,7 @@ export function Inspector({
   page: Page;
   courseId: string;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
   onPage: (fn: (p: Page) => void) => void;
   onAddBlock: () => void;
   onMoveBlock: (from: number, to: number) => void;
@@ -88,8 +89,11 @@ export function Inspector({
   const look = (patch: Partial<Interaction>) =>
     changeGroup((g) => (g.interact = { ...NO_INTERACTION, ...g.interact, ...patch }));
   const last = page.blocks.length - 1;
-  const items = [...page.blocks].reverse();
-  const move = (from: number, to: number) => onMoveBlock(last - from, last - to);
+  const layer = layerOf(page, selectedId);
+  const card = page.blocks.find((b) => b.id === layer) ?? null;
+  const items = [...page.blocks].reverse().filter((b) => (layer ? b.parent === layer : !b.parent));
+  const move = (from: number, to: number) =>
+    onMoveBlock(page.blocks.indexOf(items[from]), page.blocks.indexOf(items[to]));
   const index = block ? page.blocks.indexOf(block) : -1;
   const [renaming, setRenaming] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -232,6 +236,29 @@ export function Inspector({
           </>
         )}
       </p>
+      {card && (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-md bg-ph-purple/5 px-2 py-1.5 text-xs">
+          <button
+            type="button"
+            onClick={() => onSelect(card.id)}
+            className="min-w-0 truncate font-semibold text-ph-purple"
+          >
+            Pop-up: {blockLabel(card)}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelect(null)}
+            className="shrink-0 text-ph-charcoal/60 hover:text-ph-purple"
+          >
+            Back to page
+          </button>
+        </div>
+      )}
+      {card && !items.length && (
+        <p className="mb-2 text-xs text-ph-charcoal/60">
+          Nothing in this pop-up yet. Add objects while it's selected.
+        </p>
+      )}
       <SortableList items={items} onMove={move}>
         {(b) => (
           <div

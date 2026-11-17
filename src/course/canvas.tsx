@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   groupsOf,
-  isHiddenPopup,
+  inPopup,
   type Block,
   type Frame,
   type Group,
@@ -55,7 +55,7 @@ function hoverUnits(page: Page, layout: Layout, groups: Group[]): HoverUnit[] {
     const riders = page.blocks
       .slice(i + 1)
       .filter((o) => {
-        if (taken.has(o.id) || isHiddenPopup(o)) return false;
+        if (taken.has(o.id) || inPopup(o)) return false;
         const f = frameFor(page, o, layout);
         return area(f) < area(box) && centreInside(box, f);
       })
@@ -176,6 +176,8 @@ export function CanvasStage({
   overlay,
   hidden,
   leaving = false,
+  layer = null,
+  onBackdrop,
 }: {
   page: Page;
   layout: Layout;
@@ -184,6 +186,8 @@ export function CanvasStage({
   overlay?: ReactNode;
   hidden?: Set<string>;
   leaving?: boolean;
+  layer?: string | null;
+  onBackdrop?: () => void;
 }) {
   const throughTo = clickThrough(page, layout, ctx.clickable);
   const [hot, setHot] = useState<string | null>(null);
@@ -193,6 +197,51 @@ export function CanvasStage({
   const bases = new Set(groups.map((g) => baseOf(page, g, layout)));
   const units = hoverUnits(page, layout, groups);
   const unitOf = new Map(units.flatMap((u) => u.members.map((id) => [id, u] as const)));
+  const card = page.blocks.find((b) => b.id === layer && b.type === 'popup' && !b.hidden);
+  const object = (b: Block) => {
+    const frame = frameFor(page, b, layout);
+    const shown = lookFor(b, layout);
+    const view = <BlockView block={shown} ctx={ctx} />;
+    const content = growsToFit(b) ? view : <Fit>{view}</Fit>;
+    if (renderObject) return renderObject(shown, frame, content);
+    const g = groupBy.get(b.id);
+    const own = b.type !== 'button' && ctx.clickable.has(b.id);
+    const viaGroup = !!g && b.type !== 'button' && ctx.clickable.has(g.id);
+    const clickable = own || viaGroup;
+    const click = () => {
+      if (own) ctx.click(b.id);
+      if (viaGroup) ctx.click(g.id);
+    };
+    const unit = unitOf.get(b.id);
+    const look = [
+      g ? groupClass(g, bases.has(b.id), ctx) : '',
+      hoverClass(unit, b.id, hot),
+      viaGroup && !own ? 'cp-click' : '',
+    ].join(' ');
+    return (
+      <div
+        key={b.id}
+        className={`${objectClass(b, ctx, !unit)} ${backdropClass(b, frame)} ${look} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) && !viaGroup ? ' cp-through' : ''}`}
+        style={{
+          ...frameStyle(frame, growsToFit(b)),
+          ...animStyle(b),
+          ...(unit?.hover === 'scale' ? scaleOrigin(frame, unit.box) : {}),
+        }}
+        onClick={clickable ? click : undefined}
+        onPointerEnter={unit ? () => setHot(unit.key) : undefined}
+        onPointerLeave={unit ? () => setHot(null) : undefined}
+        role={clickable ? 'button' : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        onKeyDown={
+          clickable
+            ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), click())
+            : undefined
+        }
+      >
+        {content}
+      </div>
+    );
+  };
   return (
     <div className={`cp-stagewrap cp-stagewrap-${layout}`}>
       <div
@@ -223,51 +272,16 @@ export function CanvasStage({
           ctx.edit ? undefined : (e) => hoverThrough(e.currentTarget, -1, -1, '.cp-obj')
         }
       >
-        {page.blocks.map((b) => {
-          if (isHiddenPopup(b) || b.hidden) return <div key={b.id} className="cp-obj" hidden />;
-          const frame = frameFor(page, b, layout);
-          const shown = lookFor(b, layout);
-          const view = <BlockView block={shown} ctx={ctx} />;
-          const content = growsToFit(b) ? view : <Fit>{view}</Fit>;
-          if (renderObject) return renderObject(shown, frame, content);
-          const g = groupBy.get(b.id);
-          const own = b.type !== 'button' && ctx.clickable.has(b.id);
-          const viaGroup = !!g && b.type !== 'button' && ctx.clickable.has(g.id);
-          const clickable = own || viaGroup;
-          const click = () => {
-            if (own) ctx.click(b.id);
-            if (viaGroup) ctx.click(g.id);
-          };
-          const unit = unitOf.get(b.id);
-          const look = [
-            g ? groupClass(g, bases.has(b.id), ctx) : '',
-            hoverClass(unit, b.id, hot),
-            viaGroup && !own ? 'cp-click' : '',
-          ].join(' ');
-          return (
-            <div
-              key={b.id}
-              className={`${objectClass(b, ctx, !unit)} ${backdropClass(b, frame)} ${look} ${animClass(b, leaving, !!hidden?.has(b.id))}${throughTo.has(b.id) && !viaGroup ? ' cp-through' : ''}`}
-              style={{
-                ...frameStyle(frame, growsToFit(b)),
-                ...animStyle(b),
-                ...(unit?.hover === 'scale' ? scaleOrigin(frame, unit.box) : {}),
-              }}
-              onClick={clickable ? click : undefined}
-              onPointerEnter={unit ? () => setHot(unit.key) : undefined}
-              onPointerLeave={unit ? () => setHot(null) : undefined}
-              role={clickable ? 'button' : undefined}
-              tabIndex={clickable ? 0 : undefined}
-              onKeyDown={
-                clickable
-                  ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), click())
-                  : undefined
-              }
-            >
-              {content}
-            </div>
-          );
-        })}
+        {page.blocks.map((b) =>
+          inPopup(b) || b.hidden ? <div key={b.id} className="cp-obj" hidden /> : object(b),
+        )}
+        {card && (
+          <>
+            <div className="cp-backdrop" onClick={onBackdrop} />
+            {object(card)}
+            {page.blocks.filter((b) => b.parent === card.id && !b.hidden).map(object)}
+          </>
+        )}
         {overlay}
       </div>
     </div>

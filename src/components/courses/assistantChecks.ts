@@ -1,7 +1,7 @@
 import { layoutsFor } from '@/course/canvasLayout';
 import {
   groupsOf,
-  isHiddenPopup,
+  inPopup,
   isQuestion,
   type Block,
   type CourseDoc,
@@ -94,7 +94,7 @@ function desktopWarnings(page: Page): string[] {
     if (!qf) continue;
     for (const b of page.blocks.slice(page.blocks.indexOf(q) + 1)) {
       const f = b.frames?.desktop;
-      if (!f || isQuestion(b) || isHiddenPopup(b) || overlapShare(f, qf) <= 0.2) continue;
+      if (!f || isQuestion(b) || inPopup(b) || overlapShare(f, qf) <= 0.2) continue;
       warnings.push(
         `${b.type} ${b.id} covers question ${q.id} in the desktop layout. Questions draw their own box, so anything placed over one hides its answers.`,
       );

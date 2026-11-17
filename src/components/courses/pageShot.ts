@@ -1,4 +1,4 @@
-import { isHiddenPopup, type CourseDoc, type Layout, type Page } from '@/course/doc';
+import { inPopup, type CourseDoc, type Layout, type Page } from '@/course/doc';
 import { mediaUrls } from '@/course/exportZip';
 import { cueHidden } from '@/course/grading';
 import { withStage } from './offscreenStage';
@@ -22,7 +22,7 @@ export async function withLocalMedia<T>(
 
 function learnerHidden(page: Page): Set<string> {
   const hidden = cueHidden(page, {});
-  for (const b of page.blocks) if (b.startHidden || isHiddenPopup(b)) hidden.add(b.id);
+  for (const b of page.blocks) if (b.startHidden || inPopup(b)) hidden.add(b.id);
   return hidden;
 }
 

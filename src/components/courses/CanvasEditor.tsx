@@ -9,7 +9,6 @@ import {
 } from 'react';
 import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
-import { PopupLayer } from '@/course/interactive';
 import {
   backdropClass,
   frameFor,
@@ -21,7 +20,8 @@ import {
 } from '@/course/canvasLayout';
 import {
   groupsOf,
-  isHiddenPopup,
+  layerOf,
+  type Block,
   type CourseDoc,
   type Frame,
   type Layout,
@@ -144,6 +144,9 @@ export function CanvasEditor({
   const groups = groupsOf(page);
   const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
+  const layer = layerOf(page, selectedId);
+  const inLayer = (b: Block) =>
+    layer ? b.id === layer || b.parent === layer : !b.parent && b.type !== 'popup';
   const selectedGroup = groups.find((g) => g.id === selectedId) ?? null;
   const dragMembers =
     drag?.id === PICKED ? picked : drag ? groups.find((g) => g.id === drag.id)?.members : undefined;
@@ -346,7 +349,7 @@ export function CanvasEditor({
       f = { ...o, x: o.x + dx, y: o.y + dy };
       if (snap && !e.altKey) {
         const others = page.blocks
-          .filter((b) => b.id !== drag.id && !dragMembers?.includes(b.id))
+          .filter((b) => inLayer(b) && b.id !== drag.id && !dragMembers?.includes(b.id))
           .map((b) => frameFor(page, b, layout));
         const sx = snapAxis(f.x, f.w, [
           0,
@@ -468,6 +471,21 @@ export function CanvasEditor({
           />
           Show safe zone
         </label>
+        {layer && (
+          <span className="flex items-center gap-2 font-semibold text-ph-purple">
+            Editing pop-up
+            <button
+              type="button"
+              onClick={() => {
+                setPicked([]);
+                onSelect(null);
+              }}
+              className="rounded-full bg-ph-purple px-3 py-0.5 text-white hover:bg-ph-purple/90"
+            >
+              Done
+            </button>
+          </span>
+        )}
       </div>
       <div
         ref={stage}
@@ -490,8 +508,8 @@ export function CanvasEditor({
             page={page}
             layout={layout}
             ctx={editContext(doc)}
+            layer={layer}
             renderObject={(b, frame, content) => {
-              if (isHiddenPopup(b)) return null;
               const f =
                 drag && live
                   ? drag.id === b.id
@@ -589,18 +607,6 @@ export function CanvasEditor({
                         className="pointer-events-auto absolute -top-6 left-1/2 h-3 w-3 -translate-x-1/2 cursor-grab rounded-full border-2 border-ph-purple bg-white"
                       />
                     )}
-                  </div>
-                )}
-                {selected?.type === 'popup' && isHiddenPopup(selected) && (
-                  <div
-                    className="absolute inset-0 z-[35] [&_.cp-layer]:absolute"
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    <PopupLayer
-                      block={selected}
-                      ctx={editContext(doc)}
-                      onClose={() => onSelect(null)}
-                    />
                   </div>
                 )}
                 {showSafeZone && (
