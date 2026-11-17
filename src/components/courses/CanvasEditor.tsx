@@ -11,12 +11,12 @@ import { editContext } from '@/course/editContext';
 import { CanvasStage } from '@/course/canvas';
 import {
   backdropClass,
+  carry,
   frameFor,
   frameStyle,
   groupFrame,
   growsToFit,
   MENU_CORNER,
-  refit,
 } from '@/course/canvasLayout';
 import {
   groupsOf,
@@ -409,7 +409,7 @@ export function CanvasEditor({
         Object.fromEntries(
           dragMembers.map((id) => {
             const f = frameFor(page, page.blocks.find((b) => b.id === id)!, layout);
-            return [id, refit(f, drag.orig, live)];
+            return [id, carry(f, drag.orig, live, layout)];
           }),
         ),
       );
@@ -550,7 +550,7 @@ export function CanvasEditor({
                   ? drag.id === b.id
                     ? live
                     : dragMembers?.includes(b.id)
-                      ? refit(frame, drag.orig, live)
+                      ? carry(frame, drag.orig, live, layout)
                       : frame
                   : frame;
               const on = b.id === selectedId;

@@ -71,6 +71,29 @@ export function refit(f: Frame, from: Box, to: Box): Frame {
   };
 }
 
+const ASPECT: Record<Layout, number> = { desktop: 16 / 9, phone: 9 / 16 };
+
+export function carry(f: Frame, from: Frame, to: Frame, layout: Layout): Frame {
+  const moved = refit(f, from, to);
+  const turn = (to.r ?? 0) - (from.r ?? 0);
+  if (!turn) return moved;
+  const a = ASPECT[layout];
+  const cx = to.x + to.w / 2;
+  const cy = to.y + to.h / 2;
+  const dx = (moved.x + moved.w / 2 - cx) * a;
+  const dy = moved.y + moved.h / 2 - cy;
+  const rad = (turn * Math.PI) / 180;
+  const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
+  const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
+  const r = ((((moved.r ?? 0) + turn) % 360) + 360) % 360;
+  return {
+    ...moved,
+    x: round1(cx + rx / a - moved.w / 2),
+    y: round1(cy + ry - moved.h / 2),
+    r: Math.round(r > 180 ? r - 360 : r),
+  };
+}
+
 export function baseOf(page: Page, group: Group, layout: Layout): string {
   const area = (b: Block) => {
     const f = frameFor(page, b, layout);

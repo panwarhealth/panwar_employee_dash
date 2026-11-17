@@ -8,7 +8,7 @@ import {
   type Layout,
   type Page,
 } from './doc';
-import { frameFor, lookFor, MERGED_LOOKS, refit } from './canvasLayout';
+import { carry, frameFor, lookFor, MERGED_LOOKS } from './canvasLayout';
 import { round1 } from './geometry';
 
 function draft(doc: CourseDoc, fn: (d: CourseDoc) => void): CourseDoc {
@@ -155,12 +155,13 @@ function withContents(p: Page, layout: Layout, frames: Record<string, Frame>) {
     const from = frameFor(p, card, layout);
     for (const k of p.blocks)
       if (k.parent === card.id && !frames[k.id])
-        out[k.id] = refit(frameFor(p, k, layout), from, frames[card.id]);
+        out[k.id] = carry(frameFor(p, k, layout), from, frames[card.id], layout);
   }
   return out;
 }
 
-const sameBox = (a: Frame, b: Frame) => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+const sameBox = (a: Frame, b: Frame) =>
+  a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && (a.r ?? 0) === (b.r ?? 0);
 
 export function carryContents(before: Page, p: Page) {
   for (const card of p.blocks) {
@@ -175,7 +176,7 @@ export function carryContents(before: Page, p: Page) {
         if (k.parent !== card.id || !prev || !k.frames?.[layout]) continue;
         const was = frameFor(before, prev, layout);
         if (sameBox(was, k.frames[layout]!))
-          k.frames = { ...k.frames, [layout]: roundFrame(refit(was, from, to)) };
+          k.frames = { ...k.frames, [layout]: roundFrame(carry(was, from, to, layout)) };
       }
     }
   }
