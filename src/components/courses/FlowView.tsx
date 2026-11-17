@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useState, type SetStateAction } from 'react';
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type SetStateAction,
+} from 'react';
 import {
   Background,
   Controls,
@@ -33,11 +42,15 @@ interface PageData extends Record<string, unknown> {
   names: Record<string, string>;
   start: boolean;
   current: boolean;
-  picked: string | null;
-  onPick: (exitId: string) => void;
 }
 
 type PageNode = Node<PageData, 'page'>;
+type Wire = Edge<{ text: string; back: boolean }>;
+
+const Picked = createContext<{ picked: string | null; onPick: (exitId: string) => void }>({
+  picked: null,
+  onPick: () => {},
+});
 
 const SHOWN = 8;
 
@@ -47,7 +60,8 @@ function exitTarget(e: FlowExit, names: Record<string, string>): string {
   return e.step === 'prev' ? 'Nowhere' : 'End of course';
 }
 
-function PageCard({ data }: NodeProps<PageNode>) {
+const PageCard = memo(function PageCard({ data }: NodeProps<PageNode>) {
+  const { picked, onPick } = useContext(Picked);
   return (
     <div
       className={cn(
@@ -81,10 +95,10 @@ function PageCard({ data }: NodeProps<PageNode>) {
             <button
               type="button"
               title="Select this branch"
-              onClick={() => data.onPick(e.id)}
+              onClick={() => onPick(e.id)}
               className={cn(
                 'nodrag block w-full truncate rounded px-1.5 py-0.5 text-left hover:bg-ph-purple/10',
-                data.picked === e.id && 'bg-ph-pink/10',
+                picked === e.id && 'bg-ph-pink/10',
               )}
             >
               {e.rank && <span className="text-ph-charcoal/40">{e.rank}. </span>}
@@ -104,7 +118,7 @@ function PageCard({ data }: NodeProps<PageNode>) {
       <Handle type="source" position={Position.Right} className="!h-3 !w-3 !bg-ph-purple" />
     </div>
   );
-}
+});
 
 const NODE_TYPES = { page: PageCard };
 
@@ -154,11 +168,9 @@ function Flow({
         names,
         start: i === 0,
         current: p.id === currentId,
-        picked,
-        onPick: setPicked,
       },
     }));
-  }, [doc, exits, names, currentId, picked]);
+  }, [doc, exits, names, currentId]);
   const [nodes, setNodes] = useState<PageNode[]>(built);
   const [synced, setSynced] = useState(built);
   if (synced !== built) {
@@ -171,37 +183,51 @@ function Flow({
     );
   }
 
-  const edges = useMemo<Edge[]>(
+  const wires = useMemo<Wire[]>(
     () =>
       exits
         .filter((e) => e.to && e.to !== e.from)
-        .filter((e) => backs || e.id === picked || e.step !== 'prev')
         .map((e) => {
-          const on = e.id === picked;
           const faint = e.step === 'next' || e.step === 'prev' || e.detour;
-          const colour = e.triggerId ? '#702f8f' : '#2f3030';
-          const stroke = on ? PINK : faint ? FAINT : colour;
-          const named = on || !!e.condition || !!e.rank;
-          const rank = e.rank ? `${e.rank}. ` : '';
+          const stroke = faint ? FAINT : e.triggerId ? '#702f8f' : '#2f3030';
+          const text = `${e.rank ? `${e.rank}. ` : ''}${e.start}${e.condition ? ` ${e.condition}` : ''}`;
           return {
             id: e.id,
             source: e.from,
             target: e.to!,
-            label: named ? `${rank}${e.start}${e.condition ? ` ${e.condition}` : ''}` : undefined,
-            selected: on,
-            zIndex: on ? 10 : 0,
-            style: {
-              stroke,
-              strokeWidth: on ? 3 : faint ? 1 : 1.5,
-              strokeDasharray: faint ? '6 4' : undefined,
-            },
+            label: e.condition || e.rank ? text : undefined,
+            data: { text, back: e.step === 'prev' },
+            style: { stroke, strokeWidth: faint ? 1 : 1.5 },
             labelStyle: { fontSize: 10, fill: '#2f3030' },
             labelBgStyle: { fill: '#ffffff' },
             markerEnd: { type: MarkerType.ArrowClosed, color: stroke },
           };
         }),
-    [exits, picked, backs],
+    [exits],
   );
+  const edges = useMemo<Wire[]>(
+    () =>
+      wires
+        .filter((w) => backs || w.id === picked || !w.data!.back)
+        .map((w) =>
+          w.id === picked
+            ? {
+                ...w,
+                label: w.data!.text,
+                selected: true,
+                zIndex: 10,
+                style: { stroke: PINK, strokeWidth: 3 },
+                markerEnd: { type: MarkerType.ArrowClosed, color: PINK },
+              }
+            : w,
+        ),
+    [wires, picked, backs],
+  );
+  const pick = useMemo(() => ({ picked, onPick: setPicked }), [picked]);
+  const [home] = useState(() => {
+    const p = built[0]?.position ?? { x: 0, y: 0 };
+    return { x: 60 - p.x, y: 80 - p.y, zoom: 1 };
+  });
 
   const pageOf = (id: string) => doc.pages.find((p) => p.id === id)!;
   const exit = exits.find((e) => e.id === picked) ?? null;
@@ -338,7 +364,7 @@ function Flow({
             onClick={() => {
               if (!window.confirm('Lay out every page again automatically?')) return;
               setDoc((d) => ops.updateCourse(d, (c) => c.pages.forEach((p) => delete p.flow)));
-              setTimeout(() => flow.fitView(), 50);
+              setTimeout(() => flow.setViewport({ x: 60, y: 80, zoom: 1 }), 50);
             }}
           >
             Tidy up
@@ -349,55 +375,58 @@ function Flow({
         </div>
       </div>
       <div className="relative min-h-0 flex-1">
-        <ReactFlow<PageNode>
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={NODE_TYPES}
-          onNodesChange={onNodesChange}
-          onNodeDragStop={(_, __, moved) =>
-            change((c) =>
-              moved.forEach((n) => {
-                const p = c.pages.find((x) => x.id === n.id);
-                if (p) p.flow = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
-              }),
-            )
-          }
-          onNodeClick={() => setMenu(null)}
-          onNodeDoubleClick={(_, n) => onOpen(n.id)}
-          onEdgeClick={(_, e) => setPicked(e.id)}
-          onMoveStart={() => setMenu(null)}
-          onPaneClick={() => {
-            setPicked(null);
-            setMenu(null);
-          }}
-          onConnectEnd={(ev, state) => {
-            const from = state.fromNode?.id;
-            const pt = 'changedTouches' in ev ? ev.changedTouches[0] : ev;
-            const to =
-              state.toNode?.id ??
-              document
-                .elementFromPoint(pt.clientX, pt.clientY)
-                ?.closest('.react-flow__node')
-                ?.getAttribute('data-id');
-            if (from && to && from !== to) setLinking({ from, to });
-          }}
-          onPaneContextMenu={(e) => {
-            e.preventDefault();
-            setMenu({ x: e.clientX, y: e.clientY, pageId: null });
-          }}
-          onNodeContextMenu={(e, n) => {
-            e.preventDefault();
-            setMenu({ x: e.clientX, y: e.clientY, pageId: n.id });
-          }}
-          deleteKeyCode={null}
-          fitView
-          minZoom={0.1}
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background gap={24} />
-          <Controls showInteractive={false} />
-          <MiniMap pannable zoomable />
-        </ReactFlow>
+        <Picked.Provider value={pick}>
+          <ReactFlow<PageNode, Wire>
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={NODE_TYPES}
+            onNodesChange={onNodesChange}
+            onNodeDragStop={(_, __, moved) =>
+              change((c) =>
+                moved.forEach((n) => {
+                  const p = c.pages.find((x) => x.id === n.id);
+                  if (p) p.flow = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+                }),
+              )
+            }
+            onNodeClick={() => setMenu(null)}
+            onNodeDoubleClick={(_, n) => onOpen(n.id)}
+            onEdgeClick={(_, e) => setPicked(e.id)}
+            onMoveStart={() => setMenu(null)}
+            onPaneClick={() => {
+              setPicked(null);
+              setMenu(null);
+            }}
+            onConnectEnd={(ev, state) => {
+              const from = state.fromNode?.id;
+              const pt = 'changedTouches' in ev ? ev.changedTouches[0] : ev;
+              const to =
+                state.toNode?.id ??
+                document
+                  .elementFromPoint(pt.clientX, pt.clientY)
+                  ?.closest('.react-flow__node')
+                  ?.getAttribute('data-id');
+              if (from && to && from !== to) setLinking({ from, to });
+            }}
+            onPaneContextMenu={(e) => {
+              e.preventDefault();
+              setMenu({ x: e.clientX, y: e.clientY, pageId: null });
+            }}
+            onNodeContextMenu={(e, n) => {
+              e.preventDefault();
+              setMenu({ x: e.clientX, y: e.clientY, pageId: n.id });
+            }}
+            deleteKeyCode={null}
+            defaultViewport={home}
+            onlyRenderVisibleElements
+            minZoom={0.1}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background gap={24} />
+            <Controls showInteractive={false} />
+            <MiniMap pannable zoomable />
+          </ReactFlow>
+        </Picked.Provider>
 
         {menu && (
           <div

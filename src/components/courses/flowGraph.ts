@@ -139,41 +139,44 @@ const ROW = 230;
 const BAND_GAP = 120;
 
 function autoPositions(doc: CourseDoc, exits: FlowExit[]): Map<string, Spot> {
-  const depth = new Map<string, number>();
+  const out = new Map<string, Spot>();
   const first = doc.pages[0]?.id;
-  if (first) depth.set(first, 0);
-  const queue = first ? [first] : [];
+  if (!first) return out;
+  const onward = new Map<string, string[]>();
+  for (const e of exits) {
+    if (!e.to || e.step === 'prev') continue;
+    const list = onward.get(e.from) ?? [];
+    if (e.step === 'next') list.unshift(e.to);
+    else list.push(e.to);
+    onward.set(e.from, list);
+  }
+  const free: number[] = [];
+  const cell = new Map<string, { column: number; row: number }>();
+  const place = (id: string, column: number, from: number) => {
+    const row = Math.max(free[column] ?? 0, from);
+    free[column] = row + 1;
+    cell.set(id, { column, row });
+  };
+  place(first, 0, 0);
+  const queue = [first];
   while (queue.length) {
     const id = queue.shift()!;
-    for (const e of exits)
-      if (e.from === id && e.to && !depth.has(e.to)) {
-        depth.set(e.to, depth.get(id)! + 1);
-        queue.push(e.to);
+    const at = cell.get(id)!;
+    for (const to of onward.get(id) ?? [])
+      if (!cell.has(to)) {
+        place(to, at.column + 1, at.row);
+        queue.push(to);
       }
   }
-  const last = Math.max(0, ...depth.values()) + 1;
-  const rows = new Map<number, number>();
-  const placed: [string, number, number][] = [];
+  const below = Math.max(...free) * ROW + BAND_GAP;
+  let loose = 0;
   for (const p of doc.pages) {
-    const d = depth.get(p.id) ?? last;
-    const row = rows.get(d) ?? 0;
-    rows.set(d, row + 1);
-    placed.push([p.id, d, row]);
+    const at = cell.get(p.id);
+    out.set(
+      p.id,
+      at ? { x: at.column * COLUMN, y: at.row * ROW } : { x: loose++ * COLUMN, y: below },
+    );
   }
-  const bands = new Map<number, number>();
-  for (const [d, n] of rows) {
-    const band = Math.floor(d / COLUMNS);
-    bands.set(band, Math.max(bands.get(band) ?? 0, n));
-  }
-  const top = new Map<number, number>();
-  let y = 0;
-  for (let band = 0; band <= Math.floor(last / COLUMNS); band++) {
-    top.set(band, y);
-    y += (bands.get(band) ?? 0) * ROW + BAND_GAP;
-  }
-  const out = new Map<string, Spot>();
-  for (const [id, d, row] of placed)
-    out.set(id, { x: (d % COLUMNS) * COLUMN, y: top.get(Math.floor(d / COLUMNS))! + row * ROW });
   return out;
 }
 
