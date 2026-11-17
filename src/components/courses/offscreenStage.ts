@@ -25,7 +25,13 @@ export async function withStage<T>(
     hidden,
     className = '',
     showFeedback = false,
-  }: { hidden?: Set<string>; className?: string; showFeedback?: boolean } = {},
+    layer = null,
+  }: {
+    hidden?: Set<string>;
+    className?: string;
+    showFeedback?: boolean;
+    layer?: string | null;
+  } = {},
 ): Promise<T> {
   const host = document.createElement('div');
   host.className = `cp ${className}`;
@@ -41,6 +47,7 @@ export async function withStage<T>(
           layout,
           ctx: { ...editContext(doc), showFeedback },
           hidden,
+          layer,
         }),
       ),
     );

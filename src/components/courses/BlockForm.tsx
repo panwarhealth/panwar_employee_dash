@@ -29,7 +29,13 @@ import { QuestionTextFields } from './QuestionLookFields';
 import { blockLabel } from './blockMeta';
 import { RevealForm } from './RevealForm';
 import { RichText } from './RichText';
-import { BorderField, PaintField, ShadowField, TextStyleFields } from './TextStyleFields';
+import {
+  BorderField,
+  ColourField,
+  PaintField,
+  ShadowField,
+  TextStyleFields,
+} from './TextStyleFields';
 import {
   AnimationForm,
   AudioForm,
@@ -402,6 +408,24 @@ export function BlockForm({
             While this pop-up or anything in it is selected, new objects go inside it. Open it
             from a button set to Open a pop-up, or with a trigger.
           </p>
+          <Toggle
+            label="Show the close button"
+            checked={block.close !== false}
+            onChange={(v) => set<typeof block>((b) => (b.close = v ? undefined : false))}
+          />
+          {block.close !== false && (
+            <ColourField
+              label="Close button colour"
+              value={block.closeColour}
+              onChange={(v) => set<typeof block>((b) => (b.closeColour = v))}
+            />
+          )}
+          {block.close === false && (
+            <p className="text-xs text-ph-charcoal/60">
+              Learners can still close it by clicking outside it. For your own close button, add
+              a trigger: On click, Close pop-up layer.
+            </p>
+          )}
           <BoxFields block={block} set={set<typeof block>} />
         </>
       );

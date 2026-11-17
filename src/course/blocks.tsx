@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Block } from './doc';
 import type { BlockContext } from './context';
 import { sanitizeHtml } from './sanitize';
@@ -229,14 +230,19 @@ export function BlockView({ block, ctx }: { block: Block; ctx: BlockContext }) {
             ...shadowCss(block.shadow, 'box'),
           }}
         >
-          <button
-            type="button"
-            className="cp-layer-x"
-            aria-label="Close"
-            onClick={() => !ctx.edit && ctx.openPopup(null)}
-          >
-            ×
-          </button>
+          {block.close !== false && (
+            <button
+              type="button"
+              className="cp-layer-x"
+              style={
+                block.closeColour ? ({ '--cp-x': block.closeColour } as CSSProperties) : undefined
+              }
+              aria-label="Close"
+              onClick={() => !ctx.edit && ctx.openPopup(null)}
+            >
+              ×
+            </button>
+          )}
         </div>
       );
     case 'accordion':

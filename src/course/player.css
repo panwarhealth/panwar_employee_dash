@@ -780,7 +780,7 @@
   background: none;
   font-size: 1.4em;
   line-height: 1;
-  color: var(--cp-ink-2) !important;
+  color: var(--cp-x, var(--cp-ink-2)) !important;
 }
 
 .cp-acc {

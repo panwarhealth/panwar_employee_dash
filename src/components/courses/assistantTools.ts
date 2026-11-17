@@ -27,7 +27,12 @@ import { layoutsFor, pagePaint } from '@/course/canvasLayout';
 
 export interface ToolContext {
   importMedia: (url: string) => Promise<string>;
-  picture: (doc: CourseDoc, page: Page, layout: Layout) => Promise<string>;
+  picture: (
+    doc: CourseDoc,
+    page: Page,
+    layout: Layout,
+    popupId: string | null,
+  ) => Promise<string>;
 }
 
 const obj = (properties: Record<string, unknown>, required: string[]) => ({
@@ -45,11 +50,12 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'look_at_page',
     description:
-      'See a picture of one page in one layout, as the learner first sees it. Popups, their contents and objects that start hidden are left out. Use it to judge how a page looks, and to check your changes.',
+      'See a picture of one page in one layout, as the learner first sees it. Popups, their contents and objects that start hidden are left out; give popup_id to see the page with that popup open instead. Use it to judge how a page or a popup looks, and to check your changes.',
     input_schema: obj(
       {
         page_id: { type: 'string' },
         layout: { type: 'string', enum: ['desktop', 'phone'] },
+        popup_id: { type: 'string' },
       },
       ['page_id', 'layout'],
     ),
@@ -330,8 +336,12 @@ const lookAtPage: Handler = async (doc, input, ctx) => {
   const layout = input.layout === 'phone' ? 'phone' : 'desktop';
   if (!layoutsFor(doc.screens).includes(layout))
     return fail(doc, `This course has no ${layout} layout.`);
-  const image = await ctx.picture(doc, page, layout);
-  return { doc, image, result: `Page ${page.id} in the ${layout} layout.` };
+  const popup = typeof input.popup_id === 'string' ? input.popup_id : null;
+  if (popup && !page.blocks.some((b) => b.id === popup && b.type === 'popup'))
+    return fail(doc, `Popup "${popup}" isn't on this page.`);
+  const image = await ctx.picture(doc, page, layout, popup);
+  const what = popup ? ` with popup ${popup} open` : '';
+  return { doc, image, result: `Page ${page.id} in the ${layout} layout${what}.` };
 };
 
 const addPage: Handler = (doc, input) => {

@@ -168,11 +168,11 @@ export function useCourseAssistant(
       for (const use of uses) {
         const outcome = await runTool(docRef.current, use.name ?? '', use.input ?? {}, {
           importMedia: (url) => importMedia(courseId, url).then((r) => r.url),
-          picture: (doc, page, layout) =>
+          picture: (doc, page, layout, popupId) =>
             withLocalMedia(
               { ...doc, pages: [page] },
               (url) => downloadMedia(courseId, url),
-              (local) => snapshot(local, local.pages[0], layout),
+              (local) => snapshot(local, local.pages[0], layout, popupId),
             ),
         });
         if (outcome.doc !== docRef.current) apply(outcome.doc);

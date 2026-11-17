@@ -22,8 +22,17 @@ export const MENU_CORNER: Record<Layout, { w: number; h: number }> = {
   phone: { w: 10, h: 6 },
 };
 
+function layerFrame(page: Page, block: Block, layout: Layout): Frame | undefined {
+  if (block.type === 'popup') return newFrame('popup', layout);
+  const other: Layout = layout === 'phone' ? 'desktop' : 'phone';
+  const own = block.frames?.[other];
+  const card = block.parent ? page.blocks.find((b) => b.id === block.parent) : undefined;
+  if (!own || !card) return undefined;
+  return refit(own, frameFor(page, card, other), frameFor(page, card, layout));
+}
+
 export const frameFor = (page: Page, block: Block, layout: Layout): Frame =>
-  block.frames?.[layout] ?? autoFrame(page, block, layout);
+  block.frames?.[layout] ?? layerFrame(page, block, layout) ?? autoFrame(page, block, layout);
 
 const GROWS = new Set([
   'heading',
@@ -124,7 +133,7 @@ const DEFAULT_FRAMES: Record<BlockType, Record<Layout, [number, number, number, 
   check: { desktop: [15, 12, 70, 76], phone: [5, 10, 90, 70] },
   audio: { desktop: [10, 85, 40, 10], phone: [5, 88, 90, 8] },
   animation: { desktop: [35, 20, 30, 50], phone: [15, 20, 70, 35] },
-  popup: { desktop: [70, 82, 22, 10], phone: [25, 88, 50, 7] },
+  popup: { desktop: [15, 12, 70, 76], phone: [5, 15, 90, 70] },
   accordion: { desktop: [15, 15, 70, 70], phone: [5, 10, 90, 70] },
   tabs: { desktop: [15, 15, 70, 70], phone: [5, 10, 90, 70] },
   flip: { desktop: [10, 15, 80, 70], phone: [5, 10, 90, 75] },

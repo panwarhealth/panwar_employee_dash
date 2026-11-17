@@ -8,7 +8,7 @@ import {
   type Layout,
   type Page,
 } from './doc';
-import { frameFor, lookFor, MERGED_LOOKS } from './canvasLayout';
+import { frameFor, lookFor, MERGED_LOOKS, refit } from './canvasLayout';
 import { round1 } from './geometry';
 
 function draft(doc: CourseDoc, fn: (d: CourseDoc) => void): CourseDoc {
@@ -148,6 +148,18 @@ export const removeBlock = (doc: CourseDoc, pageId: string, blockId: string) =>
 export const moveBlock = (doc: CourseDoc, pageId: string, from: number, to: number) =>
   updatePage(doc, pageId, (p) => moveItem(p.blocks, from, to));
 
+function withContents(p: Page, layout: Layout, frames: Record<string, Frame>) {
+  const out = { ...frames };
+  for (const card of p.blocks) {
+    if (card.type !== 'popup' || !frames[card.id]) continue;
+    const from = frameFor(p, card, layout);
+    for (const k of p.blocks)
+      if (k.parent === card.id && !frames[k.id])
+        out[k.id] = refit(frameFor(p, k, layout), from, frames[card.id]);
+  }
+  return out;
+}
+
 export const setFrame = (
   doc: CourseDoc,
   pageId: string,
@@ -155,8 +167,11 @@ export const setFrame = (
   layout: Layout,
   frame: Frame,
 ) =>
-  updateBlock(doc, pageId, blockId, (b) => {
-    b.frames = { ...b.frames, [layout]: roundFrame(frame) };
+  updatePage(doc, pageId, (p) => {
+    const frames = withContents(p, layout, { [blockId]: frame });
+    p.blocks.forEach((b) => {
+      if (frames[b.id]) b.frames = { ...b.frames, [layout]: roundFrame(frames[b.id]) };
+    });
   });
 
 export const setFrames = (
@@ -165,11 +180,12 @@ export const setFrames = (
   layout: Layout,
   frames: Record<string, Frame>,
 ) =>
-  updatePage(doc, pageId, (p) =>
+  updatePage(doc, pageId, (p) => {
+    const all = withContents(p, layout, frames);
     p.blocks.forEach((b) => {
-      if (frames[b.id]) b.frames = { ...b.frames, [layout]: roundFrame(frames[b.id]) };
-    }),
-  );
+      if (all[b.id]) b.frames = { ...b.frames, [layout]: roundFrame(all[b.id]) };
+    });
+  });
 
 export const removeBlocks = (doc: CourseDoc, pageId: string, ids: string[]) =>
   updatePage(doc, pageId, (p) => {

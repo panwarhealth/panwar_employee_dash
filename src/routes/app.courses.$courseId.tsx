@@ -357,6 +357,12 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           onClose={() => setModal(null)}
           onPick={(type) => {
             const b = newBlock(type);
+            if (type === 'popup') {
+              const names = new Set(page.blocks.map((x) => x.name));
+              let n = 1;
+              while (names.has(`Pop-up ${n}`)) n++;
+              b.name = `Pop-up ${n}`;
+            }
             let frame = newFrame(type, layout);
             const card = page.blocks.find((x) => x.id === layer);
             if (card && type !== 'popup') {

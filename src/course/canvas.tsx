@@ -197,7 +197,9 @@ export function CanvasStage({
   const bases = new Set(groups.map((g) => baseOf(page, g, layout)));
   const units = hoverUnits(page, layout, groups);
   const unitOf = new Map(units.flatMap((u) => u.members.map((id) => [id, u] as const)));
-  const card = page.blocks.find((b) => b.id === layer && b.type === 'popup' && !b.hidden);
+  const card = page.blocks.find(
+    (b) => b.id === layer && b.type === 'popup' && (ctx.edit || !b.hidden),
+  );
   const object = (b: Block) => {
     const frame = frameFor(page, b, layout);
     const shown = lookFor(b, layout);

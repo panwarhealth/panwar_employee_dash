@@ -351,6 +351,8 @@ export interface Panel {
 
 export interface PopupBlock extends BlockBase {
   type: 'popup';
+  close?: boolean;
+  closeColour?: string;
   fill?: string;
   gradient?: Gradient;
   shadow?: Shadow;

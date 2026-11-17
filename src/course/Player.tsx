@@ -363,6 +363,7 @@ export function Player({
   for (const b of page.blocks) if (!(state.vis?.[b.id] ?? !b.startHidden)) hidden.add(b.id);
   for (const g of groupsOf(page))
     if (state.vis?.[g.id] === false) for (const id of g.members) hidden.add(id);
+  for (const b of page.blocks) if (b.parent && hidden.has(b.parent)) hidden.add(b.id);
 
   const blocked =
     page.blocks.some((b) => mustAnswer(b) && !answered(b, state)) ||

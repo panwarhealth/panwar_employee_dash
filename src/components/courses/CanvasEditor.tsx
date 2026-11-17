@@ -31,6 +31,7 @@ import { bounds } from '@/course/geometry';
 import { hitObject } from '@/course/hit';
 import { cn } from '@/lib/utils';
 import { isDecor } from './blockKinds';
+import { blockLabel } from './blockMeta';
 import { readFlag, saveFlag } from './flags';
 import { InlineText } from './InlineText';
 import { ObjectMenu } from './ObjectMenu';
@@ -145,11 +146,24 @@ export function CanvasEditor({
   const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
   const layer = layerOf(page, selectedId);
+  const popups = page.blocks.filter((b) => b.type === 'popup');
+  const pickAt = (e: { clientX: number; clientY: number }, top: string) => {
+    const hit = under(e, top);
+    return popups.some((b) => b.id === hit) ? top : hit;
+  };
   const inLayer = (b: Block) =>
     layer ? b.id === layer || b.parent === layer : !b.parent && b.type !== 'popup';
   const selectedGroup = groups.find((g) => g.id === selectedId) ?? null;
+  const cardMembers = (id: string) =>
+    page.blocks.some((b) => b.id === id && b.type === 'popup')
+      ? [id, ...page.blocks.filter((b) => b.parent === id).map((b) => b.id)]
+      : undefined;
   const dragMembers =
-    drag?.id === PICKED ? picked : drag ? groups.find((g) => g.id === drag.id)?.members : undefined;
+    drag?.id === PICKED
+      ? picked
+      : drag
+        ? (groups.find((g) => g.id === drag.id)?.members ?? cardMembers(drag.id))
+        : undefined;
   const selectedIds = selectionOf(page, selectedId);
   const [box, setBox] = useState<SelectionBox | null>(null);
 
@@ -471,6 +485,25 @@ export function CanvasEditor({
           />
           Show safe zone
         </label>
+        {!layer && popups.length > 0 && (
+          <span className="flex items-center gap-1.5">
+            Pop-ups:
+            {popups.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                title="Edit this pop-up"
+                onClick={() => {
+                  setPicked([]);
+                  onSelect(b.id);
+                }}
+                className="max-w-[140px] truncate rounded-full border border-ph-purple/40 bg-white px-2.5 py-0.5 font-semibold text-ph-purple hover:bg-ph-purple hover:text-white"
+              >
+                {blockLabel(b)}
+              </button>
+            ))}
+          </span>
+        )}
         {layer && (
           <span className="flex items-center gap-2 font-semibold text-ph-purple">
             Editing pop-up
@@ -535,10 +568,10 @@ export function CanvasEditor({
                     picked.includes(b.id) && 'outline-dashed outline-2 outline-ph-purple',
                   )}
                   style={frameStyle(f, growsToFit(b))}
-                  onPointerDown={typing ? undefined : (e) => begin(e, under(e, b.id), 'move')}
-                  onContextMenu={typing ? undefined : (e) => openMenu(e, under(e, b.id))}
+                  onPointerDown={typing ? undefined : (e) => begin(e, pickAt(e, b.id), 'move')}
+                  onContextMenu={typing ? undefined : (e) => openMenu(e, pickAt(e, b.id))}
                   onDoubleClick={(e) => {
-                    const id = under(e, b.id);
+                    const id = pickAt(e, b.id);
                     const hit = page.blocks.find((x) => x.id === id);
                     if (groupBy.has(id) && selectedId !== id) onSelect(id);
                     else if (hit?.type === 'heading' || hit?.type === 'text') setEditing(id);

@@ -20,9 +20,10 @@ export async function withLocalMedia<T>(
   }
 }
 
-function learnerHidden(page: Page): Set<string> {
+function learnerHidden(page: Page, layer: string | null): Set<string> {
   const hidden = cueHidden(page, {});
-  for (const b of page.blocks) if (b.startHidden || inPopup(b)) hidden.add(b.id);
+  const open = (b: Page['blocks'][number]) => !!layer && (b.id === layer || b.parent === layer);
+  for (const b of page.blocks) if (b.startHidden || (inPopup(b) && !open(b))) hidden.add(b.id);
   return hidden;
 }
 
@@ -73,6 +74,7 @@ export async function snapshotWithBoxes(
   page: Page,
   layout: Layout,
   pixelRatio = 2,
+  layer: string | null = null,
 ): Promise<{ jpeg: string; boxes: Map<string, number[]> }> {
   const { toJpeg } = await import('html-to-image');
   return withStage(
@@ -95,9 +97,13 @@ export async function snapshotWithBoxes(
       const jpeg = await toJpeg(stage, { pixelRatio, quality: 0.85, backgroundColor: '#ffffff' });
       return { jpeg, boxes };
     },
-    { hidden: learnerHidden(page), className: 'cp-still' },
+    { hidden: learnerHidden(page, layer), className: 'cp-still', layer },
   );
 }
 
-export const snapshot = async (doc: CourseDoc, page: Page, layout: Layout) =>
-  (await snapshotWithBoxes(doc, page, layout)).jpeg;
+export const snapshot = async (
+  doc: CourseDoc,
+  page: Page,
+  layout: Layout,
+  layer: string | null = null,
+) => (await snapshotWithBoxes(doc, page, layout, 2, layer)).jpeg;
