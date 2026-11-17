@@ -118,7 +118,6 @@ export function JobForm({
   const chosen = (tasks.data ?? []).filter((t) => t.id in budgets);
   const others = (tasks.data ?? []).filter((t) => !(t.id in budgets) && !t.archived);
   const total = Object.values(budgets).reduce((s, b) => s + (Number(b) || 0), 0);
-  const clientName = clients.data?.find((c) => c.id === clientId)?.name;
 
   return (
     <>
@@ -173,7 +172,7 @@ export function JobForm({
               />
               {!job && next.data?.lastJob && (
                 <span className="hint">
-                  Last job code for {clientName}: {next.data.lastJob}
+                  Last job code: {next.data.lastJob}
                 </span>
               )}
             </div>
