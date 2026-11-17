@@ -338,6 +338,9 @@ export function BlockForm({
           <ActionFields
             action={block.action}
             pages={pages}
+            otherwise={page.triggers.some(
+              (t) => t.when.kind === 'click' && t.when.blockId === block.id,
+            )}
             onChange={(a) => set<typeof block>((b) => (b.action = a))}
           />
           <Select
@@ -421,16 +424,24 @@ export function BlockForm({
 function ActionFields({
   action,
   pages,
+  otherwise,
   onChange,
 }: {
   action: ButtonAction;
   pages: Page[];
+  otherwise: boolean;
   onChange: (a: ButtonAction) => void;
 }) {
   return (
     <>
+      {otherwise && (
+        <p className="text-xs text-ph-charcoal/60">
+          This button's triggers run first, top to bottom. The first one that goes somewhere wins.
+          If none of them does, the button does this:
+        </p>
+      )}
       <Select
-        label="When clicked"
+        label={otherwise ? 'Otherwise, when clicked' : 'When clicked'}
         value={action.kind}
         options={[
           { value: 'next', label: 'Go to next page' },

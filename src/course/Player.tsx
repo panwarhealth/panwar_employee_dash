@@ -311,7 +311,7 @@ export function Player({
     setState((s) => ({ ...s, picks: { ...s.picks, [page.id]: ids } }));
   const vars: Vars = state.vars ?? initialVars(doc);
 
-  const dispatch = (first: TriggerEvent, base: Vars = vars) => {
+  const dispatch = (first: TriggerEvent, base: Vars = vars): boolean => {
     let nextVars = base;
     const vis = { ...state.vis };
     let picks = picked;
@@ -330,7 +330,7 @@ export function Player({
           const target = ev.kind === 'click' && page.blocks.find((b) => b.id === ev.blockId);
           if (target) picks = togglePick(page, picks, target);
         } else if (a.kind === 'popup' || a.kind === 'closePopup') act(a);
-        else navigate = a;
+        else navigate ??= a;
       }
     }
     setState((s) => ({
@@ -340,6 +340,7 @@ export function Player({
       picks: { ...s.picks, [page.id]: picks },
     }));
     if (navigate) act(navigate);
+    return !!navigate;
   };
   dispatchRef.current = dispatch;
 
@@ -379,6 +380,7 @@ export function Player({
     next,
     act: (a, from) => {
       if (from) markClicked(from.id);
+      if (from && dispatch({ kind: 'click', blockId: from.id })) return;
       act(a);
     },
     picked,
