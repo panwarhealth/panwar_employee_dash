@@ -1119,3 +1119,10 @@ export const linkedPages = (page: Page): string[] =>
     ...page.triggers.map((t) => t.action),
     ...page.blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
   ].flatMap((a) => (a.kind === 'page' && a.back ? [a.pageId] : []));
+
+export function hubsOf(doc: CourseDoc): Map<string, string> {
+  const hubs = new Map<string, string>();
+  for (const p of doc.pages)
+    for (const id of linkedPages(p)) if (!hubs.has(id)) hubs.set(id, p.id);
+  return hubs;
+}

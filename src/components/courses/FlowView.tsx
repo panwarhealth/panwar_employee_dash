@@ -10,7 +10,6 @@ import {
   ReactFlowProvider,
   applyNodeChanges,
   useReactFlow,
-  type Connection,
   type Edge,
   type Node,
   type NodeChange,
@@ -23,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import { objectOptions } from './blockMeta';
-import { autoPositions, flowExits, sameStart, type FlowExit } from './flowGraph';
+import { flowExits, positions, sameStart, type FlowExit } from './flowGraph';
 import { Select } from './fields';
 import { TriggerWizard } from './TriggerWizard';
 
@@ -34,15 +33,18 @@ interface PageData extends Record<string, unknown> {
   names: Record<string, string>;
   start: boolean;
   current: boolean;
+  picked: string | null;
+  onPick: (exitId: string) => void;
 }
 
 type PageNode = Node<PageData, 'page'>;
 
+const SHOWN = 8;
+
 function exitTarget(e: FlowExit, names: Record<string, string>): string {
   if (e.to) return names[e.to];
-  if (e.step === 'finish') return 'Finish';
-  if (e.step === 'next') return 'End of course';
-  return 'Missing page';
+  if (e.step === 'page') return 'Missing page';
+  return e.step === 'prev' ? 'Nowhere' : 'End of course';
 }
 
 function PageCard({ data }: NodeProps<PageNode>) {
@@ -53,7 +55,12 @@ function PageCard({ data }: NodeProps<PageNode>) {
         data.current ? 'border-ph-purple' : 'border-ph-charcoal/15',
       )}
     >
-      <Handle type="target" position={Position.Left} className="!h-3 !w-3 !bg-ph-charcoal/40" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        isConnectableStart={false}
+        className="!h-3 !w-3 !bg-ph-charcoal/40"
+      />
       <div className="flex items-center gap-1.5 border-b border-ph-charcoal/10 px-3 py-2">
         <span className="text-xs font-semibold text-ph-charcoal/40">{data.n}.</span>
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ph-charcoal">
@@ -65,21 +72,33 @@ function PageCard({ data }: NodeProps<PageNode>) {
           </span>
         )}
       </div>
-      <ul className="flex flex-col gap-0.5 px-3 py-2 text-[11px] leading-snug text-ph-charcoal/80">
-        {data.exits.length === 0 && <li className="text-ph-charcoal/40">No way out yet</li>}
-        {data.exits.slice(0, 7).map((e) => (
-          <li key={e.id} className="truncate">
-            {e.rank && <span className="text-ph-charcoal/40">{e.rank}. </span>}
-            <span className="font-semibold">{e.start}</span>
-            {e.condition && <span className="text-amber-700"> {e.condition}</span>}
-            <span className="text-ph-charcoal/40"> → </span>
-            <span className={e.to || e.step !== 'page' ? '' : 'font-semibold text-red-600'}>
-              {exitTarget(e, data.names)}
-            </span>
+      <ul className="flex flex-col px-1.5 py-1.5 text-[11px] leading-snug text-ph-charcoal/80">
+        {data.exits.length === 0 && (
+          <li className="px-1.5 text-ph-charcoal/40">No way out yet</li>
+        )}
+        {data.exits.slice(0, SHOWN).map((e) => (
+          <li key={e.id}>
+            <button
+              type="button"
+              title="Select this branch"
+              onClick={() => data.onPick(e.id)}
+              className={cn(
+                'nodrag block w-full truncate rounded px-1.5 py-0.5 text-left hover:bg-ph-purple/10',
+                data.picked === e.id && 'bg-ph-pink/10',
+              )}
+            >
+              {e.rank && <span className="text-ph-charcoal/40">{e.rank}. </span>}
+              <span className="font-semibold">{e.start}</span>
+              {e.condition && <span className="text-amber-700"> {e.condition}</span>}
+              <span className="text-ph-charcoal/40"> → </span>
+              <span className={e.to || e.step !== 'page' ? '' : 'font-semibold text-red-600'}>
+                {exitTarget(e, data.names)}
+              </span>
+            </button>
           </li>
         ))}
-        {data.exits.length > 7 && (
-          <li className="text-ph-charcoal/40">+ {data.exits.length - 7} more</li>
+        {data.exits.length > SHOWN && (
+          <li className="px-1.5 text-ph-charcoal/40">+ {data.exits.length - SHOWN} more</li>
         )}
       </ul>
       <Handle type="source" position={Position.Right} className="!h-3 !w-3 !bg-ph-purple" />
@@ -90,6 +109,13 @@ function PageCard({ data }: NodeProps<PageNode>) {
 const NODE_TYPES = { page: PageCard };
 
 type Menu = { x: number; y: number; pageId: string | null };
+
+const PINK = '#e6007e';
+const FAINT = '#c4b5cf';
+const smallButton =
+  'rounded border border-ph-charcoal/20 px-2 py-0.5 hover:border-ph-purple hover:text-ph-purple disabled:opacity-30';
+const choiceButton =
+  'rounded-md border border-ph-charcoal/10 px-3 py-2 text-left hover:border-ph-purple hover:text-ph-purple';
 
 function Flow({
   doc,
@@ -105,17 +131,22 @@ function Flow({
   onClose: () => void;
 }) {
   const flow = useReactFlow();
+  const [picked, setPicked] = useState<string | null>(null);
+  const [backs, setBacks] = useState(false);
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const [linking, setLinking] = useState<{ from: string; to: string } | null>(null);
+  const [wizard, setWizard] = useState<{ page: Page; trigger: Trigger } | null>(null);
   const exits = useMemo(() => flowExits(doc), [doc]);
   const names = useMemo(
     () => Object.fromEntries(doc.pages.map((p, i) => [p.id, `${i + 1}. ${p.title || 'Untitled'}`])),
     [doc.pages],
   );
   const built = useMemo<PageNode[]>(() => {
-    const auto = autoPositions(doc, exits);
+    const at = positions(doc, exits);
     return doc.pages.map((p, i) => ({
       id: p.id,
       type: 'page',
-      position: p.flow ?? auto.get(p.id)!,
+      position: at.get(p.id)!,
       data: {
         n: i + 1,
         title: p.title,
@@ -123,9 +154,11 @@ function Flow({
         names,
         start: i === 0,
         current: p.id === currentId,
+        picked,
+        onPick: setPicked,
       },
     }));
-  }, [doc, exits, names, currentId]);
+  }, [doc, exits, names, currentId, picked]);
   const [nodes, setNodes] = useState<PageNode[]>(built);
   const [synced, setSynced] = useState(built);
   if (synced !== built) {
@@ -137,42 +170,34 @@ function Flow({
       }),
     );
   }
-  const [picked, setPicked] = useState<string | null>(null);
-  const [backs, setBacks] = useState(false);
-  const [menu, setMenu] = useState<Menu | null>(null);
-  const [linking, setLinking] = useState<{ from: string; to: string } | null>(null);
-  const [wizard, setWizard] = useState<{ page: Page; trigger: Trigger } | null>(null);
 
   const edges = useMemo<Edge[]>(
     () =>
       exits
-        .filter((e) => e.to && (backs || e.step !== 'prev' || e.id === picked))
+        .filter((e) => e.to && e.to !== e.from)
+        .filter((e) => backs || e.id === picked || e.step !== 'prev')
         .map((e) => {
           const on = e.id === picked;
-          const plain = e.step === 'next' || e.step === 'prev';
-          const faint = plain || e.detour;
-          const colour = e.buttonId ? '#2f3030' : '#702f8f';
+          const faint = e.step === 'next' || e.step === 'prev' || e.detour;
+          const colour = e.triggerId ? '#702f8f' : '#2f3030';
+          const stroke = on ? PINK : faint ? FAINT : colour;
           const named = on || !!e.condition || !!e.rank;
+          const rank = e.rank ? `${e.rank}. ` : '';
           return {
             id: e.id,
             source: e.from,
             target: e.to!,
-            label: named
-              ? `${e.rank ? `${e.rank}. ` : ''}${e.start}${e.condition ? ` ${e.condition}` : ''}`
-              : undefined,
+            label: named ? `${rank}${e.start}${e.condition ? ` ${e.condition}` : ''}` : undefined,
             selected: on,
             zIndex: on ? 10 : 0,
             style: {
-              stroke: on ? '#e6007e' : faint ? '#c4b5cf' : colour,
+              stroke,
               strokeWidth: on ? 3 : faint ? 1 : 1.5,
               strokeDasharray: faint ? '6 4' : undefined,
             },
             labelStyle: { fontSize: 10, fill: '#2f3030' },
             labelBgStyle: { fill: '#ffffff' },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: on ? '#e6007e' : faint ? '#c4b5cf' : colour,
-            },
+            markerEnd: { type: MarkerType.ArrowClosed, color: stroke },
           };
         }),
     [exits, picked, backs],
@@ -180,8 +205,22 @@ function Flow({
 
   const pageOf = (id: string) => doc.pages.find((p) => p.id === id)!;
   const exit = exits.find((e) => e.id === picked) ?? null;
-  const editPage = (pageId: string, fn: (p: Page) => void) =>
-    setDoc((d) => ops.updatePage(d, pageId, fn));
+
+  const change = (fn: (c: CourseDoc) => void) =>
+    setDoc((d) =>
+      ops.updateCourse(d, (c) => {
+        for (const n of nodes) {
+          const p = c.pages.find((x) => x.id === n.id);
+          if (p && !p.flow) p.flow = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+        }
+        fn(c);
+      }),
+    );
+  const changePage = (pageId: string, fn: (p: Page) => void) =>
+    change((c) => {
+      const p = c.pages.find((x) => x.id === pageId);
+      if (p) fn(p);
+    });
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -199,79 +238,96 @@ function Flow({
     [],
   );
 
-  const savePositions = (moved: Node[]) =>
-    setDoc((d) =>
-      ops.updateCourse(d, (c) =>
-        moved.forEach((n) => {
-          const p = c.pages.find((x) => x.id === n.id);
-          if (p) p.flow = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
-        }),
-      ),
-    );
-
   const addPage = (at: { x: number; y: number }) => {
     const p = newPage(`Page ${doc.pages.length + 1}`);
     p.flow = { x: Math.round(at.x), y: Math.round(at.y) };
-    setDoc((d) => ops.updateCourse(d, (c) => c.pages.push(p)));
+    change((c) => c.pages.push(p));
   };
 
   const link = (from: string, to: string, when: Trigger['when']) => {
     const t: Trigger = { id: uid(), when, action: { kind: 'page', pageId: to }, conditions: [] };
-    editPage(from, (p) => p.triggers.push(t));
+    changePage(from, (p) => p.triggers.push(t));
     setLinking(null);
     setPicked(`trigger:${t.id}`);
   };
 
   const move = (e: FlowExit, by: -1 | 1) => {
-    const page = pageOf(e.from);
-    const list = sameStart(page, e.triggerId!);
-    const i = list.findIndex((t) => t.id === e.triggerId);
-    const other = list[i + by];
+    const list = sameStart(pageOf(e.from), e.triggerId!);
+    const other = list[list.findIndex((t) => t.id === e.triggerId) + by];
     if (!other) return;
-    editPage(page.id, (p) => {
+    changePage(e.from, (p) => {
       const a = p.triggers.findIndex((t) => t.id === e.triggerId);
       const b = p.triggers.findIndex((t) => t.id === other.id);
       [p.triggers[a], p.triggers[b]] = [p.triggers[b], p.triggers[a]];
     });
   };
 
-  const retarget = (e: FlowExit, pageId: string) => {
-    if (e.buttonId)
-      editPage(e.from, (p) => {
-        const b = p.blocks.find((x) => x.id === e.buttonId);
-        if (b?.type === 'button')
-          b.action = pageId === 'next' ? { kind: 'next' } : { kind: 'page', pageId };
-      });
-    else
-      editPage(e.from, (p) => {
-        const t = p.triggers.find((x) => x.id === e.triggerId);
-        if (!t) return;
+  const retarget = (e: FlowExit, to: string) => {
+    if (to === 'missing') return;
+    changePage(e.from, (p) => {
+      if (e.choice) {
+        const b = p.blocks.find((x) => x.id === e.choice!.blockId);
+        const c = b?.type === 'pathway' && b.choices.find((x) => x.id === e.choice!.choiceId);
+        if (c) c.pageId = to;
+        return;
+      }
+      const b = p.blocks.find((x) => x.id === e.buttonId);
+      const t = p.triggers.find((x) => x.id === e.triggerId);
+      const old = b?.type === 'button' ? b.action : t?.action;
+      const back = old?.kind === 'page' && old.back ? { back: true } : {};
+      if (b?.type === 'button')
+        b.action = to === 'next' ? { kind: 'next' } : { kind: 'page', pageId: to, ...back };
+      else if (t)
         t.action =
-          pageId === 'next'
-            ? { kind: 'next' }
-            : { kind: 'page', pageId, back: t.action.kind === 'page' ? t.action.back : undefined };
-      });
+          to === 'next' || to === 'prev' || to === 'finish'
+            ? { kind: to }
+            : { kind: 'page', pageId: to, ...back };
+    });
   };
 
   const remove = (e: FlowExit) => {
     if (e.buttonId) retarget(e, 'next');
-    else editPage(e.from, (p) => (p.triggers = p.triggers.filter((t) => t.id !== e.triggerId)));
+    else changePage(e.from, (p) => (p.triggers = p.triggers.filter((t) => t.id !== e.triggerId)));
     setPicked(null);
   };
 
   const siblings = exit?.triggerId ? sameStart(pageOf(exit.from), exit.triggerId) : [];
-  const at = exit?.triggerId ? siblings.findIndex((t) => t.id === exit.triggerId) : -1;
+  const at = siblings.findIndex((t) => t.id === exit?.triggerId);
+  const goes = exit ? (exit.step === 'page' ? (exit.to ?? 'missing') : exit.step) : '';
+  const targets = exit
+    ? [
+        ...(exit.choice ? [] : [{ value: 'next', label: 'The next page in order' }]),
+        ...(exit.triggerId
+          ? [
+              { value: 'prev', label: 'The previous page' },
+              { value: 'finish', label: 'Finish the course' },
+            ]
+          : []),
+        ...(goes === 'missing' ? [{ value: 'missing', label: 'Missing page' }] : []),
+        ...doc.pages.map((p) => ({ value: p.id, label: names[p.id] })),
+      ]
+    : [];
+  const why = !exit
+    ? ''
+    : exit.bar
+      ? 'The Continue bar under every page. Turn it off in course settings.'
+      : exit.choice
+        ? 'A choice in a pathway question on this page.'
+        : exit.buttonId
+          ? "The button's own action. It runs only if none of the button's triggers went anywhere."
+          : exit.condition
+            ? `Only ${exit.condition}`
+            : 'Always, no conditions';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f2f6]">
       <div className="flex items-center gap-4 border-b border-ph-charcoal/10 bg-white px-4 py-2 text-sm">
-        <strong className="font-semibold text-ph-charcoal">Course flow</strong>
-        <span className="text-xs text-ph-charcoal/60">
-          Drag from a page's purple dot to another page to add a branch. Click a line to edit it.
-          Right-click for a new page. Double-click a page to open it. Dashed lines are next-page
-          and come-back-after links.
+        <strong className="shrink-0 font-semibold text-ph-charcoal">Course flow</strong>
+        <span className="min-w-0 text-xs text-ph-charcoal/60">
+          Drag from a page's purple dot onto another page to add a branch. Click a line, or a row
+          on a page, to edit it. Right-click for a new page. Double-click a page to open it.
         </span>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs text-ph-charcoal/70">
             <input type="checkbox" checked={backs} onChange={(e) => setBacks(e.target.checked)} />
             Show back links
@@ -298,16 +354,33 @@ function Flow({
           edges={edges}
           nodeTypes={NODE_TYPES}
           onNodesChange={onNodesChange}
-          onNodeDragStop={(_, __, moved) => savePositions(moved)}
+          onNodeDragStop={(_, __, moved) =>
+            change((c) =>
+              moved.forEach((n) => {
+                const p = c.pages.find((x) => x.id === n.id);
+                if (p) p.flow = { x: Math.round(n.position.x), y: Math.round(n.position.y) };
+              }),
+            )
+          }
+          onNodeClick={() => setMenu(null)}
           onNodeDoubleClick={(_, n) => onOpen(n.id)}
           onEdgeClick={(_, e) => setPicked(e.id)}
+          onMoveStart={() => setMenu(null)}
           onPaneClick={() => {
             setPicked(null);
             setMenu(null);
           }}
-          onConnect={(c: Connection) =>
-            c.source && c.target && c.source !== c.target && setLinking({ from: c.source, to: c.target })
-          }
+          onConnectEnd={(ev, state) => {
+            const from = state.fromNode?.id;
+            const pt = 'changedTouches' in ev ? ev.changedTouches[0] : ev;
+            const to =
+              state.toNode?.id ??
+              document
+                .elementFromPoint(pt.clientX, pt.clientY)
+                ?.closest('.react-flow__node')
+                ?.getAttribute('data-id');
+            if (from && to && from !== to) setLinking({ from, to });
+          }}
           onPaneContextMenu={(e) => {
             e.preventDefault();
             setMenu({ x: e.clientX, y: e.clientY, pageId: null });
@@ -349,7 +422,9 @@ function Flow({
                     const copy = ops.copyPage(src);
                     const from = nodes.find((n) => n.id === src.id)?.position ?? { x: 0, y: 0 };
                     copy.flow = { x: Math.round(from.x + 40), y: Math.round(from.y + 40) };
-                    setDoc((d) => ops.insertPage(d, src.id, copy));
+                    change((c) => {
+                      c.pages.splice(c.pages.findIndex((p) => p.id === src.id) + 1, 0, copy);
+                    });
                     setMenu(null);
                   }}
                 >
@@ -361,8 +436,8 @@ function Flow({
                     onClick={() => {
                       const p = pageOf(menu.pageId!);
                       setMenu(null);
-                      if (window.confirm(`Delete the page "${p.title}"?`))
-                        setDoc((d) => ops.removePage(d, p.id));
+                      if (!window.confirm(`Delete the page "${p.title}"?`)) return;
+                      change((c) => (c.pages = c.pages.filter((x) => x.id !== p.id)));
                     }}
                   >
                     Delete page
@@ -384,6 +459,7 @@ function Flow({
               </div>
               <button
                 type="button"
+                aria-label="Close"
                 onClick={() => setPicked(null)}
                 className="text-ph-charcoal/40 hover:text-ph-purple"
               >
@@ -392,31 +468,30 @@ function Flow({
             </div>
             <p className="text-ph-charcoal/80">
               Starts when: <strong>{exit.start}</strong>
-              {exit.buttonId ? ' is clicked' : ''}
               <br />
-              {exit.buttonId
-                ? "This is the button's own action, so it runs only if none of the button's triggers went anywhere."
-                : exit.condition
-                  ? `Only ${exit.condition}`
-                  : 'Always, no conditions'}
+              {why}
             </p>
-            <Select
-              label="Goes to"
-              value={exit.step === 'next' ? 'next' : (exit.to ?? '')}
-              options={[
-                { value: 'next', label: 'The next page in order' },
-                ...doc.pages.map((p) => ({ value: p.id, label: names[p.id] })),
-              ]}
-              onChange={(v) => retarget(exit, v)}
-            />
-            {exit.triggerId && siblings.length > 1 && (
+            {exit.bar ? (
+              <p className="text-ph-charcoal/80">Goes to: {exitTarget(exit, names)}</p>
+            ) : (
+              <Select
+                label="Goes to"
+                value={goes}
+                options={targets}
+                onChange={(v) => retarget(exit, v)}
+              />
+            )}
+            {exit.step !== 'page' && exit.to && !exit.bar && (
+              <p className="text-xs text-ph-charcoal/60">Right now that is {names[exit.to]}.</p>
+            )}
+            {siblings.length > 1 && (
               <div className="flex items-center gap-2 text-xs text-ph-charcoal/70">
                 Order: {at + 1} of {siblings.length}
                 <button
                   type="button"
                   disabled={at === 0}
                   onClick={() => move(exit, -1)}
-                  className="rounded border border-ph-charcoal/20 px-2 py-0.5 hover:border-ph-purple hover:text-ph-purple disabled:opacity-30"
+                  className={smallButton}
                 >
                   Run earlier
                 </button>
@@ -424,7 +499,7 @@ function Flow({
                   type="button"
                   disabled={at === siblings.length - 1}
                   onClick={() => move(exit, 1)}
-                  className="rounded border border-ph-charcoal/20 px-2 py-0.5 hover:border-ph-purple hover:text-ph-purple disabled:opacity-30"
+                  className={smallButton}
                 >
                   Run later
                 </button>
@@ -444,18 +519,31 @@ function Flow({
                   Edit conditions…
                 </Button>
               )}
-              {(exit.triggerId || exit.step !== 'next') && (
+              {exit.triggerId && (
                 <Button size="sm" variant="outline" onClick={() => remove(exit)}>
-                  {exit.buttonId ? 'Send to next page' : 'Delete branch'}
+                  Delete branch
                 </Button>
               )}
+              {exit.buttonId && exit.step !== 'next' && (
+                <Button size="sm" variant="outline" onClick={() => remove(exit)}>
+                  Send to next page
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => onOpen(exit.from)}>
+                Open page
+              </Button>
             </div>
           </aside>
         )}
       </div>
 
       {linking && (
-        <Modal open onClose={() => setLinking(null)} title="What starts this branch?" className="max-w-md">
+        <Modal
+          open
+          onClose={() => setLinking(null)}
+          title="What starts this branch?"
+          className="max-w-md"
+        >
           <div className="flex flex-col gap-2 px-6 py-5 text-sm">
             <p className="text-ph-charcoal/70">
               From <strong>{names[linking.from]}</strong> to <strong>{names[linking.to]}</strong>.
@@ -466,8 +554,10 @@ function Flow({
                 <button
                   key={o.value}
                   type="button"
-                  onClick={() => link(linking.from, linking.to, { kind: 'click', blockId: o.value })}
-                  className="rounded-md border border-ph-charcoal/10 px-3 py-2 text-left hover:border-ph-purple hover:text-ph-purple"
+                  onClick={() =>
+                    link(linking.from, linking.to, { kind: 'click', blockId: o.value })
+                  }
+                  className={choiceButton}
                 >
                   Clicks {o.label}
                 </button>
@@ -475,7 +565,7 @@ function Flow({
               <button
                 type="button"
                 onClick={() => link(linking.from, linking.to, { kind: 'pageStart' })}
-                className="rounded-md border border-ph-charcoal/10 px-3 py-2 text-left hover:border-ph-purple hover:text-ph-purple"
+                className={choiceButton}
               >
                 Nothing, as soon as the page starts
               </button>
@@ -490,7 +580,7 @@ function Flow({
           page={wizard.page}
           initial={wizard.trigger}
           onSave={(t) => {
-            editPage(wizard.page.id, (p) => {
+            changePage(wizard.page.id, (p) => {
               p.triggers = p.triggers.map((x) => (x.id === t.id ? t : x));
             });
             setWizard(null);

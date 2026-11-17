@@ -298,37 +298,39 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
             </div>
           </div>
           <div className="flex flex-1 justify-center overflow-auto">
-            <CanvasEditor
-              doc={doc}
-              page={page}
-              layout={layout}
-              selectedId={blockId}
-              onSelect={setBlockId}
-              onFrame={setFrame}
-              onFrames={(frames) => setDoc((d) => ops.setFrames(d, page.id, layout, frames))}
-              onRemove={removeBlocks}
-              onGroup={(ids) => {
-                const id = uid();
-                setDoc((d) => ops.groupBlocks(d, page.id, ids, id));
-                setBlockId(id);
-              }}
-              onUngroup={(id) => {
-                setDoc((d) => ops.ungroup(d, page.id, id));
-                setBlockId(null);
-              }}
-              onCopy={copyBlocks}
-              onDuplicate={duplicateBlocks}
-              onPaste={pasteBlocks}
-              canPaste={clipboard.length > 0}
-              onText={(id, value) =>
-                setDoc((d) =>
-                  ops.updateBlock(d, page.id, id, (b) => {
-                    if (b.type === 'text') b.html = value;
-                    if (b.type === 'heading') b.text = value;
-                  }),
-                )
-              }
-            />
+            {modal !== 'flow' && (
+              <CanvasEditor
+                doc={doc}
+                page={page}
+                layout={layout}
+                selectedId={blockId}
+                onSelect={setBlockId}
+                onFrame={setFrame}
+                onFrames={(frames) => setDoc((d) => ops.setFrames(d, page.id, layout, frames))}
+                onRemove={removeBlocks}
+                onGroup={(ids) => {
+                  const id = uid();
+                  setDoc((d) => ops.groupBlocks(d, page.id, ids, id));
+                  setBlockId(id);
+                }}
+                onUngroup={(id) => {
+                  setDoc((d) => ops.ungroup(d, page.id, id));
+                  setBlockId(null);
+                }}
+                onCopy={copyBlocks}
+                onDuplicate={duplicateBlocks}
+                onPaste={pasteBlocks}
+                canPaste={clipboard.length > 0}
+                onText={(id, value) =>
+                  setDoc((d) =>
+                    ops.updateBlock(d, page.id, id, (b) => {
+                      if (b.type === 'text') b.html = value;
+                      if (b.type === 'heading') b.text = value;
+                    }),
+                  )
+                }
+              />
+            )}
           </div>
         </div>
 

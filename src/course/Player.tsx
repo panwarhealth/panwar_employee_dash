@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   groupsOf,
+  hubsOf,
   linkedPages,
   newPickRule,
   withoutHidden,
@@ -113,13 +114,6 @@ function freshState(doc: CourseDoc): PlayState {
     vars: initialVars(doc),
     vis: {},
   };
-}
-
-function hubsOf(doc: CourseDoc): Map<string, string> {
-  const hubs = new Map<string, string>();
-  for (const p of doc.pages)
-    for (const id of linkedPages(p)) if (!hubs.has(id)) hubs.set(id, p.id);
-  return hubs;
 }
 
 function leadsToSeen(page: Page, seen: string[]): string[] {
