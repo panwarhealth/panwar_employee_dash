@@ -160,6 +160,27 @@ function withContents(p: Page, layout: Layout, frames: Record<string, Frame>) {
   return out;
 }
 
+const sameBox = (a: Frame, b: Frame) => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
+
+export function carryContents(before: Page, p: Page) {
+  for (const card of p.blocks) {
+    const old = before.blocks.find((b) => b.id === card.id);
+    if (card.type !== 'popup' || !old) continue;
+    for (const layout of ['desktop', 'phone'] as const) {
+      const from = frameFor(before, old, layout);
+      const to = frameFor(p, card, layout);
+      if (sameBox(from, to)) continue;
+      for (const k of p.blocks) {
+        const prev = before.blocks.find((b) => b.id === k.id);
+        if (k.parent !== card.id || !prev || !k.frames?.[layout]) continue;
+        const was = frameFor(before, prev, layout);
+        if (sameBox(was, k.frames[layout]!))
+          k.frames = { ...k.frames, [layout]: roundFrame(refit(was, from, to)) };
+      }
+    }
+  }
+}
+
 export const setFrame = (
   doc: CourseDoc,
   pageId: string,

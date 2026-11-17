@@ -376,6 +376,7 @@ const updateBlocks: Handler = (doc, input) => {
     for (const change of changes)
       mergeBlockChanges(p.blocks.find((b) => b.id === change.id) as unknown as Input, change);
     p.blocks = p.blocks.map(scalePxFonts);
+    ops.carryContents(page, p);
   });
   return checkedOutcome(
     next,

@@ -140,7 +140,9 @@ export function CanvasEditor({
   const [picked, setPicked] = useState<string[]>([]);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
-  const missing = page.blocks.filter((b) => !b.frames?.[layout]).length;
+  const missing = page.blocks.filter(
+    (b) => !b.frames?.[layout] && b.type !== 'popup' && !(b.parent && b.frames),
+  ).length;
 
   const groups = groupsOf(page);
   const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
