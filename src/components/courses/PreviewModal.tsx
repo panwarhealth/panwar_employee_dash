@@ -142,6 +142,7 @@ export function PreviewModal({
         {fit ? (
           <div
             className={`mx-auto w-full overflow-y-auto rounded-md bg-white [&_.cp-shell]:min-h-full ${layout === 'phone' ? 'max-w-[390px]' : 'max-w-[1100px]'}`}
+            style={{ '--cp-vh': `${room.h}px` } as CSSProperties}
           >
             <Player doc={doc} lms={lms} layout={layout} />
           </div>

@@ -451,7 +451,7 @@ export function Player({
   }
 
   return (
-    <div className="cp cp-shell" style={accentStyle(doc)}>
+    <div className="cp cp-shell cp-shell-canvas" style={accentStyle(doc)}>
       {doc.fonts.length > 0 && <style>{fontFaces(doc)}</style>}
       <main className="cp-main cp-main-canvas">
         <div className="cp-trwrap">
