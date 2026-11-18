@@ -9,11 +9,10 @@ import {
   type SetStateAction,
 } from 'react';
 import {
-  Background,
   Controls,
   Handle,
-  MarkerType,
   MiniMap,
+  Panel,
   Position,
   ReactFlow,
   ReactFlowProvider,
@@ -25,13 +24,26 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { newPage, uid, type CourseDoc, type Page, type Trigger } from '@/course/doc';
+import { hubsOf, newPage, uid, type CourseDoc, type Page, type Trigger } from '@/course/doc';
 import * as ops from '@/course/edit';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import { objectOptions } from './blockMeta';
-import { flowExits, positions, sameStart, type FlowExit } from './flowGraph';
+import {
+  CARD,
+  WIRE_LOOK,
+  curve,
+  flowExits,
+  flowWires,
+  positions,
+  sameStart,
+  wireAt,
+  type Curve,
+  type FlowExit,
+  type WireKind,
+} from './flowGraph';
+import { FlowWires } from './FlowWires';
 import { Select } from './fields';
 import { TriggerWizard } from './TriggerWizard';
 
@@ -39,20 +51,27 @@ interface PageData extends Record<string, unknown> {
   n: number;
   title: string;
   exits: FlowExit[];
+  kinds: Record<string, WireKind>;
   names: Record<string, string>;
-  start: boolean;
+  kind: 'start' | 'main' | 'side';
+  quiz: boolean;
   current: boolean;
 }
 
 type PageNode = Node<PageData, 'page'>;
-type Wire = Edge<{ text: string; back: boolean }>;
 
 const Picked = createContext<{ picked: string | null; onPick: (exitId: string) => void }>({
   picked: null,
   onPick: () => {},
 });
 
-const SHOWN = 8;
+const NO_EDGES: Edge[] = [];
+const HEADS = {
+  start: 'bg-green-600 text-white',
+  main: 'bg-ph-charcoal text-white',
+  side: 'bg-[#e6dcec] text-ph-charcoal',
+};
+const LEGEND: WireKind[] = ['next', 'jump', 'if', 'side'];
 
 function exitTarget(e: FlowExit, names: Record<string, string>): string {
   if (e.to) return names[e.to];
@@ -60,62 +79,92 @@ function exitTarget(e: FlowExit, names: Record<string, string>): string {
   return e.step === 'prev' ? 'Nowhere' : 'End of course';
 }
 
-const PageCard = memo(function PageCard({ data }: NodeProps<PageNode>) {
+const PageCard = memo(function PageCard({ data, selected }: NodeProps<PageNode>) {
   const { picked, onPick } = useContext(Picked);
+  const more = data.exits.length - CARD.shown;
   return (
     <div
       className={cn(
-        'w-64 rounded-xl border-2 bg-white text-left shadow-sm',
-        data.current ? 'border-ph-purple' : 'border-ph-charcoal/15',
+        'relative w-64 rounded-xl border-2 bg-white text-left shadow-sm',
+        selected
+          ? 'border-ph-purple ring-4 ring-ph-purple/25'
+          : data.current
+            ? 'border-ph-pink'
+            : 'border-ph-charcoal/25',
       )}
     >
       <Handle
         type="target"
         position={Position.Left}
         isConnectableStart={false}
-        className="!h-3 !w-3 !bg-ph-charcoal/40"
+        style={{ top: CARD.head - 2, left: -2 }}
+        className="!h-3 !w-3 !border-2 !border-white !bg-ph-charcoal/60"
       />
-      <div className="flex items-center gap-1.5 border-b border-ph-charcoal/10 px-3 py-2">
-        <span className="text-xs font-semibold text-ph-charcoal/40">{data.n}.</span>
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ph-charcoal">
+      <div className={cn('flex h-9 items-center gap-1.5 rounded-t-[10px] px-3', HEADS[data.kind])}>
+        <span className="text-xs font-semibold opacity-60">{data.n}.</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
           {data.title || 'Untitled'}
         </span>
-        {data.start && (
-          <span className="rounded-full bg-green-600 px-1.5 text-[10px] font-bold text-white">
-            START
+        {data.kind === 'start' && (
+          <span className="rounded-full bg-white/25 px-1.5 text-[10px] font-bold">START</span>
+        )}
+        {data.quiz && (
+          <span className="rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-ph-charcoal">
+            QUIZ
           </span>
         )}
       </div>
-      <ul className="flex flex-col px-1.5 py-1.5 text-[11px] leading-snug text-ph-charcoal/80">
+      <ul className="flex flex-col px-1.5 py-1.5 text-[11px] text-ph-charcoal/80">
         {data.exits.length === 0 && (
-          <li className="px-1.5 text-ph-charcoal/40">No way out yet</li>
-        )}
-        {data.exits.slice(0, SHOWN).map((e) => (
-          <li key={e.id}>
-            <button
-              type="button"
-              title="Select this branch"
-              onClick={() => onPick(e.id)}
-              className={cn(
-                'nodrag block w-full truncate rounded px-1.5 py-0.5 text-left hover:bg-ph-purple/10',
-                picked === e.id && 'bg-ph-pink/10',
-              )}
-            >
-              {e.rank && <span className="text-ph-charcoal/40">{e.rank}. </span>}
-              <span className="font-semibold">{e.start}</span>
-              {e.condition && <span className="text-amber-700"> {e.condition}</span>}
-              <span className="text-ph-charcoal/40"> → </span>
-              <span className={e.to || e.step !== 'page' ? '' : 'font-semibold text-red-600'}>
-                {exitTarget(e, data.names)}
-              </span>
-            </button>
+          <li className="flex h-[22px] items-center px-1.5 font-semibold text-red-600">
+            No way out yet
           </li>
-        ))}
-        {data.exits.length > SHOWN && (
-          <li className="px-1.5 text-ph-charcoal/40">+ {data.exits.length - SHOWN} more</li>
+        )}
+        {data.exits.slice(0, CARD.shown).map((e) => {
+          const kind = data.kinds[e.id];
+          return (
+            <li key={e.id} className="relative h-[22px]">
+              <button
+                type="button"
+                title="Select this branch"
+                onClick={() => onPick(e.id)}
+                className={cn(
+                  'nodrag flex h-full w-full items-center gap-1 rounded px-1.5 text-left hover:bg-ph-purple/10',
+                  picked === e.id && 'bg-ph-pink/15',
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate">
+                  {e.rank && <span className="text-ph-charcoal/40">{e.rank}. </span>}
+                  <span className="font-semibold">{e.start}</span>
+                  {e.condition && <span className="text-amber-700"> {e.condition}</span>}
+                </span>
+                <span
+                  className={cn(
+                    'max-w-[45%] shrink-0 truncate',
+                    e.to || e.step !== 'page' ? 'text-ph-charcoal/50' : 'font-semibold text-red-600',
+                  )}
+                >
+                  {exitTarget(e, data.names)}
+                </span>
+              </button>
+              <span
+                className="pointer-events-none absolute -right-[13px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-white"
+                style={{ background: picked === e.id ? PINK : kind ? WIRE_LOOK[kind].colour : '#d4d4d8' }}
+              />
+            </li>
+          );
+        })}
+        {more > 0 && (
+          <li className="flex h-[22px] items-center px-1.5 text-ph-charcoal/40">+ {more} more</li>
         )}
       </ul>
-      <Handle type="source" position={Position.Right} className="!h-3 !w-3 !bg-ph-purple" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        title="Drag onto another page to add a branch"
+        style={{ top: CARD.head - 2, right: -2 }}
+        className="!h-3.5 !w-3.5 !border-2 !border-white !bg-ph-purple"
+      />
     </div>
   );
 });
@@ -125,7 +174,6 @@ const NODE_TYPES = { page: PageCard };
 type Menu = { x: number; y: number; pageId: string | null };
 
 const PINK = '#e6007e';
-const FAINT = '#c4b5cf';
 const smallButton =
   'rounded border border-ph-charcoal/20 px-2 py-0.5 hover:border-ph-purple hover:text-ph-purple disabled:opacity-30';
 const choiceButton =
@@ -155,8 +203,11 @@ function Flow({
     () => Object.fromEntries(doc.pages.map((p, i) => [p.id, `${i + 1}. ${p.title || 'Untitled'}`])),
     [doc.pages],
   );
+  const wires = useMemo(() => flowWires(doc, exits), [doc, exits]);
   const built = useMemo<PageNode[]>(() => {
     const at = positions(doc, exits);
+    const hubOf = hubsOf(doc);
+    const kinds = Object.fromEntries(wires.map((w) => [w.id, w.kind]));
     return doc.pages.map((p, i) => ({
       id: p.id,
       type: 'page',
@@ -165,12 +216,14 @@ function Flow({
         n: i + 1,
         title: p.title,
         exits: exits.filter((e) => e.from === p.id),
+        kinds,
         names,
-        start: i === 0,
+        kind: i === 0 ? 'start' : hubOf.has(p.id) ? 'side' : 'main',
+        quiz: p.blocks.some((b) => b.type === 'check'),
         current: p.id === currentId,
       },
     }));
-  }, [doc, exits, names, currentId]);
+  }, [doc, exits, wires, names, currentId]);
   const [nodes, setNodes] = useState<PageNode[]>(built);
   const [synced, setSynced] = useState(built);
   if (synced !== built) {
@@ -183,46 +236,33 @@ function Flow({
     );
   }
 
-  const wires = useMemo<Wire[]>(
+  const lit = useMemo(() => new Set(nodes.filter((n) => n.selected).map((n) => n.id)), [nodes]);
+  const shown = useMemo(
     () =>
-      exits
-        .filter((e) => e.to && e.to !== e.from)
-        .map((e) => {
-          const faint = e.step === 'next' || e.step === 'prev' || e.detour;
-          const stroke = faint ? FAINT : e.triggerId ? '#702f8f' : '#2f3030';
-          const text = `${e.rank ? `${e.rank}. ` : ''}${e.start}${e.condition ? ` ${e.condition}` : ''}`;
-          return {
-            id: e.id,
-            source: e.from,
-            target: e.to!,
-            label: e.condition || e.rank ? text : undefined,
-            data: { text, back: e.step === 'prev' },
-            style: { stroke, strokeWidth: faint ? 1 : 1.5 },
-            labelStyle: { fontSize: 10, fill: '#2f3030' },
-            labelBgStyle: { fill: '#ffffff' },
-            markerEnd: { type: MarkerType.ArrowClosed, color: stroke },
-          };
-        }),
-    [exits],
+      wires.filter(
+        (w) =>
+          backs ||
+          w.id === picked ||
+          lit.has(w.from) ||
+          lit.has(w.to) ||
+          (w.kind !== 'back' && w.kind !== 'again'),
+      ),
+    [wires, backs, picked, lit],
   );
-  const edges = useMemo<Wire[]>(
-    () =>
-      wires
-        .filter((w) => backs || w.id === picked || !w.data!.back)
-        .map((w) =>
-          w.id === picked
-            ? {
-                ...w,
-                label: w.data!.text,
-                selected: true,
-                zIndex: 10,
-                style: { stroke: PINK, strokeWidth: 3 },
-                markerEnd: { type: MarkerType.ArrowClosed, color: PINK },
-              }
-            : w,
-        ),
-    [wires, picked, backs],
-  );
+  const curves = useMemo(() => {
+    const at = new Map(nodes.map((n) => [n.id, n.position]));
+    const out = new Map<string, Curve>();
+    for (const w of shown) {
+      const from = at.get(w.from);
+      const to = at.get(w.to);
+      if (from && to) out.set(w.id, curve(from, w.row, to));
+    }
+    return out;
+  }, [shown, nodes]);
+  const wireUnder = (e: { clientX: number; clientY: number }) => {
+    const p = flow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    return wireAt(curves, p.x, p.y, 8 / flow.getZoom());
+  };
   const pick = useMemo(() => ({ picked, onPick: setPicked }), [picked]);
   const [home] = useState(() => {
     const p = built[0]?.position ?? { x: 0, y: 0 };
@@ -351,12 +391,13 @@ function Flow({
         <strong className="shrink-0 font-semibold text-ph-charcoal">Course flow</strong>
         <span className="min-w-0 text-xs text-ph-charcoal/60">
           Drag from a page's purple dot onto another page to add a branch. Click a line, or a row
-          on a page, to edit it. Right-click for a new page. Double-click a page to open it.
+          on a page, to edit it. Click a page to light up its lines. Right-click for a new page.
+          Double-click a page to open it.
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs text-ph-charcoal/70">
             <input type="checkbox" checked={backs} onChange={(e) => setBacks(e.target.checked)} />
-            Show back links
+            Show every line
           </label>
           <Button
             size="sm"
@@ -376,9 +417,9 @@ function Flow({
       </div>
       <div className="relative min-h-0 flex-1">
         <Picked.Provider value={pick}>
-          <ReactFlow<PageNode, Wire>
+          <ReactFlow<PageNode>
             nodes={nodes}
-            edges={edges}
+            edges={NO_EDGES}
             nodeTypes={NODE_TYPES}
             onNodesChange={onNodesChange}
             onNodeDragStop={(_, __, moved) =>
@@ -391,11 +432,13 @@ function Flow({
             }
             onNodeClick={() => setMenu(null)}
             onNodeDoubleClick={(_, n) => onOpen(n.id)}
-            onEdgeClick={(_, e) => setPicked(e.id)}
             onMoveStart={() => setMenu(null)}
-            onPaneClick={() => {
-              setPicked(null);
+            onPaneClick={(e) => {
+              setPicked(wireUnder(e));
               setMenu(null);
+            }}
+            onPaneMouseMove={(e) => {
+              (e.currentTarget as HTMLElement).style.cursor = wireUnder(e) ? 'pointer' : '';
             }}
             onConnectEnd={(ev, state) => {
               const from = state.fromNode?.id;
@@ -422,9 +465,39 @@ function Flow({
             minZoom={0.1}
             proOptions={{ hideAttribution: true }}
           >
-            <Background gap={24} />
+            <FlowWires
+              wires={shown}
+              curves={curves}
+              picked={picked}
+              label={exit ? `${exit.rank ? `${exit.rank}. ` : ''}${exit.start}` : ''}
+              lit={lit}
+            />
+            <Panel position="bottom-center">
+              <ul className="flex items-center gap-4 rounded-full border border-ph-charcoal/10 bg-white/90 px-4 py-1.5 text-[11px] text-ph-charcoal/70">
+                {LEGEND.map((k) => (
+                  <li key={k} className="flex items-center gap-1.5">
+                    <span
+                      className="h-0 w-6 border-t-2"
+                      style={{
+                        borderColor: WIRE_LOOK[k].colour,
+                        borderStyle: WIRE_LOOK[k].dash.length ? 'dashed' : 'solid',
+                      }}
+                    />
+                    {WIRE_LOOK[k].name}
+                  </li>
+                ))}
+                <li className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-4 rounded-sm bg-ph-charcoal" />
+                  Main page
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-4 rounded-sm bg-[#e6dcec]" />
+                  Side page
+                </li>
+              </ul>
+            </Panel>
             <Controls showInteractive={false} />
-            <MiniMap pannable zoomable />
+            <MiniMap pannable zoomable nodeColor="#b9b4bf" />
           </ReactFlow>
         </Picked.Provider>
 

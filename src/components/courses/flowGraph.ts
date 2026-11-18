@@ -17,7 +17,33 @@ export interface FlowExit {
   bar?: boolean;
 }
 
-type Spot = { x: number; y: number };
+export type Spot = { x: number; y: number };
+
+export const CARD = { width: 256, head: 20, first: 55, row: 22, shown: 8 };
+
+export type WireKind = 'next' | 'jump' | 'if' | 'side' | 'again' | 'back';
+
+export interface Wire {
+  id: string;
+  from: string;
+  to: string;
+  row: number;
+  kind: WireKind;
+}
+
+export const WIRE_LOOK: Record<
+  WireKind,
+  { colour: string; width: number; dash: number[]; name: string }
+> = {
+  next: { colour: '#8b8f96', width: 2.5, dash: [], name: 'Next page' },
+  jump: { colour: '#702f8f', width: 2, dash: [], name: 'Jump to a page' },
+  if: { colour: '#d97706', width: 2, dash: [], name: 'Jump with a condition' },
+  side: { colour: '#0d9488', width: 2, dash: [7, 5], name: 'Side page that comes back' },
+  again: { colour: '#0d9488', width: 2, dash: [7, 5], name: 'Side page that comes back' },
+  back: { colour: '#b3acba', width: 1.5, dash: [3, 5], name: 'Return link' },
+};
+
+export type Curve = [number, number, number, number, number, number, number, number];
 
 const LEAVES = new Set(['next', 'prev', 'page', 'finish']);
 
@@ -133,48 +159,126 @@ export function flowExits(doc: CourseDoc): FlowExit[] {
   return out;
 }
 
+export function flowWires(doc: CourseDoc, exits: FlowExit[]): Wire[] {
+  const hubOf = hubsOf(doc);
+  const rows = new Map<string, number>();
+  return exits.flatMap((e) => {
+    const row = rows.get(e.from) ?? 0;
+    rows.set(e.from, row + 1);
+    if (!e.to || e.to === e.from) return [];
+    const kind: WireKind =
+      e.step === 'prev' || hubOf.get(e.from) === e.to
+        ? 'back'
+        : e.detour
+          ? hubOf.get(e.to) === e.from
+            ? 'side'
+            : 'again'
+          : e.condition
+            ? 'if'
+            : e.step === 'next'
+              ? 'next'
+              : 'jump';
+    return [{ id: e.id, from: e.from, to: e.to, row: Math.min(row, CARD.shown), kind }];
+  });
+}
+
+export function curve(from: Spot, row: number, to: Spot): Curve {
+  const sx = from.x + CARD.width;
+  const sy = from.y + CARD.first + row * CARD.row;
+  const tx = to.x;
+  const ty = to.y + CARD.head;
+  const reach = Math.min(400, Math.max(60, Math.abs(tx - sx) / 2));
+  return [sx, sy, sx + reach, sy, tx - reach, ty, tx, ty];
+}
+
+export function pointOn(c: Curve, t: number): Spot {
+  const u = 1 - t;
+  const a = u * u * u;
+  const b = 3 * u * u * t;
+  const d = 3 * u * t * t;
+  const e = t * t * t;
+  return { x: a * c[0] + b * c[2] + d * c[4] + e * c[6], y: a * c[1] + b * c[3] + d * c[5] + e * c[7] };
+}
+
+const STEPS = 32;
+
+export function wireAt(curves: Map<string, Curve>, x: number, y: number, reach: number): string | null {
+  let best: string | null = null;
+  let near = reach * reach;
+  for (const [id, c] of curves) {
+    if (
+      x < Math.min(c[0], c[2], c[4], c[6]) - reach ||
+      x > Math.max(c[0], c[2], c[4], c[6]) + reach ||
+      y < Math.min(c[1], c[7]) - reach ||
+      y > Math.max(c[1], c[7]) + reach
+    )
+      continue;
+    let p = pointOn(c, 0);
+    for (let i = 1; i <= STEPS; i++) {
+      const q = pointOn(c, i / STEPS);
+      const dx = q.x - p.x;
+      const dy = q.y - p.y;
+      const along = Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / (dx * dx + dy * dy || 1)));
+      const gap = (p.x + along * dx - x) ** 2 + (p.y + along * dy - y) ** 2;
+      if (gap <= near) {
+        near = gap;
+        best = id;
+      }
+      p = q;
+    }
+  }
+  return best;
+}
+
 const COLUMNS = 8;
 const COLUMN = 340;
-const ROW = 230;
+const ROW = 280;
 const BAND_GAP = 120;
 
 function autoPositions(doc: CourseDoc, exits: FlowExit[]): Map<string, Spot> {
   const out = new Map<string, Spot>();
   const first = doc.pages[0]?.id;
   if (!first) return out;
+  const weight = (e: FlowExit) => (e.step === 'next' ? 0 : e.detour ? 2 : 1);
   const onward = new Map<string, string[]>();
-  for (const e of exits) {
+  for (const e of [...exits].sort((a, b) => weight(a) - weight(b))) {
     if (!e.to || e.step === 'prev') continue;
-    const list = onward.get(e.from) ?? [];
-    if (e.step === 'next') list.unshift(e.to);
-    else list.push(e.to);
-    onward.set(e.from, list);
+    onward.set(e.from, [...(onward.get(e.from) ?? []), e.to]);
   }
-  const free: number[] = [];
-  const cell = new Map<string, { column: number; row: number }>();
-  const place = (id: string, column: number, from: number) => {
-    const row = Math.max(free[column] ?? 0, from);
-    free[column] = row + 1;
-    cell.set(id, { column, row });
-  };
-  place(first, 0, 0);
+  const column = new Map([[first, 0]]);
+  const kids = new Map<string, string[]>();
   const queue = [first];
   while (queue.length) {
     const id = queue.shift()!;
-    const at = cell.get(id)!;
     for (const to of onward.get(id) ?? [])
-      if (!cell.has(to)) {
-        place(to, at.column + 1, at.row);
+      if (!column.has(to)) {
+        column.set(to, column.get(id)! + 1);
+        kids.set(id, [...(kids.get(id) ?? []), to]);
         queue.push(to);
       }
   }
+  const free: number[] = [];
+  const rows = new Map<string, number>();
+  const place = (id: string, least: number): number => {
+    const at = column.get(id)!;
+    const [lead, ...rest] = kids.get(id) ?? [];
+    let row = Math.max(least, free[at] ?? 0);
+    if (lead) row = Math.max(row, place(lead, row));
+    free[at] = row + 1;
+    rows.set(id, row);
+    for (const k of rest) place(k, row);
+    return row;
+  };
+  place(first, 0);
   const below = Math.max(...free) * ROW + BAND_GAP;
   let loose = 0;
   for (const p of doc.pages) {
-    const at = cell.get(p.id);
+    const row = rows.get(p.id);
     out.set(
       p.id,
-      at ? { x: at.column * COLUMN, y: at.row * ROW } : { x: loose++ * COLUMN, y: below },
+      row === undefined
+        ? { x: loose++ * COLUMN, y: below }
+        : { x: column.get(p.id)! * COLUMN, y: row * ROW },
     );
   }
   return out;
