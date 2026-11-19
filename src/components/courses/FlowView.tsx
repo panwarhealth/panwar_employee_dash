@@ -139,20 +139,20 @@ const PageCard = memo(function PageCard({ data, selected }: NodeProps<PageNode>)
                 <span className="min-w-0 flex-1 truncate">
                   {e.rank && <span className="text-ph-charcoal/40">{e.rank}. </span>}
                   <span className="font-semibold">{e.start}</span>
+                  <span
+                    className={
+                      e.to || e.step !== 'page' ? 'text-ph-charcoal/60' : 'font-semibold text-red-600'
+                    }
+                  >
+                    {' '}
+                    → {exitTarget(e, data.names)}
+                  </span>
                 </span>
                 {e.condition && (
                   <span className="shrink-0 rounded bg-amber-100 px-1 text-[9px] font-bold text-amber-800">
                     IF
                   </span>
                 )}
-                <span
-                  className={cn(
-                    'max-w-[48%] shrink-0 truncate',
-                    e.to || e.step !== 'page' ? 'text-ph-charcoal/60' : 'font-semibold text-red-600',
-                  )}
-                >
-                  → {exitTarget(e, data.names)}
-                </span>
               </button>
               <span
                 className="pointer-events-none absolute -right-[13px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-white"
