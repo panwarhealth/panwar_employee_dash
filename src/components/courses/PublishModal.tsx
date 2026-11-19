@@ -250,7 +250,7 @@ export function PublishModal({
           </>
         ) : ready ? (
           <>
-            <p className="text-base font-semibold">Check this is the right course</p>
+            <p className="text-base font-semibold">Please confirm</p>
             <p className="font-semibold">{title}</p>
             {live ? (
               <div className="space-y-3 rounded-md bg-red-50 p-3 text-red-800">
