@@ -78,6 +78,7 @@ export function PublishModal({
   target,
   onTarget,
   onCreated,
+  onExport,
   last,
   onPublished,
 }: {
@@ -87,6 +88,7 @@ export function PublishModal({
   target: string | null;
   onTarget: (course: Course) => void;
   onCreated: (clinicalStudioCourseId: string) => void;
+  onExport: () => void;
   last: { build: number; version: number | null } | null;
   onPublished: (build: number, version: number | null) => void;
 }) {
@@ -345,7 +347,15 @@ export function PublishModal({
               </p>
             )}
             {error && <p className="text-red-700">{error}</p>}
-            <div className="flex justify-end gap-2 pt-1">
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onExport}
+                className="mr-auto text-ph-purple underline underline-offset-2"
+              >
+                Download a SCORM zip instead
+              </button>
               <Button variant="outline" disabled={busy} onClick={onClose}>
                 Cancel
               </Button>

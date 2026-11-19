@@ -322,9 +322,6 @@ function Editor({
               <Button size="sm" variant="outline" onClick={() => setModal('pdf')}>
                 Export PDF
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setModal('export')}>
-                Export zip
-              </Button>
               <Button size="sm" onClick={() => setModal('publish')}>
                 Publish
               </Button>
@@ -467,6 +464,7 @@ function Editor({
         {modal === 'publish' && (
           <PublishModal
             onClose={() => setModal(null)}
+            onExport={() => setModal('export')}
             courseId={courseId}
             doc={doc}
             target={publishTo}
