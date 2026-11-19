@@ -80,6 +80,17 @@ export interface PublishUpload {
 export const nextBuild = (id: string): Promise<number> =>
   apiFetch<{ build: number }>(`/courses/${id}/build`, { method: 'POST' }).then((r) => r.build);
 
+export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
+
+export const createClinicalStudioCourse = (
+  id: string,
+  body: { title: string; shortDescription: string; longDescription: string; difficulty: Difficulty },
+): Promise<string> =>
+  apiFetch<{ clinicalStudioCourseId: string }>(`/courses/${id}/clinical-studio`, {
+    method: 'POST',
+    body,
+  }).then((r) => r.clinicalStudioCourseId);
+
 export const setClinicalStudioCourse = (id: string, courseId: string): Promise<Course> =>
   apiFetch(`/courses/${id}/clinical-studio`, { method: 'PUT', body: { courseId } });
 

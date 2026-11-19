@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import {
   completePublish,
+  createClinicalStudioCourse,
   downloadMedia,
   nextBuild,
   setClinicalStudioCourse,
   startPublish,
   type Course,
+  type Difficulty,
   type PublishUpload,
 } from '@/api/courses';
 import { Button } from '@/components/ui/button';
@@ -75,6 +77,7 @@ export function PublishModal({
   doc,
   target,
   onTarget,
+  onCreated,
   last,
   onPublished,
 }: {
@@ -83,6 +86,7 @@ export function PublishModal({
   doc: CourseDoc;
   target: string | null;
   onTarget: (course: Course) => void;
+  onCreated: (clinicalStudioCourseId: string) => void;
   last: { build: number; version: number | null } | null;
   onPublished: (build: number, version: number | null) => void;
 }) {
@@ -95,6 +99,13 @@ export function PublishModal({
     build: number;
   } | null>(null);
   const [typed, setTyped] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [fresh, setFresh] = useState({
+    title: doc.title,
+    shortDescription: '',
+    longDescription: '',
+    difficulty: 'Beginner' as Difficulty,
+  });
   const [done, setDone] = useState<{ build: number; version?: number } | null>(null);
   const clean = preflight(doc).every((c) => c.ok);
   const busy = progress !== null;
@@ -110,25 +121,39 @@ export function PublishModal({
     }
   };
 
+  const build = async () => {
+    setProgress('Fetching the course player');
+    const number = await nextBuild(courseId);
+    const { files } = await packageFiles(
+      courseId,
+      doc,
+      number,
+      (url) => downloadMedia(courseId, url),
+      setProgress,
+    );
+    setProgress('Checking with Clinical Studio');
+    const upload = await startPublish(
+      courseId,
+      files.map((f) => f.path),
+    );
+    setReady({ files, upload, build: number });
+  };
+
   const prepare = () =>
     attempt(async () => {
       setProgress('Saving the course ID');
       if (id.trim() !== (target ?? '')) onTarget(await setClinicalStudioCourse(courseId, id.trim()));
-      setProgress('Fetching the course player');
-      const build = await nextBuild(courseId);
-      const { files } = await packageFiles(
-        courseId,
-        doc,
-        build,
-        (url) => downloadMedia(courseId, url),
-        setProgress,
-      );
-      setProgress('Checking with Clinical Studio');
-      const upload = await startPublish(
-        courseId,
-        files.map((f) => f.path),
-      );
-      setReady({ files, upload, build });
+      await build();
+    });
+
+  const create = () =>
+    attempt(async () => {
+      setProgress('Creating the course in Clinical Studio');
+      const made = await createClinicalStudioCourse(courseId, fresh);
+      setId(made);
+      setCreating(false);
+      onCreated(made);
+      await build();
     });
 
   const publish = () =>
@@ -214,6 +239,70 @@ export function PublishModal({
               </Button>
             </div>
           </>
+        ) : creating ? (
+          <>
+            <p className="text-ph-charcoal/60">
+              This creates a draft course in Clinical Studio and publishes this course into it.
+              Learners can't see it until you make it live in Clinical Studio admin.
+            </p>
+            <label className="block">
+              <span className="mb-1.5 block">Title</span>
+              <Input
+                value={fresh.title}
+                onChange={(e) => setFresh({ ...fresh, title: e.target.value })}
+                disabled={busy}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block">Short description</span>
+              <Input
+                value={fresh.shortDescription}
+                onChange={(e) => setFresh({ ...fresh, shortDescription: e.target.value })}
+                disabled={busy}
+                autoFocus
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block">Long description</span>
+              <textarea
+                value={fresh.longDescription}
+                onChange={(e) => setFresh({ ...fresh, longDescription: e.target.value })}
+                disabled={busy}
+                rows={4}
+                className="w-full resize-y rounded-md border border-ph-charcoal/20 bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ph-purple/40 disabled:opacity-50"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block">Difficulty</span>
+              <select
+                value={fresh.difficulty}
+                onChange={(e) => setFresh({ ...fresh, difficulty: e.target.value as Difficulty })}
+                disabled={busy}
+                className="h-9 w-full rounded-md border border-ph-charcoal/20 bg-white px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ph-purple/40 disabled:opacity-50"
+              >
+                <option>Beginner</option>
+                <option>Intermediate</option>
+                <option>Advanced</option>
+              </select>
+            </label>
+            {error && <p className="text-red-700">{error}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" disabled={busy} onClick={() => setCreating(false)}>
+                Back
+              </Button>
+              <Button
+                disabled={
+                  busy ||
+                  !fresh.title.trim() ||
+                  !fresh.shortDescription.trim() ||
+                  !fresh.longDescription.trim()
+                }
+                onClick={() => void create()}
+              >
+                {progress ?? 'Create and continue'}
+              </Button>
+            </div>
+          </>
         ) : (
           <>
             <p className="text-ph-charcoal/60">
@@ -230,6 +319,19 @@ export function PublishModal({
                 disabled={busy}
                 autoFocus={!target}
               />
+              {!target && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setError(null);
+                    setCreating(true);
+                  }}
+                  className="mt-2 text-ph-purple underline underline-offset-2"
+                >
+                  No course in Clinical Studio yet? Create one
+                </button>
+              )}
             </div>
             {last && (
               <p className="text-ph-charcoal/60">

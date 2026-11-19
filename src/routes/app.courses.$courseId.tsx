@@ -481,6 +481,11 @@ function Editor({
                 old ? { ...old, clinicalStudioCourseId: course.clinicalStudioCourseId } : old,
               )
             }
+            onCreated={(clinicalStudioCourseId) =>
+              queryClient.setQueryData<Course>(['course', courseId], (old) =>
+                old ? { ...old, clinicalStudioCourseId } : old,
+              )
+            }
           />
         )}
         <ExportModal
