@@ -14,11 +14,12 @@ import {
 } from 'lucide-react';
 import { CanvasEditor } from '@/components/courses/CanvasEditor';
 import { relayout } from '@/components/courses/deckToPages';
-import { getCourse } from '@/api/courses';
+import { getCourse, type Course } from '@/api/courses';
 import { Button } from '@/components/ui/button';
 import { AddBlockMenu } from '@/components/courses/AddBlockMenu';
 import { AssistantPanel } from '@/components/courses/AssistantPanel';
 import { ExportModal } from '@/components/courses/ExportModal';
+import { PublishModal } from '@/components/courses/PublishModal';
 import { FlowView } from '@/components/courses/FlowView';
 import { HistoryModal } from '@/components/courses/HistoryModal';
 import { Inspector } from '@/components/courses/Inspector';
@@ -69,11 +70,24 @@ function EditorPage() {
   if (error || !data)
     return <p className="p-6 text-sm text-red-700">{error?.message ?? 'Course not found'}</p>;
   return (
-    <Editor key={data.updatedAt} courseId={courseId} initial={normalizeDoc(data.content)} />
+    <Editor
+      key={data.updatedAt}
+      courseId={courseId}
+      initial={normalizeDoc(data.content)}
+      publishTo={data.clinicalStudioCourseId}
+    />
   );
 }
 
-function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc }) {
+function Editor({
+  courseId,
+  initial,
+  publishTo,
+}: {
+  courseId: string;
+  initial: CourseDoc;
+  publishTo: string | null;
+}) {
   const queryClient = useQueryClient();
   const history = useUndoable(initial);
   useNonBreakingSpace();
@@ -88,7 +102,16 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
   const [blockId, setBlockId] = useState<string | null>(null);
   const [phone, setPhone] = useState(initial.screens === 'phone');
   const [modal, setModal] = useState<
-    'add' | 'export' | 'pdf' | 'settings' | 'preview' | 'variables' | 'history' | 'flow' | null
+    | 'add'
+    | 'export'
+    | 'publish'
+    | 'pdf'
+    | 'settings'
+    | 'preview'
+    | 'variables'
+    | 'history'
+    | 'flow'
+    | null
   >(null);
   const save = useCourseAutosave(courseId, doc);
   const assistant = useCourseAssistant(courseId, doc, setDoc);
@@ -292,8 +315,11 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
               <Button size="sm" variant="outline" onClick={() => setModal('pdf')}>
                 Export PDF
               </Button>
-              <Button size="sm" onClick={() => setModal('export')}>
+              <Button size="sm" variant="outline" onClick={() => setModal('export')}>
                 Export zip
+              </Button>
+              <Button size="sm" onClick={() => setModal('publish')}>
+                Publish
               </Button>
             </div>
           </div>
@@ -431,6 +457,19 @@ function Editor({ courseId, initial }: { courseId: string; initial: CourseDoc })
           courseId={courseId}
           doc={doc}
         />
+        {modal === 'publish' && (
+          <PublishModal
+            onClose={() => setModal(null)}
+            courseId={courseId}
+            doc={doc}
+            target={publishTo}
+            onTarget={(course) =>
+              queryClient.setQueryData<Course>(['course', courseId], (old) =>
+                old ? { ...old, clinicalStudioCourseId: course.clinicalStudioCourseId } : old,
+              )
+            }
+          />
+        )}
         <ExportModal
           open={modal === 'export'}
           onClose={() => setModal(null)}

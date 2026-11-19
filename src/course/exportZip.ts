@@ -7,7 +7,12 @@ const MEDIA_URL = /https:\/\/[^"\s]+\/courses\/[0-9a-f]{32}\/[0-9a-f]{32}\.[a-z0
 const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
 const WOFF2 = /url\(\s*["']?([^"')]+)["']?\s*\)\s*format\(\s*["']woff2["']\s*\)/;
 
-async function bundleFonts(zip: JSZip): Promise<string> {
+export interface PackageFile {
+  path: string;
+  blob: Blob;
+}
+
+async function bundleFonts(files: PackageFile[]): Promise<string> {
   const sheets = [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')]
     .map((l) => l.href)
     .filter((href) => new URL(href).origin !== location.origin);
@@ -21,7 +26,7 @@ async function bundleFonts(zip: JSZip): Promise<string> {
       const file = await fetch(new URL(url, href));
       if (!file.ok) throw new Error(`Could not download a font file from ${new URL(href).host}`);
       const name = `fonts/${faces.length + 1}.woff2`;
-      zip.file(name, await file.blob());
+      files.push({ path: name, blob: await file.blob() });
       faces.push(face.replace(/src:[^;}]*/, `src:url("${name}") format("woff2")`));
     }
   }
@@ -191,23 +196,23 @@ function manifest(title: string, id: string): string {
 `;
 }
 
-export async function buildZip(
+export async function packageFiles(
   courseId: string,
   doc: CourseDoc,
   download: (url: string) => Promise<Blob>,
   onProgress: (text: string) => void,
-): Promise<{ blob: Blob; mediaBytes: number }> {
-  const zip = new JSZip();
+): Promise<{ files: PackageFile[]; mediaBytes: number }> {
+  const files: PackageFile[] = [];
 
-  const files = (await (await fetch('/scorm-player/files.json')).json()) as string[];
-  for (const f of files) {
+  const player = (await (await fetch('/scorm-player/files.json')).json()) as string[];
+  for (const f of player) {
     const res = await fetch(`/scorm-player/${f}`);
     if (!res.ok) throw new Error(`The course player is missing ${f}`);
-    zip.file(f, await res.blob());
+    files.push({ path: f, blob: await res.blob() });
   }
 
   onProgress('Bundling fonts');
-  zip.file('fonts.css', await bundleFonts(zip));
+  files.push({ path: 'fonts.css', blob: new Blob([await bundleFonts(files)]) });
 
   let json = JSON.stringify(doc);
   let mediaBytes = 0;
@@ -218,12 +223,24 @@ export async function buildZip(
     mediaBytes += blob.size;
     if (mediaBytes > MAX_MEDIA_BYTES) throw new Error('Media is over 100 MB. Use smaller videos.');
     const name = `media/${url.split('/').pop()}`;
-    zip.file(name, blob);
+    files.push({ path: name, blob });
     json = json.split(url).join(name);
   }
 
-  zip.file('course.json', json);
-  zip.file('imsmanifest.xml', manifest(doc.title, courseId));
+  files.push({ path: 'course.json', blob: new Blob([json]) });
+  files.push({ path: 'imsmanifest.xml', blob: new Blob([manifest(doc.title, courseId)]) });
+  return { files, mediaBytes };
+}
+
+export async function buildZip(
+  courseId: string,
+  doc: CourseDoc,
+  download: (url: string) => Promise<Blob>,
+  onProgress: (text: string) => void,
+): Promise<{ blob: Blob; mediaBytes: number }> {
+  const { files, mediaBytes } = await packageFiles(courseId, doc, download, onProgress);
+  const zip = new JSZip();
+  for (const f of files) zip.file(f.path, f.blob);
   onProgress('Zipping');
   return { blob: await zip.generateAsync({ type: 'blob' }), mediaBytes };
 }
