@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   completePublish,
   downloadMedia,
+  nextBuild,
   setClinicalStudioCourse,
   startPublish,
   type Course,
@@ -74,19 +75,27 @@ export function PublishModal({
   doc,
   target,
   onTarget,
+  last,
+  onPublished,
 }: {
   onClose: () => void;
   courseId: string;
   doc: CourseDoc;
   target: string | null;
   onTarget: (course: Course) => void;
+  last: { build: number; version: number | null } | null;
+  onPublished: (build: number, version: number | null) => void;
 }) {
   const [id, setId] = useState(target ?? '');
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState<{ files: PackageFile[]; upload: PublishUpload } | null>(null);
+  const [ready, setReady] = useState<{
+    files: PackageFile[];
+    upload: PublishUpload;
+    build: number;
+  } | null>(null);
   const [typed, setTyped] = useState('');
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<{ build: number; version?: number } | null>(null);
   const clean = preflight(doc).every((c) => c.ok);
   const busy = progress !== null;
 
@@ -106,9 +115,11 @@ export function PublishModal({
       setProgress('Saving the course ID');
       if (id.trim() !== (target ?? '')) onTarget(await setClinicalStudioCourse(courseId, id.trim()));
       setProgress('Fetching the course player');
+      const build = await nextBuild(courseId);
       const { files } = await packageFiles(
         courseId,
         doc,
+        build,
         (url) => downloadMedia(courseId, url),
         setProgress,
       );
@@ -117,12 +128,12 @@ export function PublishModal({
         courseId,
         files.map((f) => f.path),
       );
-      setReady({ files, upload });
+      setReady({ files, upload, build });
     });
 
   const publish = () =>
     attempt(async () => {
-      const { files, upload } = ready!;
+      const { files, upload, build } = ready!;
       setProgress(`Uploading 0 of ${files.length}`);
       await putAll(files, upload.uploadUrls, (sent) =>
         setProgress(`Uploading ${sent} of ${files.length}`),
@@ -131,12 +142,14 @@ export function PublishModal({
         throw e;
       });
       setProgress('Switching the course over');
-      await completePublish(courseId, {
+      const { version } = await completePublish(courseId, {
         uploadId: upload.uploadId,
         totalFiles: files.length,
+        build,
         confirmCourseTitle: typed,
       });
-      setDone(true);
+      onPublished(build, version ?? null);
+      setDone({ build, version });
     });
 
   const title = ready?.upload.courseTitle ?? '';
@@ -153,8 +166,9 @@ export function PublishModal({
         {done ? (
           <>
             <p>
-              Published. <strong>{title}</strong> now plays this version. Learners keep their
-              progress.
+              Published build {done.build}
+              {done.version !== undefined && ` as Clinical Studio v${done.version}`}.{' '}
+              <strong>{title}</strong> now plays this build. Learners keep their progress.
             </p>
             <div className="flex justify-end">
               <Button onClick={onClose}>Close</Button>
@@ -217,6 +231,12 @@ export function PublishModal({
                 autoFocus={!target}
               />
             </div>
+            {last && (
+              <p className="text-ph-charcoal/60">
+                Last published: build {last.build}
+                {last.version !== null && `, Clinical Studio v${last.version}`}.
+              </p>
+            )}
             {!clean && (
               <p className="text-ph-charcoal/60">
                 The export check found problems. They will be published as they are.

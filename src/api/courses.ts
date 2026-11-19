@@ -16,6 +16,8 @@ export interface Course {
   updatedAt: string;
   lastExportedAt: string | null;
   clinicalStudioCourseId: string | null;
+  publishedBuild: number | null;
+  publishedVersion: number | null;
 }
 
 export const listCourses = (): Promise<CourseSummary[]> =>
@@ -75,6 +77,9 @@ export interface PublishUpload {
   uploadUrls: Record<string, string>;
 }
 
+export const nextBuild = (id: string): Promise<number> =>
+  apiFetch<{ build: number }>(`/courses/${id}/build`, { method: 'POST' }).then((r) => r.build);
+
 export const setClinicalStudioCourse = (id: string, courseId: string): Promise<Course> =>
   apiFetch(`/courses/${id}/clinical-studio`, { method: 'PUT', body: { courseId } });
 
@@ -83,8 +88,8 @@ export const startPublish = (id: string, filePaths: string[]): Promise<PublishUp
 
 export const completePublish = (
   id: string,
-  body: { uploadId: string; totalFiles: number; confirmCourseTitle: string },
-): Promise<void> => apiFetch(`/courses/${id}/publish/complete`, { method: 'POST', body });
+  body: { uploadId: string; totalFiles: number; build: number; confirmCourseTitle: string },
+): Promise<{ version?: number }> => apiFetch(`/courses/${id}/publish/complete`, { method: 'POST', body });
 
 export const uploadMedia = (id: string, file: File): Promise<{ url: string }> =>
   apiFetch(`/courses/${id}/media?filename=${encodeURIComponent(file.name)}`, {

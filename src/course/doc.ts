@@ -10,6 +10,7 @@ export interface CourseDoc {
   passMark: number | null;
   accent: string;
   navBar?: boolean;
+  build?: number;
   fonts: CourseFont[];
   variables: Variable[];
   pages: Page[];

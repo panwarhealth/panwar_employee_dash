@@ -75,6 +75,11 @@ function EditorPage() {
       courseId={courseId}
       initial={normalizeDoc(data.content)}
       publishTo={data.clinicalStudioCourseId}
+      published={
+        data.publishedBuild === null
+          ? null
+          : { build: data.publishedBuild, version: data.publishedVersion }
+      }
     />
   );
 }
@@ -83,10 +88,12 @@ function Editor({
   courseId,
   initial,
   publishTo,
+  published,
 }: {
   courseId: string;
   initial: CourseDoc;
   publishTo: string | null;
+  published: { build: number; version: number | null } | null;
 }) {
   const queryClient = useQueryClient();
   const history = useUndoable(initial);
@@ -463,6 +470,12 @@ function Editor({
             courseId={courseId}
             doc={doc}
             target={publishTo}
+            last={published}
+            onPublished={(build, version) =>
+              queryClient.setQueryData<Course>(['course', courseId], (old) =>
+                old ? { ...old, publishedBuild: build, publishedVersion: version } : old,
+              )
+            }
             onTarget={(course) =>
               queryClient.setQueryData<Course>(['course', courseId], (old) =>
                 old ? { ...old, clinicalStudioCourseId: course.clinicalStudioCourseId } : old,

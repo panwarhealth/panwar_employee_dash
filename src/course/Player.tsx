@@ -453,6 +453,7 @@ export function Player({
   return (
     <div className="cp cp-shell cp-shell-canvas" style={accentStyle(doc)}>
       {doc.fonts.length > 0 && <style>{fontFaces(doc)}</style>}
+      {doc.build !== undefined && <span className="cp-build">v{doc.build}</span>}
       <main className="cp-main cp-main-canvas">
         <div className="cp-trwrap">
           {previous && previous.page.id !== page.id && (

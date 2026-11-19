@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Sparkles, X } from 'lucide-react';
-import { downloadMedia, markExported } from '@/api/courses';
+import { downloadMedia, markExported, nextBuild } from '@/api/courses';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
@@ -62,6 +62,7 @@ export function ExportModal({
       const { blob } = await buildZip(
         courseId,
         doc,
+        await nextBuild(courseId),
         (url) => downloadMedia(courseId, url),
         setProgress,
       );

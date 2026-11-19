@@ -169,10 +169,10 @@ export const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '') || 'course';
 
-function manifest(title: string, id: string): string {
+function manifest(title: string, id: string, build: number): string {
   const t = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="com.panwarhealth.course-${id}" version="1.0"
+<manifest identifier="com.panwarhealth.course-${id}" version="${build}"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2">
   <metadata>
@@ -199,6 +199,7 @@ function manifest(title: string, id: string): string {
 export async function packageFiles(
   courseId: string,
   doc: CourseDoc,
+  build: number,
   download: (url: string) => Promise<Blob>,
   onProgress: (text: string) => void,
 ): Promise<{ files: PackageFile[]; mediaBytes: number }> {
@@ -214,7 +215,7 @@ export async function packageFiles(
   onProgress('Bundling fonts');
   files.push({ path: 'fonts.css', blob: new Blob([await bundleFonts(files)]) });
 
-  let json = JSON.stringify(doc);
+  let json = JSON.stringify({ ...doc, build });
   let mediaBytes = 0;
   const urls = mediaUrls(doc);
   for (const [i, url] of urls.entries()) {
@@ -228,17 +229,18 @@ export async function packageFiles(
   }
 
   files.push({ path: 'course.json', blob: new Blob([json]) });
-  files.push({ path: 'imsmanifest.xml', blob: new Blob([manifest(doc.title, courseId)]) });
+  files.push({ path: 'imsmanifest.xml', blob: new Blob([manifest(doc.title, courseId, build)]) });
   return { files, mediaBytes };
 }
 
 export async function buildZip(
   courseId: string,
   doc: CourseDoc,
+  build: number,
   download: (url: string) => Promise<Blob>,
   onProgress: (text: string) => void,
 ): Promise<{ blob: Blob; mediaBytes: number }> {
-  const { files, mediaBytes } = await packageFiles(courseId, doc, download, onProgress);
+  const { files, mediaBytes } = await packageFiles(courseId, doc, build, download, onProgress);
   const zip = new JSZip();
   for (const f of files) zip.file(f.path, f.blob);
   onProgress('Zipping');
