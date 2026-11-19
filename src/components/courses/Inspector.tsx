@@ -32,6 +32,8 @@ import { Field, inputClass, NumberBox, Select, TextInput, Toggle } from './field
 import { SortableList } from './SortableList';
 import { PaintField } from './TextStyleFields';
 import { ReviewNotes } from './ReviewNotes';
+import { PageProblems } from './PageProblems';
+import { pageProblems } from '@/course/exportZip';
 import { ObjectMenu } from './ObjectMenu';
 import { objectMenuItems } from './objectMenuItems';
 
@@ -120,6 +122,11 @@ export function Inspector({
         <Wand2 className="h-4 w-4" />
         Polish {canvas.layout} layout
       </Button>
+      <PageProblems
+        problems={pageProblems(doc, page, canvas.layout)}
+        selectedId={selectedId}
+        onSelect={onSelect}
+      />
       <ReviewNotes
         page={page}
         selectedId={selectedId}

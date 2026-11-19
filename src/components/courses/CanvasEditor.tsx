@@ -32,6 +32,7 @@ import { hitObject } from '@/course/hit';
 import { cn } from '@/lib/utils';
 import { isDecor } from './blockKinds';
 import { blockLabel } from './blockMeta';
+import { pageProblems } from '@/course/exportZip';
 import { readFlag, saveFlag } from './flags';
 import { InlineText } from './InlineText';
 import { ObjectMenu } from './ObjectMenu';
@@ -146,6 +147,7 @@ export function CanvasEditor({
 
   const groups = groupsOf(page);
   const groupBy = new Map(groups.flatMap((g) => g.members.map((id) => [id, g] as const)));
+  const problems = pageProblems(doc, page, layout);
   const selected = page.blocks.find((b) => b.id === selectedId) ?? null;
   const layer = layerOf(page, selectedId);
   const popups = page.blocks.filter((b) => b.type === 'popup');
@@ -556,6 +558,7 @@ export function CanvasEditor({
               const on = b.id === selectedId;
               const typing = editing === b.id && (b.type === 'heading' || b.type === 'text');
               const notes = page.notes?.filter((n) => n.blockId === b.id) ?? [];
+              const broken = problems.filter((p) => p.blockId === b.id && p.key !== 'layout');
               return (
                 <div
                   key={b.id}
@@ -567,6 +570,7 @@ export function CanvasEditor({
                       'cursor-move touch-none select-none [&>*:first-child]:pointer-events-none',
                     !b.frames?.[layout] && 'opacity-60 outline-dashed outline-1 outline-amber-500',
                     notes.length > 0 && !on && 'outline outline-2 outline-amber-400',
+                    broken.length > 0 && 'outline outline-2 outline-red-500',
                     picked.includes(b.id) && 'outline-dashed outline-2 outline-ph-purple',
                   )}
                   style={frameStyle(f, growsToFit(b))}
@@ -590,6 +594,17 @@ export function CanvasEditor({
                     />
                   ) : (
                     content
+                  )}
+                  {broken.length > 0 && (
+                    <button
+                      type="button"
+                      title={broken.map((p) => p.text).join('\n\n')}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => onSelect(b.id)}
+                      className="absolute -right-2.5 -top-2.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold text-white shadow"
+                    >
+                      !
+                    </button>
                   )}
                   {notes.length > 0 && (
                     <button

@@ -53,6 +53,95 @@ export function mediaUrls(doc: CourseDoc): string[] {
   return [...new Set(JSON.stringify(doc).match(MEDIA_URL) ?? [])];
 }
 
+const NEEDS_FILE = ['image', 'video', 'audio', 'animation', 'hotspots'];
+
+const unfilledBlock = (b: Block) =>
+  (NEEDS_FILE.includes(b.type) && 'src' in b && !b.src) ||
+  (b.type === 'embed' && !b.url) ||
+  (b.type === 'drag' && b.style === 'targets' && !b.src);
+
+function deadActionTest(doc: CourseDoc) {
+  const pageIds = new Set(doc.pages.map((p) => p.id));
+  const blockIds = new Set([
+    ...doc.pages.flatMap((p) => p.blocks.map((b) => b.id)),
+    ...doc.pages.flatMap((p) => groupsOf(p).map((g) => g.id)),
+  ]);
+  return (a: Action | ButtonAction) =>
+    (a.kind === 'page' && !pageIds.has(a.pageId)) ||
+    ((a.kind === 'popup' || a.kind === 'show' || a.kind === 'hide') && !blockIds.has(a.blockId));
+}
+
+const leavesPage = (a: { kind: string }) => ['next', 'prev', 'page', 'finish'].includes(a.kind);
+
+const stuckPage = (doc: CourseDoc, p: Page) =>
+  !doc.navBar &&
+  !p.blocks.some(
+    (b) =>
+      (b.type === 'button' && b.action.kind !== 'link') ||
+      (b.type === 'pathway' && b.choices.length > 0) ||
+      b.type === 'results',
+  ) &&
+  !p.triggers.some((t) => leavesPage(t.action));
+
+export interface PageProblem {
+  key: string;
+  text: string;
+  blockId?: string;
+}
+
+export function pageProblems(doc: CourseDoc, page: Page, layout: Layout): PageProblem[] {
+  const out: PageProblem[] = [];
+  const dead = deadActionTest(doc);
+  const pageIds = new Set(doc.pages.map((p) => p.id));
+  const here = new Set([...page.blocks.map((b) => b.id), ...groupsOf(page).map((g) => g.id)]);
+  if (page.blocks.length === 0) out.push({ key: 'empty', text: 'This page has nothing on it.' });
+  if (stuckPage(doc, page))
+    out.push({
+      key: 'stuck',
+      text: 'No way to leave this page. Add a button or trigger that goes somewhere, or turn on the Back and Continue bar in course settings.',
+    });
+  for (const b of page.blocks) {
+    if (unfilledBlock(b))
+      out.push({ key: `file-${b.id}`, text: 'This has no file or link.', blockId: b.id });
+    if (b.type === 'button' && dead(b.action))
+      out.push({
+        key: `button-${b.id}`,
+        text: 'This button goes to a page, pop-up or object that no longer exists.',
+        blockId: b.id,
+      });
+    if (b.type === 'pathway' && b.choices.some((c) => !pageIds.has(c.pageId)))
+      out.push({ key: `path-${b.id}`, text: 'A choice here goes nowhere.', blockId: b.id });
+  }
+  for (const t of page.triggers) {
+    if (!dead(t.action)) continue;
+    const on = t.when.kind === 'click' ? t.when.blockId : null;
+    out.push(
+      on && here.has(on)
+        ? {
+            key: `trigger-${t.id}`,
+            text: 'A click trigger on this goes to a page, pop-up or object that no longer exists.',
+            blockId: on,
+          }
+        : {
+            key: `trigger-${t.id}`,
+            text: on
+              ? 'A trigger on a deleted object goes to a page, pop-up or object that no longer exists. Delete it under Triggers, in the red Deleted object group.'
+              : 'A trigger on this page goes to a page, pop-up or object that no longer exists. Find it under Triggers.',
+          },
+    );
+  }
+  if (layoutsFor(doc.screens).includes(layout)) {
+    const unplaced = page.blocks.filter((b) => !b.frames?.[layout]);
+    if (unplaced.length)
+      out.push({
+        key: 'layout',
+        text: `${plural(unplaced.length, 'object')} not placed in the ${layout} layout.`,
+        blockId: unplaced[0].id,
+      });
+  }
+  return out;
+}
+
 export function preflight(doc: CourseDoc): Check[] {
   const checks: Check[] = [];
   const blocks = doc.pages.flatMap((p) => p.blocks);
@@ -70,11 +159,7 @@ export function preflight(doc: CourseDoc): Check[] {
         },
   );
 
-  const needsFile = ['image', 'video', 'audio', 'animation', 'hotspots'];
-  const unfilled = (b: Block) =>
-    (needsFile.includes(b.type) && 'src' in b && !b.src) ||
-    (b.type === 'embed' && !b.url) ||
-    (b.type === 'drag' && b.style === 'targets' && !b.src);
+  const unfilled = unfilledBlock;
   const missing = blocks.filter(unfilled);
   if (missing.length)
     checks.push({
@@ -99,29 +184,12 @@ export function preflight(doc: CourseDoc): Check[] {
     ...p.triggers.map((t) => t.action),
     ...p.blocks.flatMap((b) => (b.type === 'button' ? [b.action] : [])),
   ];
-  const blockIds = new Set([
-    ...blocks.map((b) => b.id),
-    ...doc.pages.flatMap((p) => groupsOf(p).map((g) => g.id)),
-  ]);
-  const dead = (a: Action | ButtonAction) =>
-    (a.kind === 'page' && !pageIds.has(a.pageId)) ||
-    ((a.kind === 'popup' || a.kind === 'show' || a.kind === 'hide') && !blockIds.has(a.blockId));
+  const dead = deadActionTest(doc);
   const deadLinks = doc.pages.flatMap(actionsOn).filter(dead);
   const deadBlock = (p: Page) =>
     p.blocks.find((b) => b.type === 'button' && dead(b.action))?.id ??
     p.triggers.flatMap((t) => (t.when.kind === 'click' && dead(t.action) ? [t.when.blockId] : []))[0];
-  const leaves = (a: { kind: string }) => ['next', 'prev', 'page', 'finish'].includes(a.kind);
-  const stuck = doc.navBar
-    ? []
-    : doc.pages.filter(
-        (p) =>
-          !p.blocks.some(
-            (b) =>
-              (b.type === 'button' && b.action.kind !== 'link') ||
-              (b.type === 'pathway' && b.choices.length > 0) ||
-              b.type === 'results',
-          ) && !p.triggers.some((t) => leaves(t.action)),
-      );
+  const stuck = doc.pages.filter((p) => stuckPage(doc, p));
   if (stuck.length)
     checks.push({
       ok: false,
