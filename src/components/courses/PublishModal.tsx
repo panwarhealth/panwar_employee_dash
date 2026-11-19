@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CircleCheck } from 'lucide-react';
 import {
   completePublish,
   createClinicalStudioCourse,
@@ -111,7 +112,14 @@ export function PublishModal({
     longDescription: '',
     difficulty: 'Beginner' as Difficulty,
   });
-  const [done, setDone] = useState<{ build: number; version?: number } | null>(null);
+  const [created, setCreated] = useState(false);
+  const [done, setDone] = useState<{
+    build: number;
+    version?: number;
+    files: number;
+    live: boolean;
+    at: Date;
+  } | null>(null);
   const problems = preflight(doc).filter((c) => !c.ok);
   const busy = progress !== null;
 
@@ -156,6 +164,7 @@ export function PublishModal({
       setProgress('Creating the course in Clinical Studio');
       const made = await createClinicalStudioCourse(courseId, fresh);
       setId(made);
+      setCreated(true);
       setCreating(false);
       onCreated(made);
       await build();
@@ -179,7 +188,7 @@ export function PublishModal({
         confirmCourseTitle: typed,
       });
       onPublished(build, version ?? null);
-      setDone({ build, version });
+      setDone({ build, version, files: files.length, live: upload.isOnProduction, at: new Date() });
     });
 
   const title = ready?.upload.courseTitle ?? '';
@@ -188,18 +197,53 @@ export function PublishModal({
   return (
     <Modal
       open
-      onClose={busy ? () => {} : onClose}
+      onClose={busy || done ? () => {} : onClose}
       title="Publish to Clinical Studio"
       className="max-w-lg"
     >
       <div className="space-y-4 px-6 py-5 text-sm text-ph-charcoal">
         {done ? (
           <>
-            <p>
-              Published build {done.build}
-              {done.version !== undefined && ` as Clinical Studio v${done.version}`}.{' '}
-              <strong>{title}</strong> now plays this build. Learners keep their progress.
-            </p>
+            <div className="flex items-center gap-2 text-base font-semibold text-green-700">
+              <CircleCheck className="h-5 w-5" />
+              Published to Clinical Studio
+            </div>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+              <dt className="text-ph-charcoal/60">Course</dt>
+              <dd className="font-semibold">{title}</dd>
+              {created && (
+                <>
+                  <dt className="text-ph-charcoal/60">New course</dt>
+                  <dd>Created just now as a draft</dd>
+                </>
+              )}
+              <dt className="text-ph-charcoal/60">Build</dt>
+              <dd>{done.build}</dd>
+              {done.version !== undefined && (
+                <>
+                  <dt className="text-ph-charcoal/60">Clinical Studio version</dt>
+                  <dd>v{done.version}</dd>
+                </>
+              )}
+              <dt className="text-ph-charcoal/60">Files uploaded</dt>
+              <dd>{done.files}</dd>
+              <dt className="text-ph-charcoal/60">On Clinical Studio</dt>
+              <dd>
+                {done.live ? (
+                  <span className="font-semibold text-red-700">
+                    Live. Learners get this build from now on.
+                  </span>
+                ) : (
+                  'Not live. Only the Clinical Studio staging site shows it. Make it live in Clinical Studio admin.'
+                )}
+              </dd>
+              <dt className="text-ph-charcoal/60">Learner progress</dt>
+              <dd>Kept</dd>
+              <dt className="text-ph-charcoal/60">Published</dt>
+              <dd>
+                {done.at.toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+              </dd>
+            </dl>
             <div className="flex justify-end">
               <Button onClick={onClose}>Close</Button>
             </div>
