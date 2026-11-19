@@ -193,7 +193,12 @@ function JobPage() {
                     <td className="rh">
                       <Link
                         to="/app/timesheets/reports/detailed"
-                        search={{ ...dates, jobIds: j.id, taskIds: t.taskId }}
+                        search={{
+                          ...dates,
+                          period: range === 'all' ? 'all' : 'custom',
+                          jobIds: j.id,
+                          taskIds: t.taskId,
+                        }}
                       >
                         {fmtDec(t.spent)}
                       </Link>
