@@ -39,7 +39,6 @@ export function ExportModal({
   const ready = checks.every((c) => c.ok);
   const media = mediaUrls(doc).length;
   const fileName = `${slugify(doc.title)}.zip`;
-  const number = (id: string) => doc.pages.findIndex((p) => p.id === id) + 1;
   const shown: Finding[] = [
     ...checks,
     { ok: true, text: media ? `${plural(media, 'media file')} to bundle` : 'No media files' },
@@ -84,40 +83,15 @@ export function ExportModal({
           Upload the zip on the course's SCORM tab in Clinical Studio, or in any LMS that plays
           SCORM 1.2.
         </p>
-        <ol className="mb-5 flex flex-col gap-3">
-          {shown.map((c) => (
-            <li key={c.text} className="flex items-start gap-3 text-sm text-ph-charcoal">
-              <i
-                className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white',
-                  c.ok ? 'bg-green-700' : 'bg-red-700',
-                )}
-              >
-                {c.ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-              </i>
-              <span className="pt-0.5">
-                {c.text}
-                {c.pages && (
-                  <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                    {c.pages.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          onGoTo(p.id);
-                          onClose();
-                        }}
-                        className="text-ph-purple underline underline-offset-2"
-                      >
-                        {number(p.id)}. {p.title}
-                      </button>
-                    ))}
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <CheckList
+          checks={shown}
+          doc={doc}
+          className="mb-5"
+          onGoTo={(id) => {
+            onGoTo(id);
+            onClose();
+          }}
+        />
         <div className="mb-5 rounded-md bg-ph-purple/5 px-4 py-3 font-mono text-[13px] leading-relaxed">
           {fileName}
           <br />
@@ -152,5 +126,52 @@ export function ExportModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+export function CheckList({
+  checks,
+  doc,
+  onGoTo,
+  className,
+}: {
+  checks: Finding[];
+  doc: CourseDoc;
+  onGoTo: (pageId: string) => void;
+  className?: string;
+}) {
+  const number = (id: string) => doc.pages.findIndex((p) => p.id === id) + 1;
+  return (
+    <ol className={cn('flex flex-col gap-3', className)}>
+      {checks.map((c) => (
+        <li key={c.text} className="flex items-start gap-3 text-sm text-ph-charcoal">
+          <i
+            className={cn(
+              'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white',
+              c.ok ? 'bg-green-700' : 'bg-red-700',
+            )}
+          >
+            {c.ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+          </i>
+          <span className="pt-0.5">
+            {c.text}
+            {c.pages && (
+              <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                {c.pages.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => onGoTo(p.id)}
+                    className="text-ph-purple underline underline-offset-2"
+                  >
+                    {number(p.id)}. {p.title}
+                  </button>
+                ))}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }

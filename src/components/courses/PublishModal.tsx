@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
 import { packageFiles, preflight, type PackageFile } from '@/course/exportZip';
+import { CheckList } from './ExportModal';
 
 const TYPES: Record<string, string> = {
   html: 'text/html',
@@ -79,6 +80,7 @@ export function PublishModal({
   onTarget,
   onCreated,
   onExport,
+  onGoTo,
   last,
   onPublished,
 }: {
@@ -89,6 +91,7 @@ export function PublishModal({
   onTarget: (course: Course) => void;
   onCreated: (clinicalStudioCourseId: string) => void;
   onExport: () => void;
+  onGoTo: (pageId: string) => void;
   last: { build: number; version: number | null } | null;
   onPublished: (build: number, version: number | null) => void;
 }) {
@@ -109,7 +112,7 @@ export function PublishModal({
     difficulty: 'Beginner' as Difficulty,
   });
   const [done, setDone] = useState<{ build: number; version?: number } | null>(null);
-  const clean = preflight(doc).every((c) => c.ok);
+  const problems = preflight(doc).filter((c) => !c.ok);
   const busy = progress !== null;
 
   const attempt = async (work: () => Promise<void>) => {
@@ -341,10 +344,20 @@ export function PublishModal({
                 {last.version !== null && `, Clinical Studio v${last.version}`}.
               </p>
             )}
-            {!clean && (
-              <p className="text-ph-charcoal/60">
-                The export check found problems. They will be published as they are.
-              </p>
+            {problems.length > 0 && (
+              <div className="rounded-md bg-red-50 p-3">
+                <p className="mb-2.5 text-ph-charcoal/70">
+                  The export check found problems. They will be published as they are.
+                </p>
+                <CheckList
+                  checks={problems}
+                  doc={doc}
+                  onGoTo={(id) => {
+                    onGoTo(id);
+                    onClose();
+                  }}
+                />
+              </div>
             )}
             {error && <p className="text-red-700">{error}</p>}
             <div className="flex items-center justify-end gap-2 pt-1">

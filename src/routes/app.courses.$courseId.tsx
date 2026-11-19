@@ -465,6 +465,7 @@ function Editor({
           <PublishModal
             onClose={() => setModal(null)}
             onExport={() => setModal('export')}
+            onGoTo={selectPage}
             courseId={courseId}
             doc={doc}
             target={publishTo}
