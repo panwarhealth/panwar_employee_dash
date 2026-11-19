@@ -265,9 +265,13 @@ function Flow({
   };
   const pick = useMemo(() => ({ picked, onPick: setPicked }), [picked]);
   const [home] = useState(() => {
-    const p = built[0]?.position ?? { x: 0, y: 0 };
+    const p = (built.find((n) => n.id === currentId) ?? built[0])?.position ?? { x: 0, y: 0 };
     return { x: 60 - p.x, y: 80 - p.y, zoom: 1 };
   });
+  const focus = () => {
+    const node = flow.getNode(currentId) ?? flow.getNodes()[0];
+    if (node) flow.setCenter(node.position.x + CARD.width / 2, node.position.y + 120, { zoom: 1 });
+  };
 
   const pageOf = (id: string) => doc.pages.find((p) => p.id === id)!;
   const exit = exits.find((e) => e.id === picked) ?? null;
@@ -405,7 +409,7 @@ function Flow({
             onClick={() => {
               if (!window.confirm('Lay out every page again automatically?')) return;
               setDoc((d) => ops.updateCourse(d, (c) => c.pages.forEach((p) => delete p.flow)));
-              setTimeout(() => flow.setViewport({ x: 60, y: 80, zoom: 1 }), 50);
+              setTimeout(focus, 50);
             }}
           >
             Tidy up
@@ -461,6 +465,7 @@ function Flow({
             }}
             deleteKeyCode={null}
             defaultViewport={home}
+            onInit={focus}
             onlyRenderVisibleElements
             minZoom={0.1}
             proOptions={{ hideAttribution: true }}
