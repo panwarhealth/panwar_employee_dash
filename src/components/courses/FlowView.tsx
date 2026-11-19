@@ -85,7 +85,7 @@ const PageCard = memo(function PageCard({ data, selected }: NodeProps<PageNode>)
   return (
     <div
       className={cn(
-        'relative w-64 rounded-xl border-2 bg-white text-left shadow-sm',
+        'relative w-72 rounded-xl border-2 bg-white text-left shadow-sm',
         selected
           ? 'border-ph-purple ring-4 ring-ph-purple/25'
           : data.current
@@ -115,6 +115,9 @@ const PageCard = memo(function PageCard({ data, selected }: NodeProps<PageNode>)
         )}
       </div>
       <ul className="flex flex-col px-1.5 py-1.5 text-[11px] text-ph-charcoal/80">
+        <li className="flex h-4 items-center px-1.5 text-[9px] font-semibold uppercase tracking-wider text-ph-charcoal/40">
+          Ways out of this page
+        </li>
         {data.exits.length === 0 && (
           <li className="flex h-[22px] items-center px-1.5 font-semibold text-red-600">
             No way out yet
@@ -126,7 +129,7 @@ const PageCard = memo(function PageCard({ data, selected }: NodeProps<PageNode>)
             <li key={e.id} className="relative h-[22px]">
               <button
                 type="button"
-                title="Select this branch"
+                title={`${e.start}, go to ${exitTarget(e, data.names)}${e.condition ? `, ${e.condition}` : ''}`}
                 onClick={() => onPick(e.id)}
                 className={cn(
                   'nodrag flex h-full w-full items-center gap-1 rounded px-1.5 text-left hover:bg-ph-purple/10',
@@ -136,15 +139,19 @@ const PageCard = memo(function PageCard({ data, selected }: NodeProps<PageNode>)
                 <span className="min-w-0 flex-1 truncate">
                   {e.rank && <span className="text-ph-charcoal/40">{e.rank}. </span>}
                   <span className="font-semibold">{e.start}</span>
-                  {e.condition && <span className="text-amber-700"> {e.condition}</span>}
                 </span>
+                {e.condition && (
+                  <span className="shrink-0 rounded bg-amber-100 px-1 text-[9px] font-bold text-amber-800">
+                    IF
+                  </span>
+                )}
                 <span
                   className={cn(
-                    'max-w-[45%] shrink-0 truncate',
-                    e.to || e.step !== 'page' ? 'text-ph-charcoal/50' : 'font-semibold text-red-600',
+                    'max-w-[48%] shrink-0 truncate',
+                    e.to || e.step !== 'page' ? 'text-ph-charcoal/60' : 'font-semibold text-red-600',
                   )}
                 >
-                  {exitTarget(e, data.names)}
+                  → {exitTarget(e, data.names)}
                 </span>
               </button>
               <span
@@ -574,7 +581,7 @@ function Flow({
               </button>
             </div>
             <p className="text-ph-charcoal/80">
-              Starts when: <strong>{exit.start}</strong>
+              What sets it off: <strong>{exit.start}</strong>
               <br />
               {why}
             </p>

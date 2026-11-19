@@ -19,7 +19,7 @@ export interface FlowExit {
 
 export type Spot = { x: number; y: number };
 
-export const CARD = { width: 256, head: 20, first: 55, row: 22, shown: 8 };
+export const CARD = { width: 288, head: 20, first: 71, row: 22, shown: 8 };
 
 export type WireKind = 'next' | 'jump' | 'if' | 'side' | 'again' | 'back';
 
@@ -60,10 +60,10 @@ export function sameStart(page: Page, triggerId: string): Trigger[] {
 const short = (s: string) => (s.length > 24 ? `${s.slice(0, 22)}…` : s);
 
 function startText(page: Page, kind: string, id: string | null, varName: string): string {
-  if (kind === 'pageStart') return 'Page starts';
+  if (kind === 'pageStart') return 'Page opens';
   if (kind === 'varChange') return `${varName} changes`;
-  const name = (id && objectLabel(page, id)?.replace(/^Group: /, '')) || 'missing object';
-  return kind === 'mediaEnd' ? `${short(name)} ends` : short(name);
+  const name = (id && objectLabel(page, id)?.replace(/^Group: /, '')) || 'deleted object';
+  return kind === 'mediaEnd' ? `${short(name)} ends` : `Click ${short(name)}`;
 }
 
 export function flowExits(doc: CourseDoc): FlowExit[] {
@@ -126,7 +126,7 @@ export function flowExits(doc: CourseDoc): FlowExit[] {
             from: page.id,
             to: target('page', c.pageId),
             step: 'page',
-            start: short(c.label || 'Choice'),
+            start: `Choose ${short(c.label || 'a choice')}`,
             condition: '',
             rank: null,
             detour: false,
@@ -141,7 +141,7 @@ export function flowExits(doc: CourseDoc): FlowExit[] {
         from: page.id,
         to: target('next'),
         step: 'next',
-        start: 'Continue bar',
+        start: 'Click Continue',
         condition: '',
         rank: null,
         detour: false,
@@ -231,7 +231,7 @@ export function wireAt(curves: Map<string, Curve>, x: number, y: number, reach: 
 }
 
 const COLUMNS = 8;
-const COLUMN = 340;
+const COLUMN = 380;
 const ROW = 280;
 const BAND_GAP = 120;
 
