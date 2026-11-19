@@ -11,6 +11,7 @@ import {
   preflight,
   slugify,
   type Check as Finding,
+  type CheckSpot,
 } from '@/course/exportZip';
 import { cn, saveBlob } from '@/lib/utils';
 
@@ -29,7 +30,7 @@ export function ExportModal({
   courseId: string;
   doc: CourseDoc;
   onExported: () => void;
-  onGoTo: (pageId: string) => void;
+  onGoTo: (spot: CheckSpot) => void;
   onFix: (request: string) => void;
   fixing: boolean;
 }) {
@@ -87,8 +88,8 @@ export function ExportModal({
           checks={shown}
           doc={doc}
           className="mb-5"
-          onGoTo={(id) => {
-            onGoTo(id);
+          onGoTo={(spot) => {
+            onGoTo(spot);
             onClose();
           }}
         />
@@ -137,7 +138,7 @@ export function CheckList({
 }: {
   checks: Finding[];
   doc: CourseDoc;
-  onGoTo: (pageId: string) => void;
+  onGoTo: (spot: CheckSpot) => void;
   className?: string;
 }) {
   const number = (id: string) => doc.pages.findIndex((p) => p.id === id) + 1;
@@ -161,7 +162,7 @@ export function CheckList({
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => onGoTo(p.id)}
+                    onClick={() => onGoTo(p)}
                     className="text-ph-purple underline underline-offset-2"
                   >
                     {number(p.id)}. {p.title}

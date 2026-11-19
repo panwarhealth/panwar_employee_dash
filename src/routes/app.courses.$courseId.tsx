@@ -465,7 +465,7 @@ function Editor({
           <PublishModal
             onClose={() => setModal(null)}
             onExport={() => setModal('export')}
-            onGoTo={selectPage}
+            onGoTo={(spot) => goTo(spot.id, spot.layout ?? null, spot.blockId ?? null)}
             courseId={courseId}
             doc={doc}
             target={publishTo}
@@ -493,7 +493,7 @@ function Editor({
           courseId={courseId}
           doc={doc}
           onExported={() => void queryClient.invalidateQueries({ queryKey: ['courses'] })}
-          onGoTo={selectPage}
+          onGoTo={(spot) => goTo(spot.id, spot.layout ?? null, spot.blockId ?? null)}
           fixing={assistant.busy}
           onFix={(request) => {
             setAssistantOpen(true);

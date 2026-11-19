@@ -21,11 +21,20 @@ export function TriggersPanel({
 }) {
   const [editing, setEditing] = useState<Trigger | null>(null);
   const [open, setOpen] = useState(() => readFlag(OPEN_KEY));
+  const objects = objectOptions(page);
+  const gone = [
+    ...new Set(
+      page.triggers
+        .map(triggerGroup)
+        .filter((id): id is string => id !== null && !objects.some((o) => o.value === id)),
+    ),
+  ];
   const groups = [
-    { id: null as string | null, title: 'Page triggers' },
-    ...objectOptions(page)
+    { id: null as string | null, title: 'Page triggers', gone: false },
+    ...objects
       .filter((o) => page.triggers.some((t) => triggerGroup(t) === o.value))
-      .map((o) => ({ id: o.value as string | null, title: o.label.slice(0, 34) })),
+      .map((o) => ({ id: o.value as string | null, title: o.label.slice(0, 34), gone: false })),
+    ...gone.map((id) => ({ id: id as string | null, title: 'Deleted object', gone: true })),
   ].filter((g) => g.id !== null || page.triggers.some((t) => triggerGroup(t) === null));
 
   const swap = (a: Trigger, b: Trigger) =>
@@ -79,13 +88,20 @@ export function TriggersPanel({
             <div key={g.id ?? 'page'} className="mb-2">
               <p
                 className={
-                  g.id && g.id === selectedId
-                    ? 'text-xs font-bold text-ph-purple'
-                    : 'text-xs font-bold text-ph-charcoal/70'
+                  g.gone
+                    ? 'text-xs font-bold text-red-600'
+                    : g.id && g.id === selectedId
+                      ? 'text-xs font-bold text-ph-purple'
+                      : 'text-xs font-bold text-ph-charcoal/70'
                 }
               >
                 {g.title}
               </p>
+              {g.gone && (
+                <p className="text-[11px] text-ph-charcoal/60">
+                  The object these belong to was deleted. They can never run.
+                </p>
+              )}
               {list.length > 1 && (
                 <p className="text-[11px] text-ph-charcoal/50">
                   Run top to bottom. The first one that goes somewhere wins.

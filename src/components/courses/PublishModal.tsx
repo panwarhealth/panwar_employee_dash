@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import type { CourseDoc } from '@/course/doc';
-import { packageFiles, preflight, type PackageFile } from '@/course/exportZip';
+import { packageFiles, preflight, type CheckSpot, type PackageFile } from '@/course/exportZip';
 import { CheckList } from './ExportModal';
 
 const TYPES: Record<string, string> = {
@@ -91,7 +91,7 @@ export function PublishModal({
   onTarget: (course: Course) => void;
   onCreated: (clinicalStudioCourseId: string) => void;
   onExport: () => void;
-  onGoTo: (pageId: string) => void;
+  onGoTo: (spot: CheckSpot) => void;
   last: { build: number; version: number | null } | null;
   onPublished: (build: number, version: number | null) => void;
 }) {
@@ -352,8 +352,8 @@ export function PublishModal({
                 <CheckList
                   checks={problems}
                   doc={doc}
-                  onGoTo={(id) => {
-                    onGoTo(id);
+                  onGoTo={(spot) => {
+                    onGoTo(spot);
                     onClose();
                   }}
                 />
