@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import type { TsEntry } from '@/api/timesheets';
 import { DAY_NAMES, fmtHm, fmtTimerStart, jobLabel, runningHours } from '@/lib/timesheets';
 
@@ -6,6 +7,7 @@ export function DayView({
   selected,
   entries,
   now,
+  jobLinks,
   onSelect,
   onTrack,
   onEdit,
@@ -16,6 +18,7 @@ export function DayView({
   selected: string;
   entries: TsEntry[];
   now: number;
+  jobLinks: boolean;
   onSelect: (day: string) => void;
   onTrack: () => void;
   onEdit: (entry: TsEntry) => void;
@@ -51,7 +54,14 @@ export function DayView({
         return (
           <div key={e.id} className={running ? 'de run' : 'de'}>
             <div>
-              <b>{jobLabel(e.jobCode, e.jobTitle)}</b> <span className="cl">({e.clientName})</span>
+              {jobLinks ? (
+                <Link className="jl" to="/app/timesheets/jobs/$jobId" params={{ jobId: e.jobId }}>
+                  <b>{jobLabel(e.jobCode, e.jobTitle)}</b>
+                </Link>
+              ) : (
+                <b>{jobLabel(e.jobCode, e.jobTitle)}</b>
+              )}{' '}
+              <span className="cl">({e.clientName})</span>
               <div>{e.taskName}</div>
               {e.notes && <div className="nt">{e.notes}</div>}
             </div>

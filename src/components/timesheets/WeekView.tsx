@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ts, type TsEntry, type TsStar } from '@/api/timesheets';
 import { errorText } from '@/hooks/useTimesheets';
@@ -30,6 +31,7 @@ export function WeekView({
   stars,
   personId,
   now,
+  jobLinks,
   onEdit,
   onOpenDay,
   onTrack,
@@ -40,6 +42,7 @@ export function WeekView({
   stars: TsStar[];
   personId?: string;
   now: number;
+  jobLinks: boolean;
   onEdit: (entry: TsEntry) => void;
   onOpenDay: (day: string) => void;
   onTrack: () => void;
@@ -109,7 +112,17 @@ export function WeekView({
               return (
                 <tr key={r.key}>
                   <td className="nm">
-                    <b>{jobLabel(r.jobCode, r.jobTitle)}</b>
+                    {jobLinks ? (
+                      <Link
+                        className="jl"
+                        to="/app/timesheets/jobs/$jobId"
+                        params={{ jobId: r.jobId }}
+                      >
+                        <b>{jobLabel(r.jobCode, r.jobTitle)}</b>
+                      </Link>
+                    ) : (
+                      <b>{jobLabel(r.jobCode, r.jobTitle)}</b>
+                    )}
                     <div>({r.clientName})</div>
                     <div>{r.taskName}</div>
                   </td>

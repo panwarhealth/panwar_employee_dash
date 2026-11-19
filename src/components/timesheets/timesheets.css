@@ -605,6 +605,13 @@
   font-weight: 700;
   line-height: 24px;
 }
+.ts a.jl {
+  color: inherit;
+  text-decoration: none;
+}
+.ts a.jl:hover {
+  text-decoration: underline;
+}
 .ts .de .cl {
   color: var(--ink-2);
 }

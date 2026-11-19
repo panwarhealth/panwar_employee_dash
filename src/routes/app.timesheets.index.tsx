@@ -5,7 +5,15 @@ import { ts, type TsEntry } from '@/api/timesheets';
 import { errorText, useTsViewer } from '@/hooks/useTimesheets';
 import { useNow } from '@/hooks/useNow';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { addDays, fmtDate, fmtWeek, todayIso, weekDays, weekStart } from '@/lib/timesheets';
+import {
+  addDays,
+  fmtDate,
+  fmtWeek,
+  isManager,
+  todayIso,
+  weekDays,
+  weekStart,
+} from '@/lib/timesheets';
 import { DayView } from '@/components/timesheets/DayView';
 import { WeekView } from '@/components/timesheets/WeekView';
 import { TrackTimeModal } from '@/components/timesheets/TrackTimeModal';
@@ -184,6 +192,7 @@ function TimesheetPage() {
           selected={date}
           entries={entries}
           now={now}
+          jobLinks={isManager(viewer.level)}
           onSelect={(d) => go({ date: d })}
           onTrack={() => setTracking(true)}
           onEdit={setEditing}
@@ -200,6 +209,7 @@ function TimesheetPage() {
           stars={time.data?.stars ?? []}
           personId={personId}
           now={now}
+          jobLinks={isManager(viewer.level)}
           onEdit={setEditing}
           onOpenDay={(d) => go({ date: d, view: 'day' })}
           onTrack={() => setTracking(true)}
