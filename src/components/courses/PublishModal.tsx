@@ -251,19 +251,7 @@ export function PublishModal({
         ) : ready ? (
           <>
             <p className="text-base font-semibold">Check this is the right course</p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
-              <dt className="text-ph-charcoal/60">Clinical Studio course</dt>
-              <dd className="font-semibold">{title}</dd>
-              <dt className="text-ph-charcoal/60">Build</dt>
-              <dd>{ready.build}</dd>
-              <dt className="text-ph-charcoal/60">Files</dt>
-              <dd>{ready.files.length}</dd>
-              <dt className="text-ph-charcoal/60">Status</dt>
-              <dd>{live ? 'Live' : 'Not live, staging site only'}</dd>
-            </dl>
-            <p className="text-ph-charcoal/60">
-              Publishing replaces what this Clinical Studio course plays with this build.
-            </p>
+            <p className="font-semibold">{title}</p>
             {live ? (
               <div className="space-y-3 rounded-md bg-red-50 p-3 text-red-800">
                 <p>
@@ -281,8 +269,9 @@ export function PublishModal({
                 />
               </div>
             ) : (
-              <p className="text-ph-charcoal/60">
-                Learners can't see it yet. Only the Clinical Studio staging site shows it.
+              <p className="text-ph-charcoal/70">
+                This course is on staging only. This updates staging. It does not make the course
+                live.
               </p>
             )}
             {error && <p className="text-red-700">{error}</p>}
@@ -295,7 +284,7 @@ export function PublishModal({
                 disabled={busy || (live && oneLine(typed) !== title)}
                 onClick={() => void publish()}
               >
-                {progress ?? 'Publish now'}
+                {progress ?? (live ? 'Publish to live course' : 'Publish to staging')}
               </Button>
             </div>
           </>
