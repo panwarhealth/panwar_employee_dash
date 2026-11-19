@@ -93,7 +93,7 @@ export function PublishModal({
   onCreated: (clinicalStudioCourseId: string) => void;
   onExport: () => void;
   onGoTo: (spot: CheckSpot) => void;
-  last: { build: number; version: number | null } | null;
+  last: { build: number; version: number | null; at: string | null } | null;
   onPublished: (build: number, version: number | null) => void;
 }) {
   const [id, setId] = useState(target ?? '');
@@ -385,7 +385,10 @@ export function PublishModal({
             {last && (
               <p className="text-ph-charcoal/60">
                 Last published: build {last.build}
-                {last.version !== null && `, Clinical Studio v${last.version}`}.
+                {last.version !== null && `, Clinical Studio v${last.version}`}
+                {last.at &&
+                  `, ${new Date(last.at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}`}
+                .
               </p>
             )}
             {problems.length > 0 && (

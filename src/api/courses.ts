@@ -18,6 +18,7 @@ export interface Course {
   clinicalStudioCourseId: string | null;
   publishedBuild: number | null;
   publishedVersion: number | null;
+  publishedAt: string | null;
 }
 
 export const listCourses = (): Promise<CourseSummary[]> =>

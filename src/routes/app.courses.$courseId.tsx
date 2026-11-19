@@ -78,7 +78,7 @@ function EditorPage() {
       published={
         data.publishedBuild === null
           ? null
-          : { build: data.publishedBuild, version: data.publishedVersion }
+          : { build: data.publishedBuild, version: data.publishedVersion, at: data.publishedAt }
       }
     />
   );
@@ -93,7 +93,7 @@ function Editor({
   courseId: string;
   initial: CourseDoc;
   publishTo: string | null;
-  published: { build: number; version: number | null } | null;
+  published: { build: number; version: number | null; at: string | null } | null;
 }) {
   const queryClient = useQueryClient();
   const history = useUndoable(initial);
@@ -472,7 +472,14 @@ function Editor({
             last={published}
             onPublished={(build, version) =>
               queryClient.setQueryData<Course>(['course', courseId], (old) =>
-                old ? { ...old, publishedBuild: build, publishedVersion: version } : old,
+                old
+                  ? {
+                      ...old,
+                      publishedBuild: build,
+                      publishedVersion: version,
+                      publishedAt: new Date().toISOString(),
+                    }
+                  : old,
               )
             }
             onTarget={(course) =>
