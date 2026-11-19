@@ -408,179 +408,181 @@ function SchedulePage() {
         <p className="err">{errorText(schedule.error ?? archivePerson.error)}</p>
       )}
       <div className="card fc">
-        <div className="fc-bar">
-          <div className="fc-lt" style={{ gap: 18 }}>
-            <a className={search.view ? undefined : 'on'} onClick={() => set({ view: undefined })}>
-              Team
-            </a>
-            <a className={search.view ? 'on' : undefined} onClick={() => set({ view: 'jobs' })}>
-              Jobs
-            </a>
-          </div>
-          <div className="fc-tools">
-            <button
-              type="button"
-              className="btn ico"
-              title={allOpen ? 'Collapse all' : 'Expand all'}
-              aria-label={allOpen ? 'Collapse all' : 'Expand all'}
-              onClick={toggleAll}
-            >
-              {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
-            </button>
-            {search.view === 'jobs' && (
+        <div className="fc-top">
+          <div className="fc-bar">
+            <div className="fc-lt" style={{ gap: 18 }}>
+              <a className={search.view ? undefined : 'on'} onClick={() => set({ view: undefined })}>
+                Team
+              </a>
+              <a className={search.view ? 'on' : undefined} onClick={() => set({ view: 'jobs' })}>
+                Jobs
+              </a>
+            </div>
+            <div className="fc-tools">
               <button
                 type="button"
-                className={showHours ? 'btn ico on' : 'btn ico'}
-                title="Future scheduled hours from today"
-                aria-label="Future scheduled hours from today"
-                onClick={() => setShowHours((v) => !v)}
+                className="btn ico"
+                title={allOpen ? 'Collapse all' : 'Expand all'}
+                aria-label={allOpen ? 'Collapse all' : 'Expand all'}
+                onClick={toggleAll}
               >
-                <Clock />
+                {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
               </button>
-            )}
-            {!search.view && (
-              <select className="sel" value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="">All roles</option>
-                {roles.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
+              {search.view === 'jobs' && (
+                <button
+                  type="button"
+                  className={showHours ? 'btn ico on' : 'btn ico'}
+                  title="Future scheduled hours from today"
+                  aria-label="Future scheduled hours from today"
+                  onClick={() => setShowHours((v) => !v)}
+                >
+                  <Clock />
+                </button>
+              )}
+              {!search.view && (
+                <select className="sel" value={role} onChange={(e) => setRole(e.target.value)}>
+                  <option value="">All roles</option>
+                  {roles.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {!search.view && scale === 'day' && (
+                <select
+                  className="sel"
+                  value={search.daily ? 'daily' : 'weekly'}
+                  onChange={(e) => set({ daily: e.target.value === 'daily' || undefined })}
+                >
+                  <option value="weekly">Weekly capacity</option>
+                  <option value="daily">Daily capacity</option>
+                </select>
+              )}
+              <span className="sp" />
+              <button
+                type="button"
+                className="btn ico"
+                title="Zoom out"
+                aria-label="Zoom out"
+                disabled={scale === 'month'}
+                onClick={() => zoom(1)}
+              >
+                <ZoomOut />
+              </button>
+              <button
+                type="button"
+                className="btn ico"
+                title="Zoom in"
+                aria-label="Zoom in"
+                disabled={scale === 'day'}
+                onClick={() => zoom(-1)}
+              >
+                <ZoomIn />
+              </button>
+              <select
+                className="sel"
+                value={scale}
+                onChange={(e) =>
+                  set({
+                    scale:
+                      e.target.value === 'day' ? undefined : (e.target.value as 'week' | 'month'),
+                  })
+                }
+              >
+                {SCALE_ORDER.map((s) => (
+                  <option key={s} value={s}>
+                    {SCALES[s].label}
                   </option>
                 ))}
               </select>
-            )}
-            {!search.view && scale === 'day' && (
-              <select
-                className="sel"
-                value={search.daily ? 'daily' : 'weekly'}
-                onChange={(e) => set({ daily: e.target.value === 'daily' || undefined })}
+              <button
+                type="button"
+                className="btn ico"
+                title="Jump to a date"
+                aria-label="Jump to a date"
+                onClick={() => jump.current?.showPicker()}
               >
-                <option value="weekly">Weekly capacity</option>
-                <option value="daily">Daily capacity</option>
-              </select>
-            )}
-            <span className="sp" />
-            <button
-              type="button"
-              className="btn ico"
-              title="Zoom out"
-              aria-label="Zoom out"
-              disabled={scale === 'month'}
-              onClick={() => zoom(1)}
-            >
-              <ZoomOut />
-            </button>
-            <button
-              type="button"
-              className="btn ico"
-              title="Zoom in"
-              aria-label="Zoom in"
-              disabled={scale === 'day'}
-              onClick={() => zoom(-1)}
-            >
-              <ZoomIn />
-            </button>
-            <select
-              className="sel"
-              value={scale}
-              onChange={(e) =>
-                set({
-                  scale:
-                    e.target.value === 'day' ? undefined : (e.target.value as 'week' | 'month'),
-                })
-              }
-            >
-              {SCALE_ORDER.map((s) => (
-                <option key={s} value={s}>
-                  {SCALES[s].label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn ico"
-              title="Jump to a date"
-              aria-label="Jump to a date"
-              onClick={() => jump.current?.showPicker()}
-            >
-              <CalendarDays />
-            </button>
-            <input
-              ref={jump}
-              type="date"
-              className="fc-jump"
-              tabIndex={-1}
-              aria-hidden="true"
-              value={start}
-              onChange={(e) => e.target.value && go(weekStart(e.target.value))}
-            />
-            <button
-              type="button"
-              className="btn"
-              aria-label="Previous"
-              onClick={() => go(addDays(start, -7 * SCALES[scale].step))}
-            >
-              &larr;
-            </button>
-            <button type="button" className="btn" onClick={() => go(thisWeek)}>
-              This week
-            </button>
-            <button
-              type="button"
-              className="btn"
-              aria-label="Next"
-              onClick={() => go(addDays(start, 7 * SCALES[scale].step))}
-            >
-              &rarr;
-            </button>
-          </div>
-        </div>
-        <div className="fc-row fc-head">
-          <div className="fc-l">
-            <input
-              className="fc-search"
-              placeholder="Search..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
-          </div>
-          <div className="fc-t">
-            <div className="fc-wk">
-              {Array.from({ length: WEEKS }, (_, w) => {
-                const monday = days[w * 7]!;
-                const newMonth =
-                  w === 0 || fromIso(monday).getMonth() !== fromIso(days[w * 7 - 7]!).getMonth();
-                return scale === 'day' || newMonth ? (
-                  <span key={w} style={{ left: pct(w * 7), width: pct(7) }}>
-                    {fmtDate(monday, { month: 'short' })}
-                    {(w === 0 || (newMonth && fromIso(monday).getMonth() === 0)) &&
-                      ` ${fromIso(monday).getFullYear()}`}
-                  </span>
-                ) : null;
-              })}
+                <CalendarDays />
+              </button>
+              <input
+                ref={jump}
+                type="date"
+                className="fc-jump"
+                tabIndex={-1}
+                aria-hidden="true"
+                value={start}
+                onChange={(e) => e.target.value && go(weekStart(e.target.value))}
+              />
+              <button
+                type="button"
+                className="btn"
+                aria-label="Previous"
+                onClick={() => go(addDays(start, -7 * SCALES[scale].step))}
+              >
+                &larr;
+              </button>
+              <button type="button" className="btn" onClick={() => go(thisWeek)}>
+                This week
+              </button>
+              <button
+                type="button"
+                className="btn"
+                aria-label="Next"
+                onClick={() => go(addDays(start, 7 * SCALES[scale].step))}
+              >
+                &rarr;
+              </button>
             </div>
-            <div className="fc-dd">
-              {scale === 'day'
-                ? days.map((d, i) => (
-                    <span
-                      key={d}
-                      className={d === today ? 'today' : undefined}
-                      style={{ left: pct(i), width: pct(1) }}
-                    >
-                      {fromIso(d).getDate()}
+          </div>
+          <div className="fc-row fc-head">
+            <div className="fc-l">
+              <input
+                className="fc-search"
+                placeholder="Search..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
+            <div className="fc-t">
+              <div className="fc-wk">
+                {Array.from({ length: WEEKS }, (_, w) => {
+                  const monday = days[w * 7]!;
+                  const newMonth =
+                    w === 0 || fromIso(monday).getMonth() !== fromIso(days[w * 7 - 7]!).getMonth();
+                  return scale === 'day' || newMonth ? (
+                    <span key={w} style={{ left: pct(w * 7), width: pct(7) }}>
+                      {fmtDate(monday, { month: 'short' })}
+                      {(w === 0 || (newMonth && fromIso(monday).getMonth() === 0)) &&
+                        ` ${fromIso(monday).getFullYear()}`}
                     </span>
-                  ))
-                : Array.from({ length: WEEKS }, (_, w) => {
-                    const monday = days[w * 7]!;
-                    return (
+                  ) : null;
+                })}
+              </div>
+              <div className="fc-dd">
+                {scale === 'day'
+                  ? days.map((d, i) => (
                       <span
-                        key={monday}
-                        className={monday === thisWeek ? 'today' : undefined}
-                        style={{ left: pct(w * 7), width: pct(7) }}
+                        key={d}
+                        className={d === today ? 'today' : undefined}
+                        style={{ left: pct(i), width: pct(1) }}
                       >
-                        {fromIso(monday).getDate()}
+                        {fromIso(d).getDate()}
                       </span>
-                    );
-                  })}
+                    ))
+                  : Array.from({ length: WEEKS }, (_, w) => {
+                      const monday = days[w * 7]!;
+                      return (
+                        <span
+                          key={monday}
+                          className={monday === thisWeek ? 'today' : undefined}
+                          style={{ left: pct(w * 7), width: pct(7) }}
+                        >
+                          {fromIso(monday).getDate()}
+                        </span>
+                      );
+                    })}
+              </div>
             </div>
           </div>
         </div>

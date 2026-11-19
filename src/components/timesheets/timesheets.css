@@ -1261,11 +1261,14 @@
   position: relative;
   margin: 0 var(--ex) 0 16px;
 }
-.ts .fc-head {
+.ts .fc-top {
   position: sticky;
   top: 0;
   z-index: 3;
   background: #fff;
+}
+.ts .fc-top .fc-head {
+  border-bottom: 1px solid rgba(43, 44, 44, 0.12);
 }
 .ts .fc-head .fc-t {
   height: 50px;
