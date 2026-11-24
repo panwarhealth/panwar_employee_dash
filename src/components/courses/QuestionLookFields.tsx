@@ -1,7 +1,11 @@
+import { useContext, useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { isQuestion, type LookedBlock, type QuestionLook, type TextStyle } from '@/course/doc';
 import { Field, inputClass, NumberBox, PaddingField, Select, Toggle } from './fields';
 import { BUTTON_MARGIN } from '@/course/typography';
 import { ColourField, TextStyleFields } from './TextStyleFields';
+import { FontOptions } from './fontContext';
+import { readFlag, saveFlag } from './flags';
 
 type Kind = LookedBlock['type'];
 
@@ -53,6 +57,27 @@ const SIDES = [
   { value: 'right', label: 'Right' },
 ] as const;
 
+export function Section({ title, children }: { title: string; children: ReactNode }) {
+  const key = `course-look-closed:${title}`;
+  const [open, setOpen] = useState(() => !readFlag(key));
+  return (
+    <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => {
+          saveFlag(key, open);
+          setOpen(!open);
+        }}
+        className="mt-2 flex items-center gap-1 text-left text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50 hover:text-ph-purple"
+      >
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        {title}
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
 export function PartText({
   label,
   value,
@@ -68,16 +93,43 @@ export function PartText({
   bold?: boolean;
   onChange: (style: TextStyle) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const fonts = useContext(FontOptions);
+  const font = fonts.find((f) => f.id === (value?.font ?? 'course'))?.label;
+  const ink = value?.color ?? colour;
+  const heavy = value?.weight ? value.weight === 700 : bold;
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-ph-charcoal/10 bg-white p-3">
-      <span className="text-xs font-bold text-ph-charcoal">{label}</span>
-      <TextStyleFields
-        title={null}
-        freeSize
-        value={{ ...value, size: value?.size ?? size, color: value?.color ?? colour }}
-        boldByDefault={bold}
-        onChange={onChange}
-      />
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-left text-xs text-ph-charcoal"
+      >
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span className="font-bold">{label}</span>
+        {!open && (
+          <span className="ml-auto flex min-w-0 items-center gap-1.5 text-ph-charcoal/60">
+            <span className="truncate">
+              {[font, `${value?.size ?? size}px`, heavy && 'bold'].filter(Boolean).join(', ')}
+            </span>
+            {ink && (
+              <span
+                className="h-3 w-3 shrink-0 rounded-full border border-ph-charcoal/20"
+                style={{ background: ink }}
+              />
+            )}
+          </span>
+        )}
+      </button>
+      {open && (
+        <TextStyleFields
+          title={null}
+          freeSize
+          value={{ ...value, size: value?.size ?? size, color: value?.color ?? colour }}
+          boldByDefault={bold}
+          onChange={onChange}
+        />
+      )}
     </div>
   );
 }
@@ -93,7 +145,7 @@ export function QuestionTextFields<
   const base = block.look?.size ?? 16;
   const ink = block.look?.textColour;
   return (
-    <>
+    <Section title="Question text">
       <PartText
         label="Question text"
         bold
@@ -119,7 +171,7 @@ export function QuestionTextFields<
           className={inputClass}
         />
       </Field>
-    </>
+    </Section>
   );
 }
 
@@ -137,8 +189,6 @@ const BODY: Partial<Record<Kind, string>> = {
 };
 
 const BOLD_ITEMS = new Set<Kind>(['drag', 'accordion', 'tabs', 'flip', 'hotspots']);
-
-const heading = 'mt-2 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50';
 
 export function QuestionLookFields({
   block,
@@ -186,24 +236,24 @@ export function QuestionLookFields({
   const box = kind === 'hotspots' ? null : 'Box';
   return (
     <>
-      <h4 className={heading}>Look</h4>
-      <ColourField
-        label={kind === 'hotspots' ? 'Pin colour' : 'Main colour'}
-        value={look.colour}
-        onChange={(colour) => set({ colour })}
-      />
-      <Field label="Corners (px)">
-        <NumberBox
-          min={0}
-          value={look.radius ?? CORNERS[kind] ?? 4}
-          onChange={(radius) => set({ radius: Math.max(0, radius) })}
-          className={inputClass}
+      <Section title="Look">
+        <ColourField
+          label={kind === 'hotspots' ? 'Pin colour' : 'Main colour'}
+          value={look.colour}
+          onChange={(colour) => set({ colour })}
         />
-      </Field>
+        <Field label="Corners (px)">
+          <NumberBox
+            min={0}
+            value={look.radius ?? CORNERS[kind] ?? 4}
+            onChange={(radius) => set({ radius: Math.max(0, radius) })}
+            className={inputClass}
+          />
+        </Field>
+      </Section>
 
       {items && (
-        <>
-          <h4 className={heading}>{items[0].toUpperCase() + items.slice(1)}</h4>
+        <Section title={items[0].toUpperCase() + items.slice(1)}>
           {pills && (
             <Select
               label="Style"
@@ -333,12 +383,11 @@ export function QuestionLookFields({
               onChange={(bodyStyle) => set({ bodyStyle })}
             />
           )}
-        </>
+        </Section>
       )}
 
       {kind === 'slider' && (
-        <>
-          <h4 className={heading}>Number</h4>
+        <Section title="Number">
           <PartText
             label="Number text"
             bold
@@ -353,12 +402,11 @@ export function QuestionLookFields({
             value={look.labelStyle}
             onChange={(labelStyle) => set({ labelStyle })}
           />
-        </>
+        </Section>
       )}
 
       {kind === 'results' && (
-        <>
-          <h4 className={heading}>Text</h4>
+        <Section title="Text">
           <PartText
             label="Score text"
             bold
@@ -387,12 +435,11 @@ export function QuestionLookFields({
             value={look.labelStyle}
             onChange={(labelStyle) => set({ labelStyle })}
           />
-        </>
+        </Section>
       )}
 
       {kind === 'hotspots' && (
-        <>
-          <h4 className={heading}>Pop-up text</h4>
+        <Section title="Pop-up text">
           <PartText
             label="Title text"
             bold
@@ -408,12 +455,11 @@ export function QuestionLookFields({
             value={look.bodyStyle}
             onChange={(bodyStyle) => set({ bodyStyle })}
           />
-        </>
+        </Section>
       )}
 
       {button && (
-        <>
-          <h4 className={heading}>{`${button[0].toUpperCase()}${button.slice(1)} button`}</h4>
+        <Section title={`${button[0].toUpperCase()}${button.slice(1)} button`}>
           <PartText
             label="Button text"
             bold
@@ -451,12 +497,11 @@ export function QuestionLookFields({
               onChange={(feedbackStyle) => set({ feedbackStyle })}
             />
           )}
-        </>
+        </Section>
       )}
 
       {box && (
-        <>
-          <h4 className={heading}>{box}</h4>
+        <Section title={box}>
           <Toggle
             label="Outline"
             checked={boxed ? look.card !== false : !!look.card}
@@ -483,7 +528,7 @@ export function QuestionLookFields({
             }
             onChange={(boxPadding) => set({ boxPadding })}
           />
-        </>
+        </Section>
       )}
     </>
   );
