@@ -216,7 +216,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--cp-gap);
-  border: calc(1 * var(--px, 1px)) solid var(--cp-line);
+  border: var(--cp-box-bw, calc(1 * var(--px, 1px))) solid var(--cp-box-line, var(--cp-line));
   border-radius: var(--cp-box-r, calc(6 * var(--px, 1px)));
   padding: var(--cp-box-pad, calc(20 * var(--px, 1px)));
   background: var(--cp-box-bg, transparent);
@@ -1682,7 +1682,7 @@
   padding: var(--cp-box-pad, 0);
 }
 .cp-looked.cp-boxed {
-  border: calc(1 * var(--px, 1px)) solid var(--cp-line);
+  border: var(--cp-box-bw, calc(1 * var(--px, 1px))) solid var(--cp-box-line, var(--cp-line));
   border-radius: var(--cp-box-r, calc(6 * var(--px, 1px)));
   padding: var(--cp-box-pad, 1em);
 }

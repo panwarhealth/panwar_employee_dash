@@ -507,6 +507,19 @@ export function QuestionLookFields({
             checked={boxed ? look.card !== false : !!look.card}
             onChange={(card) => set({ card })}
           />
+          <ColourField
+            label="Border colour"
+            value={look.boxBorder}
+            onChange={(boxBorder) => set({ boxBorder })}
+          />
+          <Field label="Thickness (px)">
+            <NumberBox
+              min={0}
+              value={look.boxBorderWidth ?? 1}
+              onChange={(n) => set({ boxBorderWidth: Math.max(0, n) })}
+              className={inputClass}
+            />
+          </Field>
           <Field label="Corners (px)">
             <NumberBox
               min={0}

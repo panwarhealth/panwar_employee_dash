@@ -471,6 +471,8 @@ export interface QuestionLook {
   besideImage?: number;
   bankFill?: string;
   boxRadius?: number;
+  boxBorder?: string;
+  boxBorderWidth?: number;
 }
 
 export interface QuestionBase extends BlockBase {

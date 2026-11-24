@@ -35,6 +35,8 @@ export function lookVars(look: QuestionLook = {}): CSSProperties {
   if (look.besideImage)
     v['--cp-aside-cols'] = `minmax(0, ${look.besideImage}fr) minmax(0, ${100 - look.besideImage}fr)`;
   if (look.boxRadius !== undefined) v['--cp-box-r'] = px(look.boxRadius);
+  if (look.boxBorder) v['--cp-box-line'] = look.boxBorder;
+  if (look.boxBorderWidth !== undefined) v['--cp-box-bw'] = px(look.boxBorderWidth);
   const ink = look.answerStyle?.color ?? look.answerText;
   if (ink) v['--cp-opt-ink'] = ink;
   return v as CSSProperties;
