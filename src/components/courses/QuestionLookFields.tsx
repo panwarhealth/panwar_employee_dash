@@ -218,6 +218,17 @@ export function QuestionLookFields({
               onChange={(beside) => set({ beside: beside || undefined })}
             />
           )}
+          {block.type === 'drag' && block.style === 'targets' && look.beside && (
+            <Field label="Image width (%)">
+              <NumberBox
+                min={30}
+                max={85}
+                value={look.besideImage ?? 60}
+                onChange={(n) => set({ besideImage: Math.min(85, Math.max(30, n)) })}
+                className={inputClass}
+              />
+            </Field>
+          )}
           {kind === 'check' && (
             <Select
               label="Columns"
@@ -448,6 +459,14 @@ export function QuestionLookFields({
             checked={boxed ? look.card !== false : !!look.card}
             onChange={(card) => set({ card })}
           />
+          <Field label="Corners (px)">
+            <NumberBox
+              min={0}
+              value={look.boxRadius ?? 6}
+              onChange={(boxRadius) => set({ boxRadius: Math.max(0, boxRadius) })}
+              className={inputClass}
+            />
+          </Field>
           <ColourField
             label="Background"
             value={look.fill}

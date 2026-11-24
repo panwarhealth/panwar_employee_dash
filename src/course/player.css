@@ -217,7 +217,7 @@
   align-items: flex-start;
   gap: var(--cp-gap);
   border: calc(1 * var(--px, 1px)) solid var(--cp-line);
-  border-radius: calc(6 * var(--px, 1px));
+  border-radius: var(--cp-box-r, calc(6 * var(--px, 1px)));
   padding: var(--cp-box-pad, calc(20 * var(--px, 1px)));
   background: var(--cp-box-bg, transparent);
 }
@@ -1103,7 +1103,7 @@
 }
 .cp-aside {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-columns: var(--cp-aside-cols, minmax(0, 3fr) minmax(0, 2fr));
   grid-template-rows: auto 1fr;
   gap: var(--cp-gap);
   align-items: start;
@@ -1682,6 +1682,6 @@
 }
 .cp-looked.cp-boxed {
   border: calc(1 * var(--px, 1px)) solid var(--cp-line);
-  border-radius: calc(6 * var(--px, 1px));
+  border-radius: var(--cp-box-r, calc(6 * var(--px, 1px)));
   padding: var(--cp-box-pad, 1em);
 }

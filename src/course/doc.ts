@@ -468,7 +468,9 @@ export interface QuestionLook {
   card?: boolean;
   feedback?: 'under' | 'popup';
   beside?: boolean;
+  besideImage?: number;
   bankFill?: string;
+  boxRadius?: number;
 }
 
 export interface QuestionBase extends BlockBase {
