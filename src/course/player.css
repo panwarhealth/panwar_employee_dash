@@ -1092,6 +1092,7 @@
   align-content: flex-start;
 }
 .cp-bank {
+  gap: var(--cp-opt-gap, 0.4em);
   border-style: solid;
   background: var(--cp-bank-bg, rgba(47, 48, 48, 0.03));
 }
