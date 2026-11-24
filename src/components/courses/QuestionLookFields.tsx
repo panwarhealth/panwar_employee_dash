@@ -353,6 +353,13 @@ export function QuestionLookFields({
             onChange={(answerBorder) => set({ answerBorder })}
           />
           {tray && (
+            <Toggle
+              label="Background and border around the tiles"
+              checked={!look.bankOff}
+              onChange={(on) => set({ bankOff: on ? undefined : true })}
+            />
+          )}
+          {tray && !look.bankOff && (
             <ColourField
               label="Background behind the tiles"
               value={look.bankFill}

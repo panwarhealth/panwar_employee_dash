@@ -470,6 +470,7 @@ export interface QuestionLook {
   beside?: boolean;
   besideImage?: number;
   bankFill?: string;
+  bankOff?: boolean;
   boxRadius?: number;
   boxBorder?: string;
   boxBorderWidth?: number;

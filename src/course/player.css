@@ -1094,6 +1094,7 @@
 .cp-bank {
   gap: var(--cp-opt-rowgap, var(--cp-opt-gap, 0.4em)) var(--cp-opt-gap, 0.4em);
   border-style: solid;
+  border-width: var(--cp-bank-bw, calc(2 * var(--px, 1px)));
   background: var(--cp-bank-bg, rgba(47, 48, 48, 0.03));
 }
 .cp-dnd-image {
