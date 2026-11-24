@@ -25,7 +25,6 @@ import {
   Toggle,
 } from './fields';
 import { BOX_PADDING } from '@/course/typography';
-import { QuestionTextFields } from './QuestionLookFields';
 import { blockLabel } from './blockMeta';
 import { RevealForm } from './RevealForm';
 import { RichText } from './RichText';
@@ -554,7 +553,6 @@ function CheckForm({
         value={block.question}
         onChange={(v) => onChange((b) => (b.question = v))}
       />
-      <QuestionTextFields block={block} set={onChange} />
       <Select
         label="Type"
         value={kind}

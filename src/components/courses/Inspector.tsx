@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { layoutsFor, lookFor, pagePaint } from '@/course/canvasLayout';
 import { changeLook, changePagePaint } from '@/course/edit';
 import { BlockForm } from './BlockForm';
-import { QuestionLookFields } from './QuestionLookFields';
+import { QuestionLookFields, Section } from './QuestionLookFields';
 import { blockLabel, blockName } from './blockMeta';
 import { AnimFields } from './AnimFields';
 import { FrameFields } from './FrameFields';
@@ -464,7 +464,9 @@ export function Inspector({
           )}
           {canvas.frame && (
             <>
-              <FrameFields frame={canvas.frame} onChange={canvas.onFrame} />
+              <Section title="Position and size">
+                <FrameFields frame={canvas.frame} onChange={canvas.onFrame} />
+              </Section>
               <InteractionFields
                 doc={doc}
                 block={block}
@@ -483,7 +485,20 @@ export function Inspector({
                   })
                 }
               />
-              <div className="flex gap-4">
+            </>
+          )}
+          <Toggle
+            label="Hidden when the page starts (show it with a trigger)"
+            checked={!!block.startHidden}
+            onChange={(v) => onChangeBlock(block.id, (b) => (b.startHidden = v))}
+          />
+          <AnimFields
+            anim={block.anim}
+            onChange={(a) => onChangeBlock(block.id, (b) => (b.anim = a))}
+          />
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-2">
+            {canvas.frame && (
+              <>
                 <button
                   type="button"
                   disabled={index === last}
@@ -500,19 +515,8 @@ export function Inspector({
                 >
                   Send backward
                 </button>
-              </div>
-            </>
-          )}
-          <Toggle
-            label="Hidden when the page starts (show it with a trigger)"
-            checked={!!block.startHidden}
-            onChange={(v) => onChangeBlock(block.id, (b) => (b.startHidden = v))}
-          />
-          <AnimFields
-            anim={block.anim}
-            onChange={(a) => onChangeBlock(block.id, (b) => (b.anim = a))}
-          />
-          <div className="mt-1 flex gap-4">
+              </>
+            )}
             <button
               type="button"
               onClick={() => onDuplicateBlock(block.id)}

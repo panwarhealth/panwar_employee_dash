@@ -1,3 +1,4 @@
+import { Section } from './QuestionLookFields';
 import type { Anim, AnimKind } from '@/course/doc';
 import { Field, inputClass, NumberBox, Select } from './fields';
 
@@ -20,10 +21,7 @@ export function AnimFields({
 }) {
   const a = anim ?? NONE;
   return (
-    <>
-      <h4 className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-ph-charcoal/50">
-        Animation
-      </h4>
+    <Section title="Animation">
       <div className="grid grid-cols-2 gap-2">
         <Select
           label="Animate in"
@@ -54,6 +52,6 @@ export function AnimFields({
           Blocks come in one after another in order of their delay.
         </p>
       )}
-    </>
+    </Section>
   );
 }

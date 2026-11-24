@@ -31,7 +31,6 @@ import {
   TextInput,
   Toggle,
 } from './fields';
-import { QuestionTextFields } from './QuestionLookFields';
 import { RichText } from './RichText';
 import { TargetEditor } from './TargetEditor';
 
@@ -478,7 +477,6 @@ export function PathwayForm({
         value={block.prompt}
         onChange={(v) => set((b) => (b.prompt = v))}
       />
-      <QuestionTextFields block={block} set={set} />
       <ListEditor
         label="Choices"
         items={block.choices}
@@ -536,7 +534,6 @@ export function DragForm({
         value={block.prompt}
         onChange={(v) => set((b) => (b.prompt = v))}
       />
-      <QuestionTextFields block={block} set={set} />
       {block.style === 'targets' && (
         <>
           <MediaInput
@@ -627,7 +624,6 @@ export function MatchForm({ block, set }: { block: MatchBlock; set: Edit<MatchBl
         value={block.prompt}
         onChange={(v) => set((b) => (b.prompt = v))}
       />
-      <QuestionTextFields block={block} set={set} />
       <Select
         label="Learners match by"
         value={block.mode}
@@ -777,7 +773,6 @@ export function BlankForm({ block, set }: { block: BlankBlock; set: Edit<BlankBl
         value={block.prompt}
         onChange={(v) => set((b) => (b.prompt = v))}
       />
-      <QuestionTextFields block={block} set={set} />
       <TextArea
         label="Text with blanks"
         value={block.text}
@@ -800,7 +795,6 @@ export function SliderForm({ block, set }: { block: SliderBlock; set: Edit<Slide
         value={block.prompt}
         onChange={(v) => set((b) => (b.prompt = v))}
       />
-      <QuestionTextFields block={block} set={set} />
       <div className="grid grid-cols-3 gap-2">
         <NumberInput label="From" value={block.min} onChange={(n) => set((b) => (b.min = n))} />
         <NumberInput label="To" value={block.max} onChange={(n) => set((b) => (b.max = n))} />
@@ -845,7 +839,6 @@ export function WrittenForm({
         value={block.prompt}
         onChange={(v) => set((b) => (b.prompt = v))}
       />
-      <QuestionTextFields block={block} set={set} />
       <Select
         label="Answer box"
         value={block.length}
@@ -906,7 +899,6 @@ export function LikertForm({ block, set }: { block: LikertBlock; set: Edit<Liker
         value={block.prompt}
         onChange={(v) => set((b) => (b.prompt = v))}
       />
-      <QuestionTextFields block={block} set={set} />
       <ListEditor
         label="Statements"
         items={block.rows}

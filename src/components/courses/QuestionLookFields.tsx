@@ -189,6 +189,16 @@ const BODY: Partial<Record<Kind, string>> = {
 };
 
 const BOLD_ITEMS = new Set<Kind>(['drag', 'accordion', 'tabs', 'flip', 'hotspots']);
+const QUESTIONED = new Set<Kind>([
+  'check',
+  'drag',
+  'match',
+  'blank',
+  'slider',
+  'written',
+  'likert',
+  'pathway',
+]);
 
 export function QuestionLookFields({
   block,
@@ -236,13 +246,13 @@ export function QuestionLookFields({
   const box = kind === 'hotspots' ? null : 'Border';
   return (
     <>
-      <Section title="Look">
+      <Section title="Colour and corners">
         <ColourField
           label={kind === 'hotspots' ? 'Pin colour' : 'Main colour'}
           value={look.colour}
           onChange={(colour) => set({ colour })}
         />
-        <Field label="Corners (px)">
+        <Field label="Answer and button corners (px)">
           <NumberBox
             min={0}
             value={look.radius ?? CORNERS[kind] ?? 4}
@@ -251,6 +261,17 @@ export function QuestionLookFields({
           />
         </Field>
       </Section>
+
+      {QUESTIONED.has(kind) && (
+        <QuestionTextFields
+          block={block}
+          set={(fn) => {
+            const copy = { ...block, look: { ...look } };
+            fn(copy);
+            onChange(copy.look);
+          }}
+        />
+      )}
 
       {items && (
         <Section title={items[0].toUpperCase() + items.slice(1)}>
@@ -292,6 +313,50 @@ export function QuestionLookFields({
                 ...[1, 2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) })),
               ]}
               onChange={(v) => set({ answerColumns: v === 'auto' ? undefined : Number(v) })}
+            />
+          )}
+          <PartText
+            label={grid ? 'Column headings' : `${items[0].toUpperCase()}${items.slice(1)} text`}
+            bold={BOLD_ITEMS.has(kind) || (pills && look.answers === 'buttons')}
+            size={Math.round(base * (kind === 'likert' ? 0.85 : kind === 'hotspots' ? 0.9 : 1))}
+            colour={look.answerText}
+            value={look.answerStyle}
+            onChange={(answerStyle) => set({ answerStyle, answerText: undefined })}
+          />
+          {labels && (
+            <PartText
+              label={labels}
+              bold={kind === 'likert'}
+              size={Math.round(base * (kind === 'likert' ? 1 : 0.85))}
+              colour={ink}
+              value={look.labelStyle}
+              onChange={(labelStyle) => set({ labelStyle })}
+            />
+          )}
+          {(BODY[kind] || (block.type === 'match' && block.table)) && (
+            <PartText
+              label={BODY[kind] ?? 'Heading row text'}
+              size={base}
+              colour={ink}
+              value={look.bodyStyle}
+              onChange={(bodyStyle) => set({ bodyStyle })}
+            />
+          )}
+          <ColourField
+            label={`${items[0].toUpperCase()}${items.slice(1)} background`}
+            value={look.answerFill}
+            onChange={(answerFill) => set({ answerFill })}
+          />
+          <ColourField
+            label={`${items[0].toUpperCase()}${items.slice(1)} border colour`}
+            value={look.answerBorder}
+            onChange={(answerBorder) => set({ answerBorder })}
+          />
+          {tray && (
+            <ColourField
+              label="Background behind the tiles"
+              value={look.bankFill}
+              onChange={(bankFill) => set({ bankFill })}
             />
           )}
           {kind !== 'hotspots' && (
@@ -337,50 +402,6 @@ export function QuestionLookFields({
               label={`Padding inside the ${items} (px)`}
               value={look.answerPadding ?? PADDING[kind]!}
               onChange={(answerPadding) => set({ answerPadding })}
-            />
-          )}
-          <ColourField
-            label="Background"
-            value={look.answerFill}
-            onChange={(answerFill) => set({ answerFill })}
-          />
-          <ColourField
-            label="Border colour"
-            value={look.answerBorder}
-            onChange={(answerBorder) => set({ answerBorder })}
-          />
-          {tray && (
-            <ColourField
-              label="Background behind the tiles"
-              value={look.bankFill}
-              onChange={(bankFill) => set({ bankFill })}
-            />
-          )}
-          <PartText
-            label={grid ? 'Column headings' : `${items[0].toUpperCase()}${items.slice(1)} text`}
-            bold={BOLD_ITEMS.has(kind) || (pills && look.answers === 'buttons')}
-            size={Math.round(base * (kind === 'likert' ? 0.85 : kind === 'hotspots' ? 0.9 : 1))}
-            colour={look.answerText}
-            value={look.answerStyle}
-            onChange={(answerStyle) => set({ answerStyle, answerText: undefined })}
-          />
-          {labels && (
-            <PartText
-              label={labels}
-              bold={kind === 'likert'}
-              size={Math.round(base * (kind === 'likert' ? 1 : 0.85))}
-              colour={ink}
-              value={look.labelStyle}
-              onChange={(labelStyle) => set({ labelStyle })}
-            />
-          )}
-          {(BODY[kind] || (block.type === 'match' && block.table)) && (
-            <PartText
-              label={BODY[kind] ?? 'Heading row text'}
-              size={base}
-              colour={ink}
-              value={look.bodyStyle}
-              onChange={(bodyStyle) => set({ bodyStyle })}
             />
           )}
         </Section>
@@ -473,11 +494,6 @@ export function QuestionLookFields({
             options={[...SIDES]}
             onChange={(submitAlign) => set({ submitAlign })}
           />
-          <PaddingField
-            label="Space around the button (px)"
-            value={look.buttonMargin ?? (graded || written ? BUTTON_MARGIN : [0, 0, 0, 0])}
-            onChange={(buttonMargin) => set({ buttonMargin })}
-          />
           {graded && (
             <Select
               label="Feedback"
@@ -497,6 +513,11 @@ export function QuestionLookFields({
               onChange={(feedbackStyle) => set({ feedbackStyle })}
             />
           )}
+          <PaddingField
+            label="Space around the button (px)"
+            value={look.buttonMargin ?? (graded || written ? BUTTON_MARGIN : [0, 0, 0, 0])}
+            onChange={(buttonMargin) => set({ buttonMargin })}
+          />
         </Section>
       )}
 

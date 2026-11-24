@@ -1,3 +1,4 @@
+import { Section } from './QuestionLookFields';
 import {
   hasPicks,
   linkedPages,
@@ -38,8 +39,7 @@ export function InteractionFields({
   const pickable = pickIds(page).includes(block.id);
 
   return (
-    <>
-      <h4 className={sectionClass}>States</h4>
+    <Section title="States">
       <Select label="On hover" value={i.hover} options={HOVER_LOOKS} onChange={(hover) => set({ hover })} />
       {pickable && (
         <>
@@ -98,7 +98,7 @@ export function InteractionFields({
           />
         </>
       )}
-    </>
+    </Section>
   );
 }
 
