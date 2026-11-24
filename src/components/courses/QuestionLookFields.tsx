@@ -233,7 +233,7 @@ export function QuestionLookFields({
     : block.type !== 'match' || block.mode === 'drag'
       ? LABELS[kind]
       : undefined;
-  const box = kind === 'hotspots' ? null : 'Box';
+  const box = kind === 'hotspots' ? null : 'Border';
   return (
     <>
       <Section title="Look">
@@ -521,7 +521,7 @@ export function QuestionLookFields({
             onChange={(fill) => set({ fill })}
           />
           <PaddingField
-            label="Padding (px)"
+            label="Space inside the border (px)"
             value={
               look.boxPadding ??
               ((boxed ? look.card !== false : look.card) ? [16, 16, 16, 16] : [0, 0, 0, 0])
