@@ -35,6 +35,7 @@ import { isDecor } from './blockKinds';
 import { blockLabel } from './blockMeta';
 import { pageProblems } from '@/course/exportZip';
 import { readFlag, saveFlag } from './flags';
+import { BesideSplit } from './BesideSplit';
 import { InlineText } from './InlineText';
 import { ObjectMenu } from './ObjectMenu';
 import { objectMenuItems } from './objectMenuItems';
@@ -115,6 +116,7 @@ export function CanvasEditor({
   onPaste,
   canPaste,
   onRestack,
+  onLook,
 }: {
   doc: CourseDoc;
   page: Page;
@@ -132,6 +134,7 @@ export function CanvasEditor({
   onPaste: () => void;
   canPaste: boolean;
   onRestack: (ids: string[], how: Restack) => void;
+  onLook: (blockId: string, fn: (b: Block) => void) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -598,6 +601,16 @@ export function CanvasEditor({
                     />
                   ) : (
                     content
+                  )}
+                  {on && b.type === 'drag' && b.style === 'targets' && b.look?.beside && (
+                    <BesideSplit
+                      value={b.look.besideImage ?? 60}
+                      onChange={(besideImage) =>
+                        onLook(b.id, (x) => {
+                          if (x.type === 'drag') x.look = { ...x.look, besideImage };
+                        })
+                      }
+                    />
                   )}
                   {broken.length > 0 && (
                     <button

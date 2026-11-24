@@ -29,7 +29,7 @@ import { PresenceAvatar } from '@/components/courses/PresenceAvatar';
 import { PreviewModal } from '@/components/courses/PreviewModal';
 import { SettingsModal } from '@/components/courses/SettingsModal';
 import { VariablesModal } from '@/components/courses/VariablesModal';
-import { frameFor, newFrame } from '@/course/canvasLayout';
+import { frameFor, layoutsFor, newFrame } from '@/course/canvasLayout';
 import {
   fixNbsp,
   layerOf,
@@ -352,6 +352,13 @@ function Editor({
                 onPaste={pasteBlocks}
                 canPaste={clipboard.length > 0}
                 onRestack={(ids, how) => setDoc((d) => ops.restackBlocks(d, page.id, ids, how))}
+                onLook={(id, fn) =>
+                  setDoc((d) =>
+                    ops.updateBlock(d, page.id, id, (b) =>
+                      ops.changeLook(b, layout, layoutsFor(doc.screens)[0], fn),
+                    ),
+                  )
+                }
                 onText={(id, value) =>
                   setDoc((d) =>
                     ops.updateBlock(d, page.id, id, (b) => {
