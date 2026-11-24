@@ -1098,6 +1098,33 @@
 .cp-dnd-image {
   position: relative;
 }
+.cp-qbody {
+  display: contents;
+}
+.cp-aside {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-rows: auto 1fr;
+  gap: var(--cp-gap);
+  align-items: start;
+  width: 100%;
+}
+.cp-aside .cp-dnd {
+  display: contents;
+}
+.cp-aside .cp-dnd > .cp-dnd-image {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+.cp-aside .cp-bank {
+  grid-column: 2;
+  grid-row: 1;
+}
+.cp-aside > .cp-fbrow,
+.cp-aside > .cp-btn {
+  grid-column: 2;
+  grid-row: 2;
+}
 .cp-dnd-image img {
   display: block;
   width: 100%;

@@ -152,35 +152,42 @@ function QuestionFrame({
           {hint}
         </p>
       )}
-      <div
-        style={{ display: 'contents' }}
-        onPointerDownCapture={retryable ? retry : undefined}
-        onKeyDownCapture={retryable ? (e) => e.key !== 'Tab' && retry() : undefined}
-      >
-        {children({ locked, submitted })}
-      </div>
-      {submitted && !popup && (
-        <div className="cp-fbrow cp-squeeze" style={row}>
-          {message}
-          {!shownCorrect && tryAgain}
+      <div className={look.beside ? 'cp-qbody cp-aside' : 'cp-qbody'}>
+        <div
+          style={{ display: 'contents' }}
+          onPointerDownCapture={retryable ? retry : undefined}
+          onKeyDownCapture={retryable ? (e) => e.key !== 'Tab' && retry() : undefined}
+        >
+          {children({ locked, submitted })}
         </div>
-      )}
-      {submitted && popup && !shownCorrect && (
-        <div className="cp-fbrow" style={{ ...row, justifyContent: align }}>
-          {tryAgain}
-        </div>
-      )}
-      {!submitted && kept && (
-        <div className="cp-fbrow cp-squeeze" style={row}>
-          <div className="cp-fb cp-fb-bad" style={partCss(ctx, look.feedbackStyle)}>
-            {kept}
+        {submitted && !popup && (
+          <div className="cp-fbrow cp-squeeze" style={row}>
+            {message}
+            {!shownCorrect && tryAgain}
           </div>
-          {submit(partCss(ctx, look.buttonStyle))}
-        </div>
-      )}
-      {!submitted &&
-        !kept &&
-        submit({ ...partCss(ctx, look.buttonStyle), alignSelf: align, margin })}
+        )}
+        {submitted && popup && !shownCorrect && (
+          <div className="cp-fbrow" style={{ ...row, justifyContent: align }}>
+            {tryAgain}
+          </div>
+        )}
+        {!submitted && kept && (
+          <div className="cp-fbrow cp-squeeze" style={row}>
+            <div className="cp-fb cp-fb-bad" style={partCss(ctx, look.feedbackStyle)}>
+              {kept}
+            </div>
+            {submit(partCss(ctx, look.buttonStyle))}
+          </div>
+        )}
+        {!submitted &&
+          !kept &&
+          submit({
+            ...partCss(ctx, look.buttonStyle),
+            alignSelf: align,
+            justifySelf: align,
+            margin,
+          })}
+      </div>
       {popupOpen &&
         player &&
         createPortal(

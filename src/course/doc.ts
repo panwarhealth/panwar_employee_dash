@@ -467,6 +467,7 @@ export interface QuestionLook {
   boxPadding?: Insets;
   card?: boolean;
   feedback?: 'under' | 'popup';
+  beside?: boolean;
 }
 
 export interface QuestionBase extends BlockBase {

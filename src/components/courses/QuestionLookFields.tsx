@@ -211,6 +211,13 @@ export function QuestionLookFields({
               onChange={(answers) => set({ answers })}
             />
           )}
+          {block.type === 'drag' && block.style === 'targets' && (
+            <Toggle
+              label="Tiles and button beside the image"
+              checked={!!look.beside}
+              onChange={(beside) => set({ beside: beside || undefined })}
+            />
+          )}
           {kind === 'check' && (
             <Select
               label="Columns"
