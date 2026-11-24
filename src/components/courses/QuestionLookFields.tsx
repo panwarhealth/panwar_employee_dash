@@ -284,6 +284,14 @@ export function QuestionLookFields({
             value={look.answerBorder}
             onChange={(answerBorder) => set({ answerBorder })}
           />
+          {((block.type === 'drag' && block.style !== 'order') ||
+            (block.type === 'match' && block.mode === 'drag')) && (
+            <ColourField
+              label="Background behind the tiles"
+              value={look.bankFill}
+              onChange={(bankFill) => set({ bankFill })}
+            />
+          )}
           <PartText
             label={grid ? 'Column headings' : `${items[0].toUpperCase()}${items.slice(1)} text`}
             bold={BOLD_ITEMS.has(kind) || (pills && look.answers === 'buttons')}

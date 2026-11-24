@@ -1093,7 +1093,7 @@
 }
 .cp-bank {
   border-style: solid;
-  background: rgba(47, 48, 48, 0.03);
+  background: var(--cp-bank-bg, rgba(47, 48, 48, 0.03));
 }
 .cp-dnd-image {
   position: relative;
@@ -1119,6 +1119,9 @@
 .cp-aside .cp-bank {
   grid-column: 2;
   grid-row: 1;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
 }
 .cp-aside > .cp-fbrow,
 .cp-aside > .cp-btn {

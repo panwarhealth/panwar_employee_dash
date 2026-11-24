@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   uid,
   type AccordionBlock,
@@ -33,6 +33,7 @@ import {
 } from './fields';
 import { QuestionTextFields } from './QuestionLookFields';
 import { RichText } from './RichText';
+import { TargetEditor } from './TargetEditor';
 
 type Edit<B> = (fn: (b: B) => void) => void;
 
@@ -551,55 +552,7 @@ export function DragForm({
               })
             }
           />
-          {block.src && (
-            <ImagePlacer
-              src={block.src}
-              hint="Click the picture to add a drop target."
-              marks={block.targets.map((t) => ({ ...t, label: t.label }))}
-              onPlace={(x, y) =>
-                set((b) =>
-                  b.targets.push({
-                    id: uid(),
-                    label: `Target ${b.targets.length + 1}`,
-                    x: Math.max(0, x - 10),
-                    y: Math.max(0, y - 6),
-                    w: 20,
-                    h: 12,
-                  }),
-                )
-              }
-            />
-          )}
-          {block.targets.length > 0 && (
-            <ListEditor
-              label="Drop targets"
-              items={block.targets}
-              min={0}
-              addLabel=""
-              onAdd={() => {}}
-              onRemove={(i) => set((b) => b.targets.splice(i, 1))}
-            >
-              {(t, i) => (
-                <>
-                  <TextInput
-                    label="Label"
-                    value={t.label}
-                    onChange={(v) => set((b) => (b.targets[i].label = v))}
-                  />
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {(['x', 'y', 'w', 'h'] as const).map((k) => (
-                      <NumberInput
-                        key={k}
-                        label={`${k.toUpperCase()} %`}
-                        value={t[k]}
-                        onChange={(n) => set((b) => (b.targets[i][k] = n))}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </ListEditor>
-          )}
+          {block.src && <TargetsButton block={block} set={set} />}
         </>
       )}
       {block.style === 'groups' && (
@@ -1030,6 +983,40 @@ export function ResultsForm({ block, set }: { block: ResultsBlock; set: Edit<Res
       <p className="-mt-1 text-xs text-ph-charcoal/60">
         With a pool, each learner gets that many of the scored question pages, picked at random.
       </p>
+    </>
+  );
+}
+
+function TargetsButton({ block, set }: { block: DragBlock; set: Edit<DragBlock> }) {
+  const [open, setOpen] = useState(false);
+  const n = block.targets.length;
+  return (
+    <>
+      <div className="relative overflow-hidden rounded-lg border border-ph-charcoal/15">
+        <img src={block.src} alt="" className="block w-full" />
+        {block.targets.map((t) => (
+          <div
+            key={t.id}
+            className="absolute border-2 border-ph-purple/70 bg-white/40"
+            style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${t.w}%`, height: `${t.h}%` }}
+          />
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="self-start rounded-full border-[1.5px] border-ph-purple px-4 py-1.5 text-sm font-medium text-ph-purple hover:bg-ph-purple/5"
+      >
+        Edit drop targets{n ? ` (${n})` : ''}
+      </button>
+      {open && (
+        <TargetEditor
+          src={block.src}
+          targets={block.targets}
+          onDone={(targets) => set((b) => (b.targets = targets))}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }

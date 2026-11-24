@@ -31,6 +31,7 @@ export function lookVars(look: QuestionLook = {}): CSSProperties {
   if (look.answerPadding) v['--cp-opt-pad'] = look.answerPadding.map(px).join(' ');
   if (look.answerFill) v['--cp-opt-bg'] = look.answerFill;
   if (look.answerBorder) v['--cp-opt-line'] = look.answerBorder;
+  if (look.bankFill) v['--cp-bank-bg'] = look.bankFill;
   const ink = look.answerStyle?.color ?? look.answerText;
   if (ink) v['--cp-opt-ink'] = ink;
   return v as CSSProperties;
