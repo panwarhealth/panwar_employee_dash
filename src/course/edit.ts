@@ -148,6 +148,26 @@ export const removeBlock = (doc: CourseDoc, pageId: string, blockId: string) =>
 export const moveBlock = (doc: CourseDoc, pageId: string, from: number, to: number) =>
   updatePage(doc, pageId, (p) => moveItem(p.blocks, from, to));
 
+export type Restack = 'forward' | 'backward' | 'front' | 'back';
+
+export const restackBlocks = (doc: CourseDoc, pageId: string, ids: string[], how: Restack) =>
+  updatePage(doc, pageId, (p) => {
+    const moving = new Set(ids);
+    p.blocks.forEach((b) => b.parent && moving.has(b.parent) && moving.add(b.id));
+    const on = (i: number) => moving.has(p.blocks[i].id);
+    const swap = (i: number, j: number) =>
+      ([p.blocks[i], p.blocks[j]] = [p.blocks[j], p.blocks[i]]);
+    if (how === 'front' || how === 'back') {
+      const picked = p.blocks.filter((b) => moving.has(b.id));
+      const rest = p.blocks.filter((b) => !moving.has(b.id));
+      p.blocks = how === 'front' ? [...rest, ...picked] : [...picked, ...rest];
+    } else if (how === 'forward') {
+      for (let i = p.blocks.length - 2; i >= 0; i--) if (on(i) && !on(i + 1)) swap(i, i + 1);
+    } else {
+      for (let i = 1; i < p.blocks.length; i++) if (on(i) && !on(i - 1)) swap(i, i - 1);
+    }
+  });
+
 function withContents(p: Page, layout: Layout, frames: Record<string, Frame>) {
   const out = { ...frames };
   for (const card of p.blocks) {

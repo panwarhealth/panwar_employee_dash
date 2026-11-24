@@ -351,6 +351,7 @@ function Editor({
                 onDuplicate={duplicateBlocks}
                 onPaste={pasteBlocks}
                 canPaste={clipboard.length > 0}
+                onRestack={(ids, how) => setDoc((d) => ops.restackBlocks(d, page.id, ids, how))}
                 onText={(id, value) =>
                   setDoc((d) =>
                     ops.updateBlock(d, page.id, id, (b) => {

@@ -29,6 +29,7 @@ import {
 } from '@/course/doc';
 import { bounds } from '@/course/geometry';
 import { hitObject } from '@/course/hit';
+import type { Restack } from '@/course/edit';
 import { cn } from '@/lib/utils';
 import { isDecor } from './blockKinds';
 import { blockLabel } from './blockMeta';
@@ -113,6 +114,7 @@ export function CanvasEditor({
   onDuplicate,
   onPaste,
   canPaste,
+  onRestack,
 }: {
   doc: CourseDoc;
   page: Page;
@@ -129,6 +131,7 @@ export function CanvasEditor({
   onDuplicate: (ids: string[]) => void;
   onPaste: () => void;
   canPaste: boolean;
+  onRestack: (ids: string[], how: Restack) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -305,6 +308,7 @@ export function CanvasEditor({
       onRemove(ids);
       setPicked([]);
     },
+    onRestack,
   });
 
   const toPct = (e: { clientX: number; clientY: number }) => {
