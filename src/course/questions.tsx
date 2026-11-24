@@ -543,8 +543,20 @@ function DragBoard({
         </div>
       )}
       <div className="cp-zone cp-bank" {...dnd.zone('')}>
-        {inZone('').map(tileEl)}
-        {inZone('').length === 0 && <span className="cp-hint">All placed</span>}
+        {items.map((it) =>
+          (placement[it.id] ?? '') === '' ? (
+            tileEl(it)
+          ) : (
+            <span
+              key={it.id}
+              className="cp-tile cp-tile-ghost"
+              style={itemStyle}
+              aria-hidden="true"
+            >
+              {it.text}
+            </span>
+          ),
+        )}
       </div>
       {dnd.ghostEl}
     </div>

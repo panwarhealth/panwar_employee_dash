@@ -1158,6 +1158,8 @@
   border-style: solid;
 }
 .cp-zone-abs .cp-tile {
+  position: relative;
+  z-index: 1;
   flex: 1 1 100%;
   align-self: stretch;
   justify-content: center;
