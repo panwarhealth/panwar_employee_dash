@@ -155,8 +155,12 @@ export function QuestionLookFields({
   const pills = kind === 'check' || kind === 'pathway';
   const cols = block.type === 'check' ? look.answerColumns : undefined;
   const grid = block.type === 'match' && block.mode === 'grid';
+  const tray =
+    (block.type === 'drag' && block.style !== 'order') ||
+    (block.type === 'match' && block.mode === 'drag');
   const row =
     grid ||
+    tray ||
     (block.type === 'check' && (!!cols || block.options.every((o) => o.text.length <= 20)));
   const written = block.type === 'written' && block.submit !== false;
   const button = graded
@@ -295,8 +299,7 @@ export function QuestionLookFields({
             value={look.answerBorder}
             onChange={(answerBorder) => set({ answerBorder })}
           />
-          {((block.type === 'drag' && block.style !== 'order') ||
-            (block.type === 'match' && block.mode === 'drag')) && (
+          {tray && (
             <ColourField
               label="Background behind the tiles"
               value={look.bankFill}
