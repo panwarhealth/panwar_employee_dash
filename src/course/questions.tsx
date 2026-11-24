@@ -114,6 +114,26 @@ function QuestionFrame({
       )}
     </>
   );
+  const submit = (style: CSSProperties) => (
+    <button
+      type="button"
+      className="cp-btn cp-btn-solid"
+      style={style}
+      disabled={!ready || ctx.edit}
+      title={ready ? undefined : 'Answer the question first'}
+      onClick={() => {
+        setKept(null);
+        setSubmitted(true);
+        if (popup) {
+          setShift({ x: 0, y: 0 });
+          setPopupOpen(true);
+        }
+        ctx.answer(block.id, response, correct);
+      }}
+    >
+      {block.submitLabel || 'Submit'}
+    </button>
+  );
   const player = self.current?.closest<HTMLElement>('.cp');
   return (
     <div
@@ -131,7 +151,7 @@ function QuestionFrame({
       )}
       {children({ locked, submitted })}
       {submitted && !popup && (
-        <div className="cp-fbrow" style={row}>
+        <div className="cp-fbrow cp-squeeze" style={row}>
           {message}
           {!shownCorrect && tryAgain}
         </div>
@@ -142,32 +162,16 @@ function QuestionFrame({
         </div>
       )}
       {!submitted && kept && (
-        <div className="cp-fbrow" style={row}>
+        <div className="cp-fbrow cp-squeeze" style={row}>
           <div className="cp-fb cp-fb-bad" style={partCss(ctx, look.feedbackStyle)}>
             {kept}
           </div>
+          {submit(partCss(ctx, look.buttonStyle))}
         </div>
       )}
-      {!submitted && (
-        <button
-          type="button"
-          className="cp-btn cp-btn-solid"
-          style={{ ...partCss(ctx, look.buttonStyle), alignSelf: align, margin }}
-          disabled={!ready || ctx.edit}
-          title={ready ? undefined : 'Answer the question first'}
-          onClick={() => {
-            setKept(null);
-            setSubmitted(true);
-            if (popup) {
-              setShift({ x: 0, y: 0 });
-              setPopupOpen(true);
-            }
-            ctx.answer(block.id, response, correct);
-          }}
-        >
-          {block.submitLabel || 'Submit'}
-        </button>
-      )}
+      {!submitted &&
+        !kept &&
+        submit({ ...partCss(ctx, look.buttonStyle), alignSelf: align, margin })}
       {popupOpen &&
         player &&
         createPortal(

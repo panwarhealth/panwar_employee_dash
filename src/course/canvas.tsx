@@ -160,20 +160,40 @@ function Grow({ children }: { children: ReactNode }) {
     const content = outer?.firstElementChild as HTMLElement | null;
     const stage = outer?.closest<HTMLElement>('.cp-stage');
     if (!outer || !content || !stage) return;
+    const squeeze = (rows: HTMLElement[], z: string) => rows.forEach((r) => (r.style.zoom = z));
     const fit = () => {
       outer.style.transform = '';
+      const rows = [...content.querySelectorAll<HTMLElement>('.cp-squeeze')];
+      squeeze(rows, '');
       let top = 0;
       for (let el: Element | null = outer; el && el !== stage; el = (el as HTMLElement).offsetParent)
         top += (el as HTMLElement).offsetTop;
-      const s = (stage.clientHeight - top) / content.offsetHeight;
-      if (!(s > 0 && s < 0.99)) return;
-      outer.style.transform = `scale(${s})`;
+      let room = stage.clientHeight - top;
+      const frame = parseFloat(getComputedStyle(outer.parentElement!).minHeight);
+      if (rows.length && frame > 0 && content.offsetHeight > frame + 0.5) {
+        rows.forEach((r) => (r.style.display = 'none'));
+        const rest = content.offsetHeight;
+        rows.forEach((r) => (r.style.display = ''));
+        let lo = 0.6;
+        let hi = 1;
+        for (let i = 0; i < 6; i++) {
+          const z = (lo + hi) / 2;
+          squeeze(rows, String(z));
+          if (content.offsetHeight <= frame + 0.5) lo = z;
+          else hi = z;
+        }
+        squeeze(rows, String(lo));
+        room = Math.min(room, Math.max(frame, rest));
+      }
+      const s = room / content.offsetHeight;
+      if (s > 0 && s < 0.99) outer.style.transform = `scale(${s})`;
+      mutate.takeRecords();
     };
+    const mutate = new MutationObserver(fit);
     fit();
     const resize = new ResizeObserver(fit);
     resize.observe(stage);
     resize.observe(content);
-    const mutate = new MutationObserver(fit);
     mutate.observe(content, {
       childList: true,
       subtree: true,
