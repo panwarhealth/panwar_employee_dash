@@ -546,7 +546,7 @@ function DragBoard({
         {items.map((it) =>
           (placement[it.id] ?? '') === '' ? (
             tileEl(it)
-          ) : (
+          ) : marks ? null : (
             <span
               key={it.id}
               className="cp-tile cp-tile-ghost"

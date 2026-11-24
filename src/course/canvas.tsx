@@ -152,7 +152,7 @@ function Fit({ children }: { children: ReactNode }) {
   );
 }
 
-function Grow({ children }: { children: ReactNode }) {
+function Grow({ block, children }: { block: Block; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -161,32 +161,33 @@ function Grow({ children }: { children: ReactNode }) {
     const stage = outer?.closest<HTMLElement>('.cp-stage');
     if (!outer || !content || !stage) return;
     const squeeze = (rows: HTMLElement[], z: string) => rows.forEach((r) => (r.style.zoom = z));
+    let tallest = 0;
+    content.style.minHeight = '';
     const fit = () => {
-      outer.style.transform = '';
       const rows = [...content.querySelectorAll<HTMLElement>('.cp-squeeze')];
       squeeze(rows, '');
+      rows.forEach((r) => (r.style.display = 'none'));
+      tallest = Math.max(tallest, content.offsetHeight);
+      content.style.minHeight = `${tallest}px`;
+      rows.forEach((r) => (r.style.display = ''));
       let top = 0;
       for (let el: Element | null = outer; el && el !== stage; el = (el as HTMLElement).offsetParent)
         top += (el as HTMLElement).offsetTop;
-      let room = stage.clientHeight - top;
-      const frame = parseFloat(getComputedStyle(outer.parentElement!).minHeight);
-      if (rows.length && frame > 0 && content.offsetHeight > frame + 0.5) {
-        rows.forEach((r) => (r.style.display = 'none'));
-        const rest = content.offsetHeight;
-        rows.forEach((r) => (r.style.display = ''));
-        let lo = 0.6;
+      const s = Math.min(1, (stage.clientHeight - top) / tallest);
+      const frame = parseFloat(getComputedStyle(outer.parentElement!).minHeight) || 0;
+      const limit = Math.max(frame, tallest) + 0.5;
+      if (rows.length && content.offsetHeight > limit) {
+        let lo = 0.5;
         let hi = 1;
         for (let i = 0; i < 6; i++) {
           const z = (lo + hi) / 2;
           squeeze(rows, String(z));
-          if (content.offsetHeight <= frame + 0.5) lo = z;
+          if (content.offsetHeight <= limit) lo = z;
           else hi = z;
         }
         squeeze(rows, String(lo));
-        room = Math.min(room, Math.max(frame, rest));
       }
-      const s = room / content.offsetHeight;
-      if (s > 0 && s < 0.99) outer.style.transform = `scale(${s})`;
+      outer.style.transform = s > 0 && s < 0.99 ? `scale(${s})` : '';
       mutate.takeRecords();
     };
     const mutate = new MutationObserver(fit);
@@ -204,7 +205,7 @@ function Grow({ children }: { children: ReactNode }) {
       resize.disconnect();
       mutate.disconnect();
     };
-  }, []);
+  }, [block]);
 
   return (
     <div ref={box} className="cp-grow">
@@ -265,7 +266,7 @@ export function CanvasStage({
     const frame = frameFor(page, b, layout);
     const shown = lookFor(b, layout);
     const view = <BlockView block={shown} ctx={ctx} />;
-    const content = growsToFit(b) ? <Grow>{view}</Grow> : <Fit>{view}</Fit>;
+    const content = growsToFit(b) ? <Grow block={b}>{view}</Grow> : <Fit>{view}</Fit>;
     if (renderObject) return renderObject(shown, frame, content);
     const g = groupBy.get(b.id);
     const own = b.type !== 'button' && ctx.clickable.has(b.id);
