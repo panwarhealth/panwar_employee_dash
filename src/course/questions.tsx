@@ -4,6 +4,8 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -61,7 +63,8 @@ function QuestionFrame({
   const longest = [block.feedbackCorrect, block.feedbackWrong].reduce((a, b) =>
     b.length > a.length ? b : a,
   );
-  const locked = submitted || ctx.edit;
+  const retryable = submitted && !correct && !ctx.showFeedback && !ctx.edit;
+  const locked = (submitted && !retryable) || ctx.edit;
   const look = block.look ?? {};
   const popup = look.feedback === 'popup';
   const align = JUSTIFY[look.submitAlign ?? 'left'];
@@ -149,7 +152,13 @@ function QuestionFrame({
           {hint}
         </p>
       )}
-      {children({ locked, submitted })}
+      <div
+        style={{ display: 'contents' }}
+        onPointerDownCapture={retryable ? retry : undefined}
+        onKeyDownCapture={retryable ? (e) => e.key !== 'Tab' && retry() : undefined}
+      >
+        {children({ locked, submitted })}
+      </div>
       {submitted && !popup && (
         <div className="cp-fbrow cp-squeeze" style={row}>
           {message}
@@ -413,7 +422,7 @@ function DragBoard({
     rect?: { x: number; y: number; w: number; h: number };
   }[];
   placement: Placement;
-  setPlacement: (p: Placement) => void;
+  setPlacement: Dispatch<SetStateAction<Placement>>;
   locked: boolean;
   marks: Record<string, boolean> | null;
   layout: 'slots' | 'image' | 'groups' | 'pairs' | 'table';
@@ -423,14 +432,15 @@ function DragBoard({
   labelStyle?: CSSProperties;
   headStyle?: CSSProperties;
 }) {
-  const place = (itemId: string, zoneId: string) => {
-    const next = { ...placement, [itemId]: zoneId };
-    const zone = zones.find((z) => z.id === zoneId);
-    if (zone && zone.capacity === 1)
-      for (const [other, z] of Object.entries(next))
-        if (other !== itemId && z === zoneId) next[other] = '';
-    setPlacement(next);
-  };
+  const place = (itemId: string, zoneId: string) =>
+    setPlacement((now) => {
+      const next = { ...now, [itemId]: zoneId };
+      const zone = zones.find((z) => z.id === zoneId);
+      if (zone && zone.capacity === 1)
+        for (const [other, z] of Object.entries(next))
+          if (other !== itemId && z === zoneId) next[other] = '';
+      return next;
+    });
   const dnd = useDnd(locked, place);
   const tileEl = (it: { id: string; text: string }) => (
     <span
