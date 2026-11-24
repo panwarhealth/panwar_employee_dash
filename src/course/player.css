@@ -532,6 +532,14 @@
 .cp-fit-in {
   transform-origin: top center;
 }
+.cp-grow {
+  display: flex;
+  flex-direction: column;
+  transform-origin: top center;
+}
+.cp-grow > :first-child {
+  flex: 1 1 auto;
+}
 .cp-obj .cp-h1 {
   font-size: 2em;
 }

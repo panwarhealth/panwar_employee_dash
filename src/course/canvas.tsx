@@ -152,6 +152,47 @@ function Fit({ children }: { children: ReactNode }) {
   );
 }
 
+function Grow({ children }: { children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const outer = box.current;
+    const content = outer?.firstElementChild as HTMLElement | null;
+    const stage = outer?.closest<HTMLElement>('.cp-stage');
+    if (!outer || !content || !stage) return;
+    const fit = () => {
+      outer.style.transform = '';
+      let top = 0;
+      for (let el: Element | null = outer; el && el !== stage; el = (el as HTMLElement).offsetParent)
+        top += (el as HTMLElement).offsetTop;
+      const s = (stage.clientHeight - top) / content.offsetHeight;
+      if (!(s > 0 && s < 0.99)) return;
+      outer.style.transform = `scale(${s})`;
+    };
+    fit();
+    const resize = new ResizeObserver(fit);
+    resize.observe(stage);
+    resize.observe(content);
+    const mutate = new MutationObserver(fit);
+    mutate.observe(content, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+    });
+    return () => {
+      resize.disconnect();
+      mutate.disconnect();
+    };
+  }, []);
+
+  return (
+    <div ref={box} className="cp-grow">
+      {children}
+    </div>
+  );
+}
+
 const decorative = (b: Block) =>
   b.type === 'image' || b.type === 'heading' || (b.type === 'text' && !/<a\s/i.test(b.html));
 
@@ -204,7 +245,7 @@ export function CanvasStage({
     const frame = frameFor(page, b, layout);
     const shown = lookFor(b, layout);
     const view = <BlockView block={shown} ctx={ctx} />;
-    const content = growsToFit(b) ? view : <Fit>{view}</Fit>;
+    const content = growsToFit(b) ? <Grow>{view}</Grow> : <Fit>{view}</Fit>;
     if (renderObject) return renderObject(shown, frame, content);
     const g = groupBy.get(b.id);
     const own = b.type !== 'button' && ctx.clickable.has(b.id);
