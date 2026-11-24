@@ -331,8 +331,16 @@ function frameOf(root: Element) {
   return { x: 0, y: 0, s: 1 };
 }
 
+const zoneAt = (x: number, y: number) =>
+  document
+    .elementsFromPoint(x, y)
+    .find((el) => el instanceof HTMLElement && el.dataset.zone !== undefined) as
+    | HTMLElement
+    | undefined;
+
 function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [hot, setHot] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{
     text: string;
     x: number;
@@ -355,6 +363,7 @@ function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void
       const move = (ev: PointerEvent) => {
         if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
         moved = true;
+        setHot(zoneAt(ev.clientX, ev.clientY)?.dataset.zone ?? null);
         setGhost({
           text,
           x: (ev.clientX - frame.x) / frame.s,
@@ -366,15 +375,12 @@ function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void
       const up = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', move);
         setGhost(null);
+        setHot(null);
         if (!moved) {
           setSelected((s) => (s === id ? null : id));
           return;
         }
-        const zone = document
-          .elementsFromPoint(ev.clientX, ev.clientY)
-          .find((el) => el instanceof HTMLElement && el.dataset.zone !== undefined) as
-          | HTMLElement
-          | undefined;
+        const zone = zoneAt(ev.clientX, ev.clientY);
         if (zone) place(id, zone.dataset.zone ?? '');
         setSelected(null);
       };
@@ -385,6 +391,8 @@ function useDnd(locked: boolean, place: (itemId: string, zoneId: string) => void
 
   const zone = (zoneId: string) => ({
     'data-zone': zoneId,
+    'data-hot': hot === zoneId ? '' : undefined,
+    'data-armed': selected && !locked ? '' : undefined,
     onClick: () => {
       if (!selected || locked) return;
       place(selected, zoneId);
