@@ -70,7 +70,9 @@ function QuestionFrame({
     .map((n) => `calc(${n} * var(--px, 1px))`)
     .join(' ');
   const row = { margin, width: 'auto', alignSelf: 'stretch' };
+  const [kept, setKept] = useState<string | null>(null);
   const retry = () => {
+    setKept(block.keepFeedback && !correct ? (wrong ?? block.feedbackWrong) : null);
     setPopupOpen(false);
     setSubmitted(false);
     onReset();
@@ -139,6 +141,13 @@ function QuestionFrame({
           {tryAgain}
         </div>
       )}
+      {!submitted && kept && (
+        <div className="cp-fbrow" style={row}>
+          <div className="cp-fb cp-fb-bad" style={partCss(ctx, look.feedbackStyle)}>
+            {kept}
+          </div>
+        </div>
+      )}
       {!submitted && (
         <button
           type="button"
@@ -147,6 +156,7 @@ function QuestionFrame({
           disabled={!ready || ctx.edit}
           title={ready ? undefined : 'Answer the question first'}
           onClick={() => {
+            setKept(null);
             setSubmitted(true);
             if (popup) {
               setShift({ x: 0, y: 0 });

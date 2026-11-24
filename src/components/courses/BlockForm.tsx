@@ -664,6 +664,11 @@ function CheckForm({
         onChange={(v) => onChange((b) => (b.feedbackWrong = v))}
       />
       <Toggle
+        label="Keep wrong-answer feedback on screen after Try again"
+        checked={!!block.keepFeedback}
+        onChange={(v) => onChange((b) => (b.keepFeedback = v || undefined))}
+      />
+      <Toggle
         label="Must get it right before continuing"
         checked={block.required}
         onChange={(v) => onChange((b) => (b.required = v))}

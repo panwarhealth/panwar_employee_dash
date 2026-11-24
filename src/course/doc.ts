@@ -318,6 +318,7 @@ export interface CheckBlock extends BlockBase {
   shuffle: boolean;
   feedbackCorrect: string;
   feedbackWrong: string;
+  keepFeedback?: boolean;
   required: boolean;
   scored: boolean;
   submitLabel?: string;
@@ -471,6 +472,7 @@ export interface QuestionLook {
 export interface QuestionBase extends BlockBase {
   feedbackCorrect: string;
   feedbackWrong: string;
+  keepFeedback?: boolean;
   required: boolean;
   scored: boolean;
   submitLabel?: string;

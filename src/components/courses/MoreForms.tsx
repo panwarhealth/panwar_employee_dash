@@ -131,6 +131,13 @@ function QuestionCommon<B extends QuestionBase>({
           onChange={(v) => set((b) => (b.feedbackWrong = v))}
         />
       )}
+      {!open && (
+        <Toggle
+          label="Keep wrong-answer feedback on screen after Try again"
+          checked={!!block.keepFeedback}
+          onChange={(v) => set((b) => (b.keepFeedback = v || undefined))}
+        />
+      )}
       <Toggle
         label={open ? 'Must submit before continuing' : 'Must get it right before continuing'}
         checked={block.required}
