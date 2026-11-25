@@ -63,6 +63,15 @@ interface SelectionBox {
   transform: string;
 }
 
+interface Marquee {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  base: string[];
+  click: string | null;
+}
+
 interface Guides {
   x: number[];
   y: number[];
@@ -137,6 +146,8 @@ export function CanvasEditor({
   onLook: (blockId: string, fn: (b: Block) => void) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const [marquee, setMarquee] = useState<Marquee | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [live, setLive] = useState<Frame | null>(null);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
@@ -332,15 +343,74 @@ export function CanvasEditor({
     onSelect(null);
   };
 
+  const startMarquee = (e: ReactPointerEvent, click: string | null) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    const p = toPct(e);
+    root.current!.setPointerCapture(e.pointerId);
+    setMarquee({
+      x0: p.x,
+      y0: p.y,
+      x1: p.x,
+      y1: p.y,
+      base: e.shiftKey ? (picked.length ? picked : selectedIds) : [],
+      click,
+    });
+  };
+
+  const moveMarquee = (e: ReactPointerEvent) => {
+    if (!marquee) return;
+    const p = toPct(e);
+    setMarquee((m) => m && { ...m, x1: p.x, y1: p.y });
+  };
+
+  const endMarquee = (e: ReactPointerEvent) => {
+    if (!marquee) return;
+    setMarquee(null);
+    const r = stage.current!.getBoundingClientRect();
+    const x0 = r.left + (marquee.x0 / 100) * r.width;
+    const y0 = r.top + (marquee.y0 / 100) * r.height;
+    const left = Math.min(x0, e.clientX);
+    const right = Math.max(x0, e.clientX);
+    const top = Math.min(y0, e.clientY);
+    const bottom = Math.max(y0, e.clientY);
+    if (right - left < 4 && bottom - top < 4) {
+      if (marquee.base.length) return;
+      setPicked([]);
+      const deselects = selectedId !== null || picked.length > 0;
+      return onSelect(marquee.click && !deselects ? marquee.click : null);
+    }
+    const inside = page.blocks
+      .filter((b) => inLayer(b) && !isDecor(b))
+      .filter((b) => {
+        const el = stage.current!.querySelector(`[data-obj="${CSS.escape(b.id)}"]`);
+        if (!el) return false;
+        const o = el.getBoundingClientRect();
+        return o.left >= left && o.right <= right && o.top >= top && o.bottom <= bottom;
+      })
+      .flatMap((b) => groupBy.get(b.id)?.members ?? [b.id]);
+    const ids = [...new Set([...marquee.base, ...inside])];
+    const group = groups.find(
+      (g) => g.members.length === ids.length && g.members.every((m) => ids.includes(m)),
+    );
+    if (group) {
+      setPicked([]);
+      onSelect(group.id);
+    } else if (ids.length === 1) {
+      setPicked([]);
+      onSelect(ids[0]);
+    } else {
+      setPicked(ids);
+      onSelect(null);
+    }
+  };
+
   const begin = (e: ReactPointerEvent, id: string, mode: Mode) => {
     e.stopPropagation();
     if (e.button !== 0) return;
     const backdrop = page.blocks.find((b) => b.id === id);
-    const deselects = selectedId !== null || picked.length > 0;
-    if (mode === 'move' && backdrop && isDecor(backdrop) && selectedId !== id && deselects) {
-      setPicked([]);
-      return onSelect(null);
-    }
+    if (mode === 'move' && backdrop && isDecor(backdrop) && selectedId !== id)
+      return startMarquee(e, id);
     if (mode === 'move' && e.shiftKey) return pick(id);
     if (mode === 'move' && picked.length > 1 && picked.includes(id)) {
       const p = toPct(e);
@@ -430,12 +500,13 @@ export function CanvasEditor({
 
   return (
     <div
+      ref={root}
       className="flex min-h-full w-full flex-col items-center gap-2 p-6"
       onPointerDown={(e) => {
-        if (e.target !== e.currentTarget) return;
-        setPicked([]);
-        onSelect(null);
+        if (e.target === e.currentTarget) startMarquee(e, null);
       }}
+      onPointerMove={moveMarquee}
+      onPointerUp={endMarquee}
     >
       {missing > 0 && (
         <p className="relative z-30 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-900">
@@ -541,10 +612,7 @@ export function CanvasEditor({
         style={zoom === 1 ? undefined : { width: STAGE_PX[layout] * zoom }}
         onPointerMove={move}
         onPointerUp={end}
-        onPointerDown={() => {
-          setPicked([]);
-          onSelect(null);
-        }}
+        onPointerDown={(e) => startMarquee(e, null)}
         onContextMenu={(e) => openMenu(e, null)}
       >
         <div className="shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
@@ -676,6 +744,17 @@ export function CanvasEditor({
                     )}
                   </div>
                 )}
+                {marquee && (
+                  <div
+                    className="pointer-events-none absolute z-40 border border-ph-purple bg-ph-purple/10"
+                    style={{
+                      left: `${Math.min(marquee.x0, marquee.x1)}%`,
+                      top: `${Math.min(marquee.y0, marquee.y1)}%`,
+                      width: `${Math.abs(marquee.x1 - marquee.x0)}%`,
+                      height: `${Math.abs(marquee.y1 - marquee.y0)}%`,
+                    }}
+                  />
+                )}
                 {showSafeZone && (
                   <div
                     title="Clinical Studio's menu button sits over this corner on phones. Keep buttons out of it."
@@ -728,8 +807,8 @@ export function CanvasEditor({
         </p>
       ) : (
         <p className="relative z-30 text-xs text-ph-charcoal/50">
-          Drag to move, corners to resize, top handle to rotate. Shift-click to select several and
-          Ctrl+G to group them. Arrow keys nudge. Right-click to copy, duplicate or paste.
+          Drag to move, corners to resize, top handle to rotate. Drag a box around objects or
+          Shift-click to select several, and Ctrl+G to group them. Arrow keys nudge. Right-click to copy, duplicate or paste.
         </p>
       )}
       {menu && <ObjectMenu at={menu} items={menuItems} onClose={closeMenu} />}
