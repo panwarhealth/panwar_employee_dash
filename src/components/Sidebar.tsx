@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import {
   BarChart3,
   Clock,
+  Kanban,
   LayoutGrid,
   Link2,
   Mail,
@@ -38,6 +39,7 @@ function useNavItems(): NavItem[] {
     ...(canMail ? [{ to: '/app/edm', label: 'eDM Mailer', icon: Mail }] : []),
     ...(canCourse ? [{ to: '/app/courses', label: 'Course Editor', icon: MonitorPlay }] : []),
     { to: '/app/timesheets', label: 'Justin', icon: Clock },
+    { to: '/app/board-vote', label: 'Job board vote', icon: Kanban },
     { to: '/app/qr', label: 'QR Codes', icon: QrCode },
     { to: '/app/links', label: 'UTM Links', icon: Link2 },
     ...(isAdmin ? [{ to: '/app/admin', label: 'Users & Roles', icon: Shield }] : []),
